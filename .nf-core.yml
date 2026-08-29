@@ -1,0 +1,26 @@
+repository_type: pipeline
+
+nf_core_version: 4.1.0
+
+lint:
+  files_unchanged:
+    - assets/sendmail_template.txt
+  multiqc_config: false
+  files_exist:
+    - conf/igenomes.config
+    - conf/igenomes_ignored.config
+    - assets/multiqc_config.yml
+
+template:
+  org: nf-core
+  name: dnaprs
+  description: Generate and evaluate polygenic risk scores with PLINK and SBayesRC
+  author: Paul Ruiz Pinto
+  version: 1.0.0dev
+  force: true
+  outdir: /home/ruizpint/.cache/nfcore-dnaprs-template
+  skip_features:
+    - igenomes
+    - multiqc
+    - fastqc
+  is_nfcore: true
