@@ -4,8 +4,8 @@
   <desc id="description">Animated metro map showing target and GWAS checks, PLINK C plus T and SBayesRC score generation, phenotype association, quality control, and reporting.</desc>
   <defs>
     <style>
-      .section{fill:#ededed;stroke:#e0e0e0;stroke-width:1}.section-number{fill:#333}.section-title{font:700 17px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#666}.number{font:700 12px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#fff}.label{font:700 16px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#292929}.small{font:500 14px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#555}.station{fill:#fff;stroke:#333;stroke-width:3}.line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:7}.shared{stroke:#777}.plink{stroke:#111}.sbayesrc{stroke:#0dc09d}.conditional{stroke:#777;stroke-dasharray:11 10}.traveller{fill:#fff;stroke-width:2;opacity:.95}.legend-line{stroke-width:5;stroke-linecap:round}
-      @media (prefers-color-scheme:dark){.section{fill:#242424;stroke:#3b3b3b}.section-number{fill:#777}.section-title{fill:#d0d0d0}.label{fill:#f2f2f2}.small{fill:#c2c2c2}.station{fill:#181818;stroke:#f2f2f2}.plink{stroke:#f2f2f2}.shared,.conditional{stroke:#aaa}}
+      .canvas,.header-mask{fill:#fff}.section{fill:#ededed;stroke:#e0e0e0;stroke-width:1}.section-number{fill:#333}.section-title{font:700 17px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#666}.number{font:700 12px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#fff}.label{font:700 16px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#292929}.small{font:500 14px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#555}.station{fill:#fff;stroke:#333;stroke-width:3}.line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:7}.shared{stroke:#777}.plink{stroke:#111}.sbayesrc{stroke:#0dc09d}.conditional{stroke:#777;stroke-dasharray:11 10}.traveller{fill:#fff;stroke-width:2;opacity:.95}.legend-line{stroke-width:5;stroke-linecap:round}
+      @media (prefers-color-scheme:dark){.canvas,.header-mask{fill:#161616}.section{fill:#242424;stroke:#3b3b3b}.section-number{fill:#777}.section-title{fill:#d0d0d0}.label{fill:#f2f2f2}.small{fill:#c2c2c2}.station{fill:#181818;stroke:#f2f2f2}.plink{stroke:#f2f2f2}.shared,.conditional{stroke:#aaa}}
       @media (prefers-reduced-motion:reduce){.traveller{display:none}}
     </style>
     <path id="motion-target" d="M75 165 H230 Q285 165 285 215 Q285 250 350 250"/>
@@ -16,6 +16,7 @@
     <path id="motion-phenotype" d="M1400 380 V205 Q1400 170 1435 170 H1595 Q1630 170 1630 205 V345 Q1630 380 1650 380"/>
   </defs>
 
+  <rect class="canvas" width="1795" height="640"/>
   <rect class="section" x="20" y="85" width="455" height="330" rx="8"/>
   <circle class="section-number" cx="31" cy="70" r="11"/><text class="number" x="31" y="74" text-anchor="middle">1</text>
   <text class="section-title" x="47" y="76">Inputs and compatibility checks</text>
@@ -29,8 +30,6 @@
   <text class="section-title" x="1302" y="76">Phenotype association</text>
 
   <rect class="section" x="1275" y="300" width="500" height="230" rx="8"/>
-  <circle class="section-number" cx="1286" cy="285" r="11"/><text class="number" x="1286" y="289" text-anchor="middle">4</text>
-  <text class="section-title" x="1302" y="291">Scores, quality control and reporting</text>
 
   <path class="line shared" d="M75 165 H230 Q285 165 285 215 Q285 250 350 250"/>
   <path class="line shared" d="M75 335 H230 Q285 335 285 285 Q285 250 350 250"/>
@@ -38,6 +37,10 @@
   <path class="line sbayesrc" d="M350 250 H470 Q500 250 500 280 V315 Q500 345 530 345 H1175 Q1205 345 1205 315 V250"/>
   <path class="line shared" d="M1205 250 H1310 Q1340 250 1340 280 V380 H1650"/>
   <path class="line conditional" d="M1400 380 V205 Q1400 170 1435 170 H1595 Q1630 170 1630 205 V345 Q1630 380 1650 380"/>
+
+  <rect class="header-mask" x="1274" y="268" width="350" height="31"/>
+  <circle class="section-number" cx="1286" cy="285" r="11"/><text class="number" x="1286" y="289" text-anchor="middle">4</text>
+  <text class="section-title" x="1302" y="291">Scores, quality control and reporting</text>
 
   <circle class="station" cx="75" cy="165" r="10"/><circle class="station" cx="75" cy="335" r="10"/>
   <circle class="station" cx="350" cy="250" r="10"/>
