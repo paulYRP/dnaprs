@@ -25,7 +25,13 @@ fixed `nf-schema` plugin while network access is available. The launcher default
 
 ```text
 $HOME/.local/share/dnaprs/nextflow-25.10.4-dist
-$HOME/.nextflow/plugins/nf-schema-2.5.1
+$HOME/.nextflow/plugins/nf-schema-2.7.2
+```
+
+Cache the required plugin before enabling offline execution:
+
+```bash
+$HOME/.local/share/dnaprs/nextflow-25.10.4-dist plugin install nf-schema@2.7.2
 ```
 
 Confirm the controller can see PBS Pro:

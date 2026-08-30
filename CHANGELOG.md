@@ -15,3 +15,4 @@ All notable changes to dnaprs are recorded here.
 - Added the offline terminal configuration assistant and run-specific PBS logs.
 - Added unique process/trait/cohort software-version keys and run-specific technical
   report paths to prevent output overlap.
+- Updated nf-schema to the version used by the current nf-core development template.

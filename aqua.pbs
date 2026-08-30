@@ -34,8 +34,8 @@ if [[ -z "${DNAPRS_R_LIBS_USER:-}" || ! -d "$DNAPRS_R_LIBS_USER" ]]; then
     echo "DNAPRS_R_LIBS_USER must name the fixed Aquarius R 4.4.1 library." >&2
     exit 5
 fi
-if [[ ! -d "$plugin_dir/nf-schema-2.5.1" ]]; then
-    echo "nf-schema 2.5.1 is not installed in $plugin_dir." >&2
+if [[ ! -d "$plugin_dir/nf-schema-2.7.2" ]]; then
+    echo "nf-schema 2.7.2 is not installed in $plugin_dir." >&2
     exit 6
 fi
 command -v qsub >/dev/null || { echo "qsub is unavailable." >&2; exit 7; }
