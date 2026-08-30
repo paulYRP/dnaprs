@@ -1,0 +1,6 @@
+name: plink_clump
+description: Select approximately independent variants using a fixed European LD reference.
+keywords: [plink, clumping, prs]
+tools:
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset

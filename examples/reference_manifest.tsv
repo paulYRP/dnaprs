@@ -1,0 +1,4 @@
+reference_id	reference_type	path	build	ancestry	version	checksum
+EUR_PLINK	plink_ld	/absolute/path/to/eur_reference	GRCh37	European	1000G-phase3-v5a	NA
+EUR_SBAYESRC_LD	sbayesrc_ld	/absolute/path/to/sbayesrc/ukbEUR_Imputed	GRCh37	European	SBayesRC-release	NA
+BASELINE_LD	annotation	/absolute/path/to/sbayesrc/baselineLD.annot.gz	GRCh37	European	baselineLD-v2.2	NA

@@ -1,0 +1,45 @@
+---
+title: "Logs"
+pagetitle: "Logs | dnaprs"
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+This page groups method logs, software versions, task status, resource use, and the
+workflow structure. Full logs are downloaded rather than repeated inside the website.
+
+## Method and software records
+
+```{r}
+# Display direct downloads for method logs and software versions.
+fileTABLE(
+  "^(logs|pipeline_info)",
+  "Method logs and software-version records."
+)
+```
+
+## Nextflow execution
+
+Nextflow completes these files when the run finishes. The execution report summarises
+status and resource use; the timeline shows task timing; the trace provides task-level
+metrics; and the directed acyclic graph (DAG) records workflow structure.
+
+<div class="dnaprs-log-grid">
+<a class="dnaprs-log-card" href="provenance/execution_report.html"><strong>Execution report</strong><span>Run summary, resources, and task status</span></a>
+<a class="dnaprs-log-card" href="provenance/execution_timeline.html"><strong>Execution timeline</strong><span>Scheduling and execution time by task</span></a>
+<a class="dnaprs-log-card" href="provenance/pipeline_dag.html"><strong>Pipeline DAG</strong><span>Processes and their data connections</span></a>
+<a class="dnaprs-log-card" href="provenance/execution_trace.tsv" download><strong>Task trace</strong><span>Download detailed task metrics</span></a>
+<a class="dnaprs-log-card" href="provenance/report_software_versions.tsv" download><strong>Report software</strong><span>Download report software versions</span></a>
+</div>

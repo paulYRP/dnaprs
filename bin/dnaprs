@@ -1,0 +1,299 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pipeline_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+usage() {
+    cat <<'USAGE'
+dnaprs terminal assistant
+
+Usage:
+  bin/dnaprs configure [workspace]
+  bin/dnaprs list [workspace]
+  bin/dnaprs check --params-file FILE [--profile PROFILE]
+  bin/dnaprs run --params-file FILE [--profile PROFILE] [--output-dir DIR] [--resume]
+
+The assistant works entirely in the terminal. It never uploads data and always prints
+the equivalent Nextflow command before execution.
+USAGE
+}
+
+nextflow_command() {
+    if [[ -n "${DNAPRS_NEXTFLOW:-}" ]]; then
+        printf '%s\n' "$DNAPRS_NEXTFLOW"
+    elif command -v nextflow >/dev/null 2>&1; then
+        command -v nextflow
+    else
+        echo "Nextflow was not found. Set DNAPRS_NEXTFLOW to the pinned executable." >&2
+        exit 2
+    fi
+}
+
+discover() {
+    local workspace="$1"
+    find "$workspace" -type f \
+        ! -path '*/work/*' ! -path '*/results/*' ! -path '*/.nextflow/*' \
+        \( -name '*.pgen' -o -name '*.bed' -o -name '*.vcf.gz' -o -name '*.bcf' \
+           -o -name '*.bgen' -o -name '*.tsv' -o -name '*.tsv.gz' -o -name '*.csv' \
+           -o -name '*.ma' -o -name '*.annot' -o -name '*.annot.gz' \) \
+        -print | sort
+}
+
+select_item() {
+    local prompt="$1"
+    shift
+    local values=("$@")
+    if [[ "${#values[@]}" -eq 0 ]]; then
+        echo "No suitable files were found." >&2
+        return 1
+    fi
+    echo "$prompt" >&2
+    local number=1
+    for value in "${values[@]}"; do
+        printf '  %s) %s\n' "$number" "$value" >&2
+        number=$((number + 1))
+    done
+    local choice
+    read -r -p "Selection: " choice
+    if [[ ! "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#values[@]} )); then
+        echo "Invalid selection." >&2
+        return 1
+    fi
+    printf '%s\n' "${values[$((choice - 1))]}"
+}
+
+read_required() {
+    local prompt="$1"
+    local value=""
+    while [[ -z "$value" ]]; do read -r -p "$prompt" value; done
+    printf '%s\n' "$value"
+}
+
+header_columns() {
+    local path="$1"
+    local header
+    if [[ "$path" == *.gz ]]; then
+        header=$(zgrep -m 1 '^' "$path")
+    else
+        header=$(head -n 1 "$path")
+    fi
+    printf '%s\n' "$header" | tr '\t' '\n' | nl -ba -w2 -s') '
+}
+
+configure_run() {
+    local workspace="${1:-.}"
+    workspace=$(cd "$workspace" && pwd -P)
+    cd "$workspace"
+    local run_name cohort ancestry build role dosage
+    run_name=$(read_required "Run name: ")
+    if [[ ! "$run_name" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]]; then
+        echo "Run name may contain letters, numbers, period, underscore, and hyphen." >&2
+        exit 3
+    fi
+    cohort=$(read_required "Target cohort name: ")
+    read -r -p "Genome build [GRCh37]: " build
+    build="${build:-GRCh37}"
+    ancestry=$(read_required "Target ancestry description: ")
+    read -r -p "Cohort role [target]: " role
+    role="${role:-target}"
+
+    mapfile -t genotype_files < <(discover . | grep -E '[.](pgen|bed|bgen|bcf)$|[.]vcf[.]gz$' || true)
+    local genotype
+    genotype=$(select_item "Select the QC-completed target genotype:" "${genotype_files[@]}")
+    genotype=$(realpath -m -- "${genotype#./}")
+    local format prefix
+    case "$genotype" in
+        *.pgen) format="pgen"; prefix="${genotype%.pgen}" ;;
+        *.bed) format="bed"; prefix="${genotype%.bed}" ;;
+        *.bgen) format="bgen"; prefix="$genotype" ;;
+        *.vcf.gz|*.bcf) format="vcf"; prefix="$genotype" ;;
+        *) echo "Unsupported genotype selection." >&2; exit 4 ;;
+    esac
+    if [[ "$prefix" =~ ^(.*[Cc][Hh][Rr])([0-9]+)([^0-9].*)?$ ]]; then
+        local chromosome_pattern="${BASH_REMATCH[1]}{chr}${BASH_REMATCH[3]:-}"
+        local chromosome_count=0 chromosome_path
+        for chromosome in $(seq 1 22); do
+            chromosome_path="${chromosome_pattern//\{chr\}/$chromosome}"
+            if [[ "$format" == "pgen" ]]; then chromosome_path="${chromosome_path}.pgen"; fi
+            if [[ "$format" == "bed" ]]; then chromosome_path="${chromosome_path}.bed"; fi
+            if [[ -e "$chromosome_path" ]]; then chromosome_count=$((chromosome_count + 1)); fi
+        done
+        if (( chromosome_count > 1 )); then
+            local use_pattern
+            read -r -p "Detected $chromosome_count chromosome files. Use the full series? [yes]: " use_pattern
+            if [[ "${use_pattern:-yes}" == "yes" ]]; then prefix="$chromosome_pattern"; fi
+        fi
+    fi
+    read -r -p "Sample file, if required [none]: " sample
+    read -r -p "Participant keep file [none]: " keep
+    if [[ -n "$sample" ]]; then sample=$(realpath -m -- "$sample"); fi
+    if [[ -n "$keep" ]]; then keep=$(realpath -m -- "$keep"); fi
+    read -r -p "Dosage field [DS]: " dosage
+    dosage="${dosage:-DS}"
+
+    local method_choice methods
+    echo "PRS methods:" >&2
+    echo "  1) PLINK C+T" >&2
+    echo "  2) SBayesRC" >&2
+    echo "  3) Both" >&2
+    read -r -p "Selection: " method_choice
+    case "$method_choice" in
+        1) methods="plink_ct" ;;
+        2) methods="sbayesrc" ;;
+        3) methods="plink_ct,sbayesrc" ;;
+        *) echo "Invalid method selection." >&2; exit 5 ;;
+    esac
+
+    local run_dir="$workspace/runs/$run_name"
+    local manifest_dir="$run_dir/manifests"
+    mkdir -p "$manifest_dir"
+    printf 'cohort\trole\tformat\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\n' > "$manifest_dir/target.tsv"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "$cohort" "$role" "$format" "$prefix" "$sample" "$keep" "$build" "$ancestry" "$dosage" \
+        >> "$manifest_dir/target.tsv"
+
+    printf 'trait_id\tprs_name\tpath\tbuild\tancestry\teffect_type\tsample_size\tsnp_col\tchr_col\tbp_col\teffect_allele_col\tother_allele_col\tbeta_col\tse_col\tp_col\tfreq_col\tn_col\n' \
+        > "$manifest_dir/gwas.tsv"
+    mapfile -t gwas_files < <(discover . | grep -E '[.](tsv|ma)([.]gz)?$' | grep -v '/manifests/' || true)
+    local add_more="yes"
+    while [[ "$add_more" == "yes" ]]; do
+        local gwas_path trait_id prs_name gwas_ancestry effect_type sample_size
+        gwas_path=$(select_item "Select one QC-completed GWAS:" "${gwas_files[@]}")
+        gwas_path=$(realpath -m -- "${gwas_path#./}")
+        echo "Declared columns in $gwas_path:" >&2
+        header_columns "$gwas_path" >&2
+        trait_id=$(read_required "Trait identifier: ")
+        prs_name=$(read_required "Final PRS name: ")
+        gwas_ancestry=$(read_required "GWAS ancestry: ")
+        read -r -p "Effect type [beta; use log_or for log odds]: " effect_type
+        effect_type="${effect_type:-beta}"
+        sample_size=$(read_required "Reported or effective GWAS sample size: ")
+        local snp_col chr_col bp_col effect_allele_col other_allele_col beta_col se_col p_col freq_col n_col
+        snp_col=$(read_required "SNP identifier column: ")
+        chr_col=$(read_required "Chromosome column: ")
+        bp_col=$(read_required "Position column: ")
+        effect_allele_col=$(read_required "Effect allele column: ")
+        other_allele_col=$(read_required "Other allele column: ")
+        beta_col=$(read_required "Effect column: ")
+        se_col=$(read_required "Standard error column: ")
+        p_col=$(read_required "P-value column: ")
+        read -r -p "Effect-allele-frequency column [none]: " freq_col
+        read -r -p "Per-variant sample-size column [none]: " n_col
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$trait_id" "$prs_name" "$gwas_path" "$build" "$gwas_ancestry" "$effect_type" "$sample_size" \
+            "$snp_col" "$chr_col" "$bp_col" "$effect_allele_col" "$other_allele_col" "$beta_col" \
+            "$se_col" "$p_col" "$freq_col" "$n_col" >> "$manifest_dir/gwas.tsv"
+        read -r -p "Add another GWAS? [no]: " add_more
+        add_more="${add_more:-no}"
+    done
+
+    printf 'reference_id\treference_type\tpath\tbuild\tancestry\tversion\tchecksum\n' > "$manifest_dir/reference.tsv"
+    if [[ "$methods" == *plink_ct* ]]; then
+        local plink_reference plink_version
+        plink_reference=$(read_required "PLINK European LD reference PGEN prefix: ")
+        plink_reference=$(realpath -m -- "$plink_reference")
+        plink_version=$(read_required "PLINK reference version: ")
+        printf 'PLINK_LD\tplink_ld\t%s\t%s\t%s\t%s\t\n' "$plink_reference" "$build" "$ancestry" "$plink_version" >> "$manifest_dir/reference.tsv"
+    fi
+    if [[ "$methods" == *sbayesrc* ]]; then
+        local ld_dir annotation annotation_version
+        ld_dir=$(read_required "SBayesRC LD directory: ")
+        annotation=$(read_required "SBayesRC annotation file: ")
+        ld_dir=$(realpath -m -- "$ld_dir")
+        annotation=$(realpath -m -- "$annotation")
+        annotation_version=$(read_required "SBayesRC reference and annotation version: ")
+        printf 'SBAYESRC_LD\tsbayesrc_ld\t%s\t%s\t%s\t%s\t\n' "$ld_dir" "$build" "$ancestry" "$annotation_version" >> "$manifest_dir/reference.tsv"
+        printf 'SBAYESRC_ANNOT\tannotation\t%s\t%s\t%s\t%s\t\n' "$annotation" "$build" "$ancestry" "$annotation_version" >> "$manifest_dir/reference.tsv"
+    fi
+
+    local phenotype_file phenotype_models
+    read -r -p "Phenotype CSV [none]: " phenotype_file
+    read -r -p "Phenotype model TSV [none]: " phenotype_models
+    if [[ -n "$phenotype_file" ]]; then phenotype_file=$(realpath -m -- "$phenotype_file"); fi
+    if [[ -n "$phenotype_models" ]]; then phenotype_models=$(realpath -m -- "$phenotype_models"); fi
+
+    {
+        printf "run_name: '%s'\n" "$run_name"
+        printf "input: '%s'\n" "$manifest_dir/target.tsv"
+        printf "gwas_manifest: '%s'\n" "$manifest_dir/gwas.tsv"
+        printf "reference_manifest: '%s'\n" "$manifest_dir/reference.tsv"
+        if [[ -n "$phenotype_file" ]]; then printf "phenotype_file: '%s'\n" "$phenotype_file"; fi
+        if [[ -n "$phenotype_models" ]]; then printf "phenotype_models: '%s'\n" "$phenotype_models"; fi
+        printf "methods: '%s'\n" "$methods"
+        printf "genome_build: '%s'\n" "$build"
+        printf 'seed: 20260829\nreport_enabled: true\n'
+    } > "$run_dir/params.yaml"
+
+    echo "Created $run_dir/params.yaml"
+    echo "Review every manifest value, then run:"
+    echo "  bin/dnaprs check --params-file '$run_dir/params.yaml' --profile test"
+}
+
+parse_execution_options() {
+    params_file=""
+    profile="standard"
+    output_dir="results"
+    resume="false"
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            --params-file) params_file="$2"; shift 2 ;;
+            --profile) profile="$2"; shift 2 ;;
+            --output-dir) output_dir="$2"; shift 2 ;;
+            --resume) resume="true"; shift ;;
+            *) echo "Unknown option: $1" >&2; exit 6 ;;
+        esac
+    done
+    if [[ -z "$params_file" || ! -f "$params_file" ]]; then
+        echo "--params-file must name an existing YAML file." >&2
+        exit 7
+    fi
+}
+
+command="${1:-}"
+if [[ -z "$command" ]]; then usage; exit 0; fi
+shift
+
+case "$command" in
+    configure)
+        configure_run "${1:-.}"
+        ;;
+    list)
+        discover "${1:-.}"
+        ;;
+    check)
+        parse_execution_options "$@"
+        nextflow_bin=$(nextflow_command)
+        echo "$nextflow_bin lint $pipeline_dir"
+        "$nextflow_bin" lint "$pipeline_dir"
+        echo "$nextflow_bin config -profile $profile $pipeline_dir"
+        "$nextflow_bin" config -profile "$profile" "$pipeline_dir" >/dev/null
+        check_dir=$(mktemp -d "${TMPDIR:-/tmp}/dnaprs-check.XXXXXXXX")
+        trap 'rm -rf -- "$check_dir"' EXIT
+        echo "$nextflow_bin run $pipeline_dir -profile test -params-file $params_file -stub-run"
+        "$nextflow_bin" run "$pipeline_dir" \
+            -profile test \
+            -params-file "$params_file" \
+            -stub-run \
+            -work-dir "$check_dir/work" \
+            --outdir "$check_dir/results"
+        echo "Strict syntax, selected profile, parameter schema, and workflow wiring passed."
+        echo "The complete input preflight remains the first process of a scientific run."
+        ;;
+    run)
+        parse_execution_options "$@"
+        nextflow_bin=$(nextflow_command)
+        run_command=("$nextflow_bin" run "$pipeline_dir" -profile "$profile" -params-file "$params_file" --outdir "$output_dir")
+        if [[ "$resume" == "true" ]]; then run_command+=(-resume); fi
+        printf 'Executing:'
+        printf ' %q' "${run_command[@]}"
+        printf '\n'
+        exec "${run_command[@]}"
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        usage >&2
+        exit 1
+        ;;
+esac

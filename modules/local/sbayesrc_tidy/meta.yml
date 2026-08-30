@@ -1,0 +1,6 @@
+name: sbayesrc_tidy
+description: Align COJO summary statistics to the official SBayesRC LD reference.
+keywords: [sbayesrc, gwas, ld]
+tools:
+  - sbayesrc:
+      description: Bayesian multiple regression using summary statistics

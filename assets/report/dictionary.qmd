@@ -1,0 +1,85 @@
+---
+title: "Dictionary"
+pagetitle: "Dictionary | dnaprs"
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+The dictionary records the role, size, sensitivity, and checksum of every included
+pipeline result. It also defines table columns and quantitative figures.
+
+```{r}
+# Provide the three complete report dictionaries.
+buttonROW(
+  downloadBUTTON("provenance/output_files.tsv", "Download result-file dictionary"),
+  downloadBUTTON("provenance/data_dictionary.tsv", "Download column dictionary"),
+  downloadBUTTON("provenance/figure_manifest.tsv", "Download figure dictionary")
+)
+```
+
+## Result files
+
+```{r}
+# Display every included pipeline file with its sensitivity and download.
+fileVIEW <- copy(manifest)
+fileVIEW[, download := sprintf(
+  '<a class="dnaprs-download" href="%s" download>Download</a>',
+  relative_path
+)]
+tableVIEW(
+  fileVIEW[, .(
+    section = publish_path,
+    file = file_name,
+    description,
+    size_bytes = bytes,
+    sensitivity,
+    sha256,
+    download
+  )],
+  "All pipeline files included in this report bundle.",
+  escape = FALSE
+)
+```
+
+## Table columns
+
+```{r}
+# Display definitions for columns supplied by tabular pipeline results.
+dataDICTIONARY <- fread(file.path("provenance", "data_dictionary.tsv"))
+tableVIEW(dataDICTIONARY, "Column definitions for tabular pipeline outputs.")
+```
+
+## Figures
+
+```{r}
+# Display the quantitative figure dictionary and available file formats.
+tableVIEW(
+  figureMANIFEST[, .(
+    figure_id,
+    page,
+    section,
+    title,
+    description,
+    inspection,
+    width_in,
+    height_in,
+    dpi,
+    tiff,
+    png,
+    jpeg
+  )],
+  "Figures generated from completed pipeline results."
+)
+```

@@ -1,151 +1,202 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/nf-core/dnaprs/master/nextflow_schema.json",
+    "$id": "https://raw.githubusercontent.com/nf-core/dnaprs/main/nextflow_schema.json",
     "title": "nf-core/dnaprs pipeline parameters",
-    "description": "Generate and evaluate polygenic risk scores with PLINK and SBayesRC",
+    "description": "Generate and evaluate polygenic risk scores with PLINK and SBayesRC.",
     "type": "object",
     "$defs": {
         "input_output_options": {
-            "title": "Input/output options",
+            "title": "Input and output options",
             "type": "object",
             "fa_icon": "fas fa-terminal",
-            "description": "Define where the pipeline should find input data and save output data.",
-            "required": ["input", "outdir"],
+            "description": "Define the quality-controlled inputs and the result directory.",
+            "required": ["input", "gwas_manifest", "reference_manifest", "outdir"],
             "properties": {
                 "input": {
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
-                    "schema": "assets/schema_input.json",
-                    "mimetype": "text/csv",
-                    "pattern": "^\\S+\\.csv$",
-                    "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/dnaprs/usage#samplesheet-input).",
-                    "fa_icon": "fas fa-file-csv"
+                    "mimetype": "text/tab-separated-values",
+                    "description": "TSV manifest describing quality-controlled target genotype cohorts.",
+                    "help_text": "Each row declares one target cohort, its genotype format and paths, and the participant keep file. Source genotype files are read-only.",
+                    "fa_icon": "fas fa-dna"
+                },
+                "gwas_manifest": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/tab-separated-values",
+                    "description": "TSV manifest describing quality-controlled GWAS summary statistics.",
+                    "help_text": "Each row declares one trait and the exact source columns for chromosome, position, alleles, effect, uncertainty, P value, sample size, and allele frequency where required.",
+                    "fa_icon": "fas fa-table"
+                },
+                "reference_manifest": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "mimetype": "text/tab-separated-values",
+                    "description": "TSV manifest describing the independent LD and annotation resources.",
+                    "help_text": "The declared resources must use the same genome build and compatible variant identifiers as the target and GWAS inputs.",
+                    "fa_icon": "fas fa-book"
+                },
+                "manifest_base": {
+                    "type": ["string", "null"],
+                    "format": "directory-path",
+                    "exists": true,
+                    "description": "Base directory for relative paths inside manifests.",
+                    "help_text": "When omitted, relative paths are resolved from the directory where Nextflow was launched.",
+                    "fa_icon": "fas fa-folder-tree"
+                },
+                "phenotype_file": {
+                    "type": ["string", "null"],
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Optional phenotype table for prespecified PRS association models.",
+                    "fa_icon": "fas fa-user-group"
+                },
+                "phenotype_models": {
+                    "type": ["string", "null"],
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Optional TSV declaring phenotype association models.",
+                    "fa_icon": "fas fa-chart-line"
                 },
                 "outdir": {
                     "type": "string",
                     "format": "directory-path",
-                    "description": "The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
+                    "default": "results",
+                    "description": "Directory where run-specific results and reports are saved.",
                     "fa_icon": "fas fa-folder-open"
                 },
                 "email": {
                     "type": "string",
-                    "description": "Email address for completion summary.",
-                    "fa_icon": "fas fa-envelope",
-                    "help_text": "Set this parameter to your e-mail address to get a summary e-mail with details of the run sent to you when the workflow exits. If set in your user config file (`~/.nextflow/config`) then you don't need to specify this on the command line for every run.",
-                    "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$"
+                    "description": "Email address for the completion summary.",
+                    "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
+                    "fa_icon": "fas fa-envelope"
+                }
+            }
+        },
+        "analysis_options": {
+            "title": "PRS analysis options",
+            "type": "object",
+            "fa_icon": "fas fa-chart-column",
+            "description": "Select the scoring methods and fixed run settings.",
+            "properties": {
+                "run_name": {
+                    "type": "string",
+                    "default": "dnaprs_run",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+                    "description": "Stable name for the run-specific result folder.",
+                    "fa_icon": "fas fa-tag"
+                },
+                "methods": {
+                    "type": "string",
+                    "enum": ["plink_ct", "sbayesrc", "plink_ct,sbayesrc"],
+                    "default": "plink_ct,sbayesrc",
+                    "description": "PRS methods to run.",
+                    "help_text": "PLINK C+T and SBayesRC are independent branches that share harmonised GWAS and prepared target inputs.",
+                    "fa_icon": "fas fa-code-branch"
+                },
+                "genome_build": {
+                    "type": "string",
+                    "enum": ["GRCh37", "GRCh38"],
+                    "default": "GRCh37",
+                    "description": "Genome build shared by the target, GWAS, and reference resources.",
+                    "fa_icon": "fas fa-dna"
+                },
+                "seed": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 20260829,
+                    "description": "Seed used by stochastic model steps.",
+                    "fa_icon": "fas fa-dice"
+                },
+                "report_enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Render the portable dnaprs scientific report.",
+                    "fa_icon": "fas fa-file-lines"
                 }
             }
         },
         "institutional_config_options": {
-            "title": "Institutional config options",
+            "title": "Institutional configuration options",
             "type": "object",
             "fa_icon": "fas fa-university",
-            "description": "Parameters used to describe centralised config profiles. These should not be edited.",
-            "help_text": "The centralised nf-core configuration profiles use a handful of pipeline parameters to describe themselves. This information is then printed to the Nextflow log when you run a pipeline. You should not need to change these values when you run a pipeline.",
+            "description": "Parameters used to describe centralised compute profiles.",
             "properties": {
                 "custom_config_version": {
                     "type": "string",
-                    "description": "Git commit id for Institutional configs.",
                     "default": "master",
-                    "hidden": true,
-                    "fa_icon": "fas fa-users-cog"
+                    "description": "Git revision for nf-core institutional configurations.",
+                    "hidden": true
                 },
                 "custom_config_base": {
                     "type": "string",
-                    "description": "Base directory for Institutional configs.",
                     "default": "https://raw.githubusercontent.com/nf-core/configs/master",
-                    "hidden": true,
-                    "help_text": "If you're running offline, Nextflow will not be able to fetch the institutional config files from the internet. If you don't need them, then this is not a problem. If you do need them, you should download the files from the repo and tell Nextflow where to find them with this parameter.",
-                    "fa_icon": "fas fa-users-cog"
+                    "description": "Base URL or local directory for nf-core institutional configurations.",
+                    "hidden": true
                 },
                 "config_profile_name": {
-                    "type": "string",
-                    "description": "Institutional config name.",
-                    "hidden": true,
-                    "fa_icon": "fas fa-users-cog"
+                    "type": ["string", "null"],
+                    "description": "Institutional configuration name.",
+                    "hidden": true
                 },
                 "config_profile_description": {
-                    "type": "string",
-                    "description": "Institutional config description.",
-                    "hidden": true,
-                    "fa_icon": "fas fa-users-cog"
+                    "type": ["string", "null"],
+                    "description": "Institutional configuration description.",
+                    "hidden": true
                 },
                 "config_profile_contact": {
-                    "type": "string",
-                    "description": "Institutional config contact information.",
-                    "hidden": true,
-                    "fa_icon": "fas fa-users-cog"
+                    "type": ["string", "null"],
+                    "description": "Institutional configuration contact.",
+                    "hidden": true
                 },
                 "config_profile_url": {
-                    "type": "string",
-                    "description": "Institutional config URL link.",
-                    "hidden": true,
-                    "fa_icon": "fas fa-users-cog"
+                    "type": ["string", "null"],
+                    "description": "Institutional configuration documentation URL.",
+                    "hidden": true
                 }
             }
         },
         "generic_options": {
             "title": "Generic options",
             "type": "object",
-            "fa_icon": "fas fa-file-import",
-            "description": "Less common options for the pipeline, typically set in a config file.",
-            "help_text": "These options are common to all nf-core pipelines and allow you to customise some of the core preferences for how the pipeline runs.\n\nTypically these options would be set in a Nextflow config file loaded for all pipeline runs, such as `~/.nextflow/config`.",
+            "fa_icon": "fas fa-gears",
+            "description": "Common nf-core execution options.",
             "properties": {
                 "version": {
                     "type": "boolean",
-                    "description": "Display version and exit.",
-                    "fa_icon": "fas fa-question-circle",
+                    "description": "Display the pipeline version and exit.",
                     "hidden": true
                 },
                 "publish_dir_mode": {
                     "type": "string",
                     "default": "copy",
-                    "description": "Method used to save pipeline results to output directory.",
-                    "help_text": "The Nextflow `publishDir` option specifies which intermediate files should be saved to the output directory. This option tells the pipeline what method should be used to move these files. See [Nextflow docs](https://www.nextflow.io/docs/latest/process.html#publishdir) for details.",
-                    "fa_icon": "fas fa-copy",
                     "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"],
+                    "description": "Method used by Nextflow to save final workflow outputs.",
                     "hidden": true
                 },
                 "email_on_fail": {
                     "type": "string",
-                    "description": "Email address for completion summary, only when pipeline fails.",
-                    "fa_icon": "fas fa-exclamation-triangle",
+                    "description": "Email address for a completion summary only when the pipeline fails.",
                     "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
-                    "help_text": "An email address to send a summary email to when the pipeline is completed - ONLY sent if the pipeline does not exit successfully.",
                     "hidden": true
                 },
                 "plaintext_email": {
                     "type": "boolean",
-                    "description": "Send plain-text email instead of HTML.",
-                    "fa_icon": "fas fa-remove-format",
+                    "description": "Send a plain-text completion email instead of HTML.",
                     "hidden": true
                 },
                 "monochrome_logs": {
                     "type": "boolean",
-                    "description": "Do not use coloured log outputs.",
-                    "fa_icon": "fas fa-palette",
+                    "description": "Disable coloured terminal output.",
                     "hidden": true
                 },
                 "validate_params": {
                     "type": "boolean",
-                    "description": "Boolean whether to validate parameters against the schema at runtime",
                     "default": true,
-                    "fa_icon": "fas fa-check-square",
-                    "hidden": true
-                },
-                "pipelines_testdata_base_path": {
-                    "type": "string",
-                    "fa_icon": "far fa-check-circle",
-                    "description": "Base URL or local path to location of pipeline test dataset files",
-                    "default": "https://raw.githubusercontent.com/nf-core/test-datasets/",
-                    "hidden": true
-                },
-                "trace_report_suffix": {
-                    "type": "string",
-                    "fa_icon": "far calendar",
-                    "description": "Suffix to add to the trace report filename. Default is the date and time in the format yyyy-MM-dd_HH-mm-ss.",
+                    "description": "Validate parameters against the pipeline schema.",
                     "hidden": true
                 },
                 "help": {
@@ -154,24 +205,19 @@
                 },
                 "help_full": {
                     "type": "boolean",
-                    "description": "Display the full detailed help message."
+                    "description": "Display the full help message."
                 },
                 "show_hidden": {
                     "type": "boolean",
-                    "description": "Display hidden parameters in the help message (only works when --help or --help_full are provided)."
+                    "description": "Display hidden parameters in the help message."
                 }
             }
         }
     },
     "allOf": [
-        {
-            "$ref": "#/$defs/input_output_options"
-        },
-        {
-            "$ref": "#/$defs/institutional_config_options"
-        },
-        {
-            "$ref": "#/$defs/generic_options"
-        }
+        { "$ref": "#/$defs/input_output_options" },
+        { "$ref": "#/$defs/analysis_options" },
+        { "$ref": "#/$defs/institutional_config_options" },
+        { "$ref": "#/$defs/generic_options" }
     ]
 }

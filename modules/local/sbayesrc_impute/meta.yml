@@ -1,0 +1,6 @@
+name: sbayesrc_impute
+description: Impute missing GWAS summary statistics to the SBayesRC LD panel using package defaults.
+keywords: [sbayesrc, summary-statistics, imputation]
+tools:
+  - sbayesrc:
+      description: Bayesian multiple regression using summary statistics

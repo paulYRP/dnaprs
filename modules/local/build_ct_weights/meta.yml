@@ -1,0 +1,6 @@
+name: build_ct_weights
+description: Create an allele-explicit PLINK score file from fixed LD-clumped variants.
+keywords: [plink, weights, prs]
+tools:
+  - r:
+      description: R statistical computing environment

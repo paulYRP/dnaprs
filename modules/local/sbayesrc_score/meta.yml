@@ -1,0 +1,8 @@
+name: sbayesrc_score
+description: Apply posterior SBayesRC weights with the official prs function and no target-derived centring.
+keywords: [sbayesrc, plink, scoring, prs]
+tools:
+  - sbayesrc:
+      description: Bayesian multiple regression using summary statistics
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset

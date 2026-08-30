@@ -1,0 +1,54 @@
+name: pipeline_initialisation
+description: Initialise and complete nf-core/dnaprs runs using shared nf-core utilities.
+keywords:
+  - utility
+  - initialisation
+  - completion
+components:
+  - completionemail
+  - completionsummary
+  - utils_nfcore_pipeline
+  - utils_nfschema_plugin
+input:
+  - version:
+      type: boolean
+      description: Display the pipeline version and exit.
+  - validate_params:
+      type: boolean
+      description: Validate parameters against nextflow_schema.json.
+  - monochrome_logs:
+      type: boolean
+      description: Disable coloured log output.
+  - nextflow_cli_args:
+      type: list
+      description: Positional Nextflow command-line arguments.
+  - outdir:
+      type: string
+      description: Run-specific output directory.
+  - help:
+      type: boolean
+      description: Display the short help message and exit.
+  - help_full:
+      type: boolean
+      description: Display the complete help message and exit.
+  - show_hidden:
+      type: boolean
+      description: Include hidden parameters in help output.
+  - email:
+      type: string
+      description: Address that receives a completion summary.
+  - email_on_fail:
+      type: string
+      description: Address that receives a summary after a failed run.
+  - plaintext_email:
+      type: boolean
+      description: Send plain-text email instead of HTML.
+output:
+  - versions:
+      type: file
+      description: Empty version channel reserved for pipeline utility components.
+      pattern: versions.yml
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

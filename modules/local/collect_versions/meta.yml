@@ -1,0 +1,3 @@
+name: collect_versions
+description: Combine process-level version records into one collision-free run manifest.
+keywords: [versions, provenance]

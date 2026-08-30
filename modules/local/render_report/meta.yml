@@ -1,0 +1,12 @@
+name: render_report
+description: Render the portable conditional dnaprs report with contextual result and figure downloads.
+keywords: [prs, report, tiff, png, jpeg, dictionary, visualisation, phenotype]
+tools:
+  - quarto:
+      description: Scientific publishing system
+  - ggplot2:
+      description: Grammar of graphics for R
+  - openssl:
+      description: SHA-256 calculation for the report file dictionary
+  - jsonlite:
+      description: Figure-gallery data embedded in each report page

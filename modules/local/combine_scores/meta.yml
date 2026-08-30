@@ -1,0 +1,6 @@
+name: combine_scores
+description: Combine method scores, calculate within-cohort standard scores, and compare methods without selecting a winner from target phenotypes.
+keywords: [prs, standardisation, concordance]
+tools:
+  - r:
+      description: R statistical computing environment

@@ -1,0 +1,48 @@
+---
+title: "PLINK"
+pagetitle: "PLINK | dnaprs"
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+PLINK clumping and thresholding uses the declared independent linkage-disequilibrium
+(LD) reference. The phenotype is not used to choose the threshold or variants.
+
+## Variant retention
+
+```{r}
+# Display the PLINK variant counts used to audit score generation.
+tableVIEW(
+  variantFLOW[method == "plink_ct", .(
+    cohort,
+    trait_id,
+    prs_name,
+    stage,
+    variant_count,
+    percent_of_source
+  )],
+  "PLINK variant retention."
+)
+```
+
+## Method files
+
+```{r}
+# Provide PLINK weights, reference results, checks, and logs.
+fileTABLE(
+  "^(plink_ct|reference/plink_ct|qc/plink_ct|logs/plink_ct)",
+  "PLINK weights, reference results, quality checks, and logs."
+)
+```

@@ -1,10 +1,8 @@
-# nf-core/dnaprs: Documentation
+# dnaprs documentation
 
-The nf-core/dnaprs documentation is split into the following pages:
+- [`usage.md`](usage.md): required inputs, manifests, terminal assistant, and run commands
+- [`output.md`](output.md): result folders, score fields, QC records, and report contents
+- [`aqua.md`](aqua.md): Aquarius installation, PBS Pro submission, logs, and restart
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): development and verification rules
 
-- [Usage](usage.md)
-  - An overview of how the pipeline works, how to run it and a description of all of the different command-line flags.
-- [Output](output.md)
-  - An overview of the different results produced by the pipeline and how to interpret them.
-
-You can find a lot more documentation about installing, configuring and running nf-core pipelines on the website: [https://nf-co.re](https://nf-co.re)
+The top-level [`README.md`](../README.md) provides the shortest working introduction.

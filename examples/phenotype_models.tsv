@@ -1,0 +1,2 @@
+model_id	outcome	prs_name	family	covariates	participant_id	group_id	expected_direction	primary
+mdd_total	MDD_TOTAL	MDD_PRS	gaussian	Age,Sex,PC1,PC2,PC3,PC4,PC5	IID		positive	TRUE

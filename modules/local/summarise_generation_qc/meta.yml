@@ -1,0 +1,8 @@
+name: summarise_generation_qc
+description: Combine GWAS, method, and target-scoring variant counts into one ordered audit table.
+keywords: [prs, variants, quality-control]
+tools:
+  - r:
+      description: R statistical computing environment
+  - data.table:
+      description: Fast tabular data processing in R

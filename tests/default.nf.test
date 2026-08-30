@@ -1,10 +1,10 @@
 nextflow_pipeline {
 
-    name "Test pipeline"
+    name "Run the complete dnaprs graph in stub mode"
     script "../main.nf"
     tag "pipeline"
 
-    test("-profile test") {
+    test("complete PLINK and SBayesRC workflow") {
 
         when {
             params {
@@ -13,19 +13,20 @@ nextflow_pipeline {
         }
 
         then {
-            // stable_path: All files + folders in ${params.outdir}/ with a stable path (including file name)
-            def stable_path = getAllFilesFromDir(params.outdir, relative: true, includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
-            // stable_content: All files in ${params.outdir}/ with stable content
-            def stable_content = getAllFilesFromDir(params.outdir, ignoreFile: 'tests/.nftignore')
+            def run_dir = "$outputDir/test_full"
             assert workflow.success
             assertAll(
+                { assert path("$run_dir/run/preflight/target_manifest.validated.tsv").exists() },
+                { assert path("$run_dir/gwas/MDD/MDD.cojo.ma").exists() },
+                { assert path("$run_dir/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
+                { assert path("$run_dir/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },
+                { assert path("$run_dir/scores/combined/prs_scores_long.tsv").exists() },
+                { assert path("$run_dir/phenotype/phenotype_associations.tsv").exists() },
+                { assert path("$run_dir/qc/generation/variant_flow.tsv").exists() },
+                { assert path("$run_dir/reports/index.html").exists() },
+                { assert path("$run_dir/run/published_files.json").exists() },
                 { assert snapshot(
-                    // pipeline versions.yml file for multiqc from which Nextflow version is removed because we test pipelines on multiple Nextflow versions
-                    removeNextflowVersion("$outputDir/pipeline_info/nf_core_dnaprs_software_mqc_versions.yml"),
-                    // All stable path name, with a relative path
-                    stable_path,
-                    // All files with stable contents
-                    stable_content
+                    removeNextflowVersion("$run_dir/pipeline_info/software_versions.yml")
                 ).match() }
             )
         }

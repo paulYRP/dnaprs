@@ -1,0 +1,10 @@
+name: phenotype_association
+description: Fit prespecified matching phenotype-PRS models and retain participant-level values for adjusted plots and diagnostics.
+keywords: [prs, phenotype, regression, diagnostics]
+tools:
+  - r:
+      description: R statistical computing environment
+  - glm2:
+      description: Reliable fitting of generalised linear models
+  - lme4:
+      description: Linear and generalised linear mixed-effects models

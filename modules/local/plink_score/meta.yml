@@ -1,0 +1,8 @@
+name: plink_score
+description: Apply fixed clumping-and-thresholding weights to a prepared target using dosage-aware PLINK scoring.
+keywords: [plink, scoring, prs]
+tools:
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset
+  - r:
+      description: R statistical computing environment

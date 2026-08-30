@@ -1,37 +1,35 @@
-# nf-core/dnaprs: Citations
+# Citations
 
-## [nf-core](https://pubmed.ncbi.nlm.nih.gov/32055031/)
+When dnaprs is used, cite Nextflow and the PRS method or methods selected for the run.
+Also cite the exact GWAS and reference resources recorded in the manifests.
 
-> Ewels PA, Peltzer A, Fillinger S, Patel H, Alneberg J, Wilm A, Garcia MU, Di Tommaso P, Nahnsen S. The nf-core framework for community-curated bioinformatics pipelines. Nat Biotechnol. 2020 Mar;38(3):276-278. doi: 10.1038/s41587-020-0439-x. PubMed PMID: 32055031.
+## Workflow engine
 
-## [Nextflow](https://pubmed.ncbi.nlm.nih.gov/28398311/)
+Di Tommaso P, Chatzou M, Floden EW, Barja PP, Palumbo E, Notredame C. Nextflow enables
+reproducible computational workflows. _Nature Biotechnology_. 2017;35:316–319.
+doi: [10.1038/nbt.3820](https://doi.org/10.1038/nbt.3820).
 
-> Di Tommaso P, Chatzou M, Floden EW, Barja PP, Palumbo E, Notredame C. Nextflow enables reproducible computational workflows. Nat Biotechnol. 2017 Apr 11;35(4):316-319. doi: 10.1038/nbt.3820. PubMed PMID: 28398311.
+## PLINK 2
 
-## Pipeline tools
+Chang CC, Chow CC, Tellier LCAM, Vattikuti S, Purcell SM, Lee JJ. Second-generation PLINK:
+rising to the challenge of larger and richer datasets. _GigaScience_. 2015;4:7.
+doi: [10.1186/s13742-015-0047-8](https://doi.org/10.1186/s13742-015-0047-8).
 
+## SBayesRC
 
+Zheng Z, et al. Leveraging functional genomic annotations and genome coverage to improve
+polygenic prediction of complex traits within and between ancestries. _Nature Genetics_. 2024. doi:
+[10.1038/s41588-024-01704-y](https://doi.org/10.1038/s41588-024-01704-y).
 
+Use SBayesRC version 0.2.6 and cite the release/source used for the analysis:
+[zhilizheng/SBayesRC](https://github.com/zhilizheng/SBayesRC).
 
+## PRS analysis and reporting
 
-## Software packaging/containerisation tools
+Choi SW, Mak TSH, O'Reilly PF. A guide to performing polygenic risk score analyses.
+_Nature Protocols_. 2020;15:2759–2772. doi:
+[10.1038/s41596-020-0353-1](https://doi.org/10.1038/s41596-020-0353-1).
 
-- [Anaconda](https://anaconda.com)
-
-  > Anaconda Software Distribution. Computer software. Vers. 2-2.4.0. Anaconda, Nov. 2016. Web.
-
-- [Bioconda](https://pubmed.ncbi.nlm.nih.gov/29967506/)
-
-  > Grüning B, Dale R, Sjödin A, Chapman BA, Rowe J, Tomkins-Tinch CH, Valieris R, Köster J; Bioconda Team. Bioconda: sustainable and comprehensive software distribution for the life sciences. Nat Methods. 2018 Jul;15(7):475-476. doi: 10.1038/s41592-018-0046-7. PubMed PMID: 29967506.
-
-- [BioContainers](https://pubmed.ncbi.nlm.nih.gov/28379341/)
-
-  > da Veiga Leprevost F, Grüning B, Aflitos SA, Röst HL, Uszkoreit J, Barsnes H, Vaudel M, Moreno P, Gatto L, Weber J, Bai M, Jimenez RC, Sachsenberg T, Pfeuffer J, Alvarez RV, Griss J, Nesvizhskii AI, Perez-Riverol Y. BioContainers: an open-source and community-driven framework for software standardization. Bioinformatics. 2017 Aug 15;33(16):2580-2582. doi: 10.1093/bioinformatics/btx192. PubMed PMID: 28379341; PubMed Central PMCID: PMC5870671.
-
-- [Docker](https://dl.acm.org/doi/10.5555/2600239.2600241)
-
-  > Merkel, D. (2014). Docker: lightweight linux containers for consistent development and deployment. Linux Journal, 2014(239), 2. doi: 10.5555/2600239.2600241.
-
-- [Singularity](https://pubmed.ncbi.nlm.nih.gov/28494014/)
-
-  > Kurtzer GM, Sochat V, Bauer MW. Singularity: Scientific containers for mobility of compute. PLoS One. 2017 May 11;12(5):e0177459. doi: 10.1371/journal.pone.0177459. eCollection 2017. PubMed PMID: 28494014; PubMed Central PMCID: PMC5426675.
+Wand H, Lambert SA, Tamburro C, et al. Improving reporting standards for polygenic scores
+in risk prediction studies. _Nature_. 2021;591:211–219. doi:
+[10.1038/s41586-021-03243-6](https://doi.org/10.1038/s41586-021-03243-6).

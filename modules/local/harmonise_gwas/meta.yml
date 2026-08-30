@@ -1,0 +1,8 @@
+name: harmonise_gwas
+description: Convert a QC-completed GWAS to explicit COJO and PLINK clumping formats.
+keywords: [gwas, harmonisation, prs]
+tools:
+  - r:
+      description: R statistical computing environment
+  - data.table:
+      description: High-performance tabular data processing in R

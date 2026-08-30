@@ -1,0 +1,49 @@
+---
+title: "SBayesRC"
+pagetitle: "SBayesRC | dnaprs"
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+SBayesRC uses the declared LD and annotation resources with the package's summary
+alignment, imputation, model, and scoring sequence. The phenotype is not used to fit or
+filter its weights.
+
+## Variant retention and model counts
+
+```{r}
+# Display the SBayesRC counts used to audit summary imputation and scoring.
+tableVIEW(
+  variantFLOW[method == "sbayesrc", .(
+    cohort,
+    trait_id,
+    prs_name,
+    stage,
+    variant_count,
+    percent_of_source
+  )],
+  "SBayesRC variant retention and model counts."
+)
+```
+
+## Method files
+
+```{r}
+# Provide SBayesRC summaries, model results, checks, and logs.
+fileTABLE(
+  "^(sbayesrc|qc/sbayesrc|logs/sbayesrc)",
+  "SBayesRC summaries, model results, quality checks, and logs."
+)
+```

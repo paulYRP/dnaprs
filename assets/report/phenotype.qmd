@@ -1,0 +1,88 @@
+---
+title: "Phenotype"
+pagetitle: "Phenotype | dnaprs"
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+Phenotype models evaluate the prespecified association between each psychological
+phenotype and its matching PRS while accounting for the declared covariates. The
+phenotype results do not change the PRS weights or scoring settings.
+
+## Quantitative review
+
+```{r, results='asis'}
+# Display phenotype estimates and model checks in one figure gallery.
+figureGALLERY("Phenotype")
+```
+
+**Interpretation.** Effect estimates, confidence intervals, added model fit, adjusted
+patterns, and diagnostics should be interpreted together. In a small sample, uncertainty
+and individual observations can be more informative than a P value alone.
+
+## Association estimates
+
+```{r}
+# Display the prespecified matching phenotype and PRS associations.
+associationTABLE <- addMETHODLABEL(copy(association))
+tableVIEW(
+  associationTABLE[, .(
+    model_id,
+    cohort,
+    method = method_label,
+    n,
+    beta,
+    ci_low,
+    ci_high,
+    p_value,
+    incremental_fit,
+    fit_metric,
+    status
+  )],
+  "Prespecified matching phenotype and PRS associations."
+)
+```
+
+## Fitted models
+
+```{r}
+# Display the exact model formulas and estimators used by the pipeline.
+tableVIEW(
+  fittedMODEL[, .(
+    model_id,
+    cohort,
+    method,
+    estimator,
+    formula,
+    null_formula,
+    primary
+  )],
+  "Exact phenotype models fitted by the pipeline."
+)
+```
+
+## Phenotype result files
+
+The complete tables contain participant-level research data and should remain in the
+restricted result directory.
+
+```{r}
+# Provide the association, fitted-model, and plot-data files.
+buttonROW(
+  fileBUTTON("phenotype_associations.tsv", "Download associations"),
+  fileBUTTON("phenotype_models_fitted.tsv", "Download fitted formulas"),
+  fileBUTTON("phenotype_plot_data.tsv", "Download plot data")
+)
+```

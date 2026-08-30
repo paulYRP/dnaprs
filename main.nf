@@ -5,83 +5,111 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     Github : https://github.com/nf-core/dnaprs
     Website: https://nf-co.re/dnaprs
-    Slack  : https://nfcore.slack.com/channels/dnaprs
 ----------------------------------------------------------------------------------------
 */
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-include { DNAPRS  } from './workflows/dnaprs'
+include { DNAPRS                  } from './workflows/dnaprs'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_dnaprs_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_dnaprs_pipeline'
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    NAMED WORKFLOWS FOR PIPELINE
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
 
-//
-// WORKFLOW: Run main analysis pipeline depending on type of input
-//
 workflow NFCORE_DNAPRS {
-
     take:
-    samplesheet // channel: samplesheet read in from --input
+    run_name
+    target_manifest
+    gwas_manifest
+    reference_manifest
+    phenotype_file
+    phenotype_models
+    methods
+    genome_build
+    seed
+    report_enabled
+    launch_dir
 
     main:
+    resolved_phenotype_file = phenotype_file ?: file("${projectDir}/assets/empty_phenotype.tsv")
+    resolved_phenotype_models = phenotype_models ?: file("${projectDir}/assets/empty_models.tsv")
+    script_files = [
+        validate: file("${projectDir}/bin/validate_manifests.R"),
+        harmonise: file("${projectDir}/bin/harmonise_gwas.R"),
+        prepare_target: file("${projectDir}/bin/prepare_target.sh"),
+        ct_weights: file("${projectDir}/bin/build_ct_weights.R"),
+        parse_plink: file("${projectDir}/bin/parse_plink_score.R"),
+        sbayesrc: file("${projectDir}/bin/run_sbayesrc.R"),
+        combine: file("${projectDir}/bin/combine_scores.R"),
+        association: file("${projectDir}/bin/phenotype_association.R"),
+        generation_qc: file("${projectDir}/bin/summarise_generation_qc.R"),
+    ]
+    report_source = file("${projectDir}/assets/report")
 
-    //
-    // WORKFLOW: Run pipeline
-    //
-    DNAPRS (
-        samplesheet,
-        params.outdir,
+    DNAPRS(
+        run_name,
+        target_manifest,
+        gwas_manifest,
+        reference_manifest,
+        resolved_phenotype_file,
+        resolved_phenotype_models,
+        methods,
+        genome_build,
+        seed,
+        report_enabled,
+        launch_dir,
+        script_files,
+        report_source,
     )
+
+    emit:
+    results = DNAPRS.out
 }
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    RUN MAIN WORKFLOW
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
 
 workflow {
-
     main:
-    //
-    // SUBWORKFLOW: Run initialisation tasks
-    //
-    PIPELINE_INITIALISATION (
+    run_outdir = file("${params.outdir}/${params.run_name}")
+
+    PIPELINE_INITIALISATION(
         params.version,
         params.validate_params,
         params.monochrome_logs,
-        args,
-        params.outdir,
-        params.input,
+        [],
+        run_outdir,
         params.help,
         params.help_full,
-        params.show_hidden
+        params.show_hidden,
     )
 
-    //
-    // WORKFLOW: Run main workflow
-    //
-    NFCORE_DNAPRS (
-        PIPELINE_INITIALISATION.out.samplesheet
+    NFCORE_DNAPRS(
+        params.run_name,
+        params.input,
+        params.gwas_manifest,
+        params.reference_manifest,
+        params.phenotype_file,
+        params.phenotype_models,
+        params.methods.tokenize(','),
+        params.genome_build,
+        params.seed,
+        params.report_enabled,
+        params.manifest_base ?: launchDir,
     )
-    //
-    // SUBWORKFLOW: Run completion tasks
-    //
-    PIPELINE_COMPLETION (
+
+    PIPELINE_COMPLETION(
         params.email,
         params.email_on_fail,
         params.plaintext_email,
-        params.outdir,
+        run_outdir,
         params.monochrome_logs,
     )
+
+    publish:
+    results = NFCORE_DNAPRS.out.results
+}
+
+output {
+    results {
+        path { publish_path, _result_file -> publish_path ? "${params.run_name}/${publish_path}" : "${params.run_name}" }
+        index {
+            path "${params.run_name}/run/published_files.json"
+        }
+    }
 }
 
 /*

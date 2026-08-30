@@ -1,0 +1,16 @@
+{
+    "complete PLINK and SBayesRC workflow": {
+        "content": [
+            {
+                "DNAPRS_STUB": {
+                    "version": "stub"
+                }
+            }
+        ],
+        "timestamp": "2026-08-30T10:11:34.94671118",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "25.10.4"
+        }
+    }
+}

@@ -1,0 +1,74 @@
+---
+title: "PRS"
+pagetitle: "PRS | dnaprs"
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+The polygenic risk score (PRS) figures show variant coverage, every participant score,
+relationships among scores, and agreement between methods when both methods were run.
+
+## Quantitative review
+
+```{r, results='asis'}
+# Display the PRS figure gallery with contextual downloads.
+figureGALLERY("PRS")
+```
+
+**Interpretation.** The figures can identify missing scores, unusual observations,
+shared information among traits, and differences between methods. These patterns support
+quality review but do not by themselves establish predictive validity.
+
+## Score checks
+
+```{r}
+# Display participant counts and scoring coverage for each completed score.
+tableVIEW(
+  scoreQC[, .(
+    cohort,
+    trait_id,
+    prs_name,
+    method = method_label,
+    participants,
+    used_variants,
+    status
+  )],
+  "Participant score checks and scoring coverage."
+)
+```
+
+## Method agreement
+
+```{r}
+# Display the calculated agreement statistics when both methods were run.
+if (nrow(concordance) > 0L) {
+  buttonROW(fileBUTTON("method_concordance.tsv", "Download method agreement"))
+  tableVIEW(concordance, "Participant-score agreement between methods.")
+}
+```
+
+## Participant score files
+
+The files contain participant-level research data and should remain in the restricted
+result directory.
+
+```{r}
+# Provide the complete long and wide score tables beside their quality record.
+buttonROW(
+  fileBUTTON("prs_scores_long.tsv", "Download long PRS table"),
+  fileBUTTON("prs_scores_wide.tsv", "Download wide PRS table"),
+  fileBUTTON("score_qc.tsv", "Download score checks")
+)
+```

@@ -1,0 +1,6 @@
+name: plink_reference_freq
+description: Calculate fixed allele frequencies in the declared PLINK LD reference.
+keywords: [plink, allele-frequency, reference]
+tools:
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset

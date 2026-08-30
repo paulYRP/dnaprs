@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 620" role="img" aria-labelledby="title description">
+  <title id="title">dnaprs workflow</title>
+  <desc id="description">A metro-style map of target and GWAS validation, PLINK and SBayesRC score generation, score checks, phenotype association, and the offline report.</desc>
+  <defs>
+    <style>
+      .label{font:600 25px Inter,Arial,sans-serif;fill:#161616}.small{font:500 20px Inter,Arial,sans-serif;fill:#525252}.station{fill:#fff;stroke:#161616;stroke-width:6}.line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:14}.plink{stroke:#111}.sbrc{stroke:#0dc09d}.shared{stroke:#777}.optional{stroke-dasharray:18 15}.panel{fill:#fff;stroke:#d7d7d7;stroke-width:2}.pill{fill:#f4f4f4;stroke:#d7d7d7;stroke-width:2}
+      @media (prefers-color-scheme:dark){.label{fill:#f4f4f4}.small{fill:#bdbdbd}.station{fill:#111;stroke:#f4f4f4}.plink{stroke:#f4f4f4}.shared{stroke:#9b9b9b}.panel{fill:#111;stroke:#3a3a3a}.pill{fill:#1c1c1c;stroke:#3a3a3a}}
+    </style>
+  </defs>
+  <rect class="panel" x="15" y="15" width="1470" height="590" rx="28"/>
+  <text class="label" x="70" y="78" font-size="34">dnaprs</text>
+  <text class="small" x="70" y="112">polygenic score generation and review</text>
+  <path class="line shared" d="M120 240 H390 Q430 240 430 280 V310"/>
+  <path class="line shared" d="M120 380 H390 Q430 380 430 340 V310"/>
+  <path class="line plink" d="M430 310 H650 Q690 310 690 250 V205 H930 Q970 205 970 245 V310"/>
+  <path class="line sbrc" d="M430 310 H650 Q690 310 690 370 V415 H930 Q970 415 970 375 V310"/>
+  <path class="line shared" d="M970 310 H1180"/>
+  <path class="line shared optional" d="M1180 310 V455 H1325"/>
+  <path class="line shared" d="M1180 310 H1370"/>
+  <circle class="station" cx="120" cy="240" r="14"/><circle class="station" cx="120" cy="380" r="14"/>
+  <circle class="station" cx="430" cy="310" r="14"/><circle class="station" cx="690" cy="205" r="14"/>
+  <circle class="station" cx="690" cy="415" r="14"/><circle class="station" cx="970" cy="310" r="14"/>
+  <circle class="station" cx="1180" cy="310" r="14"/><circle class="station" cx="1325" cy="455" r="14"/>
+  <circle class="station" cx="1370" cy="310" r="14"/>
+  <g transform="translate(55 155)"><rect class="pill" width="220" height="55" rx="14"/><text class="label" x="20" y="36">Target genotypes</text></g>
+  <g transform="translate(55 405)"><rect class="pill" width="220" height="55" rx="14"/><text class="label" x="20" y="36">GWAS studies</text></g>
+  <text class="label" x="335" y="285">Preflight and</text><text class="label" x="335" y="345">harmonisation</text>
+  <text class="label" x="615" y="160">PLINK C+T</text><text class="small" x="615" y="190">LD clumping and scoring</text>
+  <text class="label" x="615" y="470">SBayesRC</text><text class="small" x="615" y="500">Tidy, impute, model, score</text>
+  <text class="label" x="875" y="285">Combine</text><text class="label" x="875" y="345">and check</text>
+  <text class="label" x="1090" y="270">Final PRS</text><text class="small" x="1090" y="350">raw and standardised</text>
+  <text class="label" x="1205" y="510">Phenotype models</text><text class="small" x="1205" y="542">when declared</text>
+  <text class="label" x="1285" y="270">Offline report</text><text class="small" x="1285" y="350">results, figures, logs</text>
+  <g transform="translate(70 550)">
+    <line class="line plink" x1="0" y1="0" x2="55" y2="0"/><text class="small" x="75" y="7">PLINK</text>
+    <line class="line sbrc" x1="200" y1="0" x2="255" y2="0"/><text class="small" x="275" y="7">SBayesRC</text>
+    <line class="line shared optional" x1="455" y1="0" x2="515" y2="0"/><text class="small" x="535" y="7">conditional stage</text>
+  </g>
+</svg>

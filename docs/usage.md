@@ -1,213 +1,196 @@
-# nf-core/dnaprs: Usage
+# Running dnaprs
 
-## :warning: Please read this documentation on the nf-core website: [https://nf-co.re/dnaprs/usage](https://nf-co.re/dnaprs/usage)
+## Input principle
 
-> _Documentation of pipeline parameters is generated automatically from the pipeline schema and can no longer be found in markdown files._
+The target genotype and GWAS must have completed their study-specific QC before they
+enter dnaprs. The pipeline performs only the compatibility checks needed to construct
+scores: file contracts, participant identifiers, genome build, allele columns, finite
+GWAS values, required references, score coverage, and participant-level score output.
 
-## Introduction
+All paths in a manifest may be absolute or relative to the directory from which
+Nextflow is launched. Inputs are read but are never edited in place.
 
-<!-- TODO nf-core: Add documentation about anything specific to running your pipeline. For general topics, please point to (and add to) the main nf-core website. -->
+## Parameter file
 
-## Samplesheet input
+Use a YAML file for scientific runs so the settings can be reviewed and archived:
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row as shown in the examples below.
+```yaml
+run_name: ukr_prs
+input: manifests/target.tsv
+gwas_manifest: manifests/gwas.tsv
+reference_manifest: manifests/reference.tsv
+manifest_base: .
+phenotype_file: data/pheno/pheno.csv
+phenotype_models: manifests/phenotype_models.tsv
+methods: plink_ct,sbayesrc
+genome_build: GRCh37
+seed: 20260829
+report_enabled: true
+```
+
+`run_name` must be unique for a new analysis. Results and technical reports are written
+under `<output-dir>/<run_name>/`.
+
+## Target manifest
+
+One row describes each QC-completed scoring cohort.
+
+| Column     | Meaning                                                             |
+| ---------- | ------------------------------------------------------------------- |
+| `cohort`   | Unique short cohort name                                            |
+| `role`     | `target` or `validation`                                            |
+| `format`   | `pgen`, `bed`, `vcf`, or `bgen`                                     |
+| `genotype` | File, PLINK prefix, or chromosome pattern such as `cohort_chr{chr}` |
+| `sample`   | BGEN sample file when required; otherwise blank                     |
+| `keep`     | Optional two-column PLINK participant keep file                     |
+| `build`    | `GRCh37` or `GRCh38`                                                |
+| `ancestry` | Recorded ancestry description                                       |
+| `dosage`   | VCF dosage field, normally `DS`                                     |
+
+PGEN inputs require `.pgen`, `.pvar`, and `.psam`; BED inputs require `.bed`, `.bim`,
+and `.fam`. SBayesRC scoring expects autosomal chromosome files 1–22 after preparation.
+
+Variant identifiers must be compatible with the selected LD reference and GWAS. dnaprs
+preserves existing target identifiers and creates chromosome-position-allele identifiers
+only when an input identifier is missing. A cohort whose identifiers were not aligned
+during target QC must be aligned before scientific scoring.
+
+## GWAS manifest
+
+One row describes each QC-completed GWAS. dnaprs does not guess source column names.
+
+| Column                                  | Meaning                                                       |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `trait_id`                              | Unique trait identifier, such as `MDD`                        |
+| `prs_name`                              | Stable output name, such as `MDD_PRS`                         |
+| `path`                                  | Tab-delimited GWAS file, optionally gzip-compressed           |
+| `build`                                 | Genome build matching the target and references               |
+| `ancestry`                              | GWAS ancestry description                                     |
+| `effect_type`                           | `beta`, `log_or`, or `or`                                     |
+| `sample_size`                           | Reported or effective study sample size                       |
+| `snp_col`, `chr_col`, `bp_col`          | Source variant identifier and position columns                |
+| `effect_allele_col`, `other_allele_col` | Source allele columns                                         |
+| `beta_col`, `se_col`, `p_col`           | Source effect, standard error, and P-value columns            |
+| `freq_col`                              | Effect-allele-frequency column; required for SBayesRC         |
+| `n_col`                                 | Per-variant sample-size column, or blank to use `sample_size` |
+
+`log_or` means that the source effect is already the natural logarithm of the odds ratio.
+Use `or` only when the declared source column contains positive odds ratios; dnaprs then
+applies the natural logarithm before scoring.
+
+For PLINK C+T, the declared GWAS SNP identifiers must match the independent PLINK LD
+reference and the QC-completed target. For SBayesRC, `tidy()` checks the GWAS against its
+LD panel, and the resulting scoring identifiers must exist in the target. Variant
+coverage files show the retained overlap; the phenotype is never used to repair or tune
+that overlap.
+
+## Reference manifest
+
+The selected methods determine the required rows.
+
+| `reference_type` | Used by   | Required content                         |
+| ---------------- | --------- | ---------------------------------------- |
+| `plink_ld`       | PLINK C+T | Independent PLINK 2 PGEN LD reference    |
+| `sbayesrc_ld`    | SBayesRC  | SBayesRC LD directory matching the build |
+| `annotation`     | SBayesRC  | Matching functional annotation file      |
+
+Every row also records a unique `reference_id`, build, ancestry, version, and optional
+published checksum. Reference data should be installed once on shared storage and
+referenced by path rather than copied into every run.
+
+## Phenotype model manifest
+
+Phenotype analysis is optional and begins only after score construction is fixed. Each
+row declares one matching phenotype–PRS model.
+
+| Column               | Meaning                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| `model_id`           | Unique model name                                                         |
+| `outcome`            | Outcome column in the phenotype file                                      |
+| `prs_name`           | Matching name from the GWAS manifest                                      |
+| `family`             | `gaussian`, `binomial`, `poisson`, or another supported R family          |
+| `covariates`         | Comma-separated covariate columns                                         |
+| `participant_id`     | Participant identifier column                                             |
+| `group_id`           | Group or participant column for a mixed model; blank for independent rows |
+| `expected_direction` | Prespecified direction for interpretation                                 |
+| `primary`            | `TRUE` or `FALSE`                                                         |
+
+Independent Gaussian outcomes use `lm`. Other independent outcomes use `glm2`. A
+declared `group_id` uses `lme4` with a random intercept. dnaprs compares the model with
+the PRS against the same model without the PRS and reports the PRS coefficient, 95%
+confidence interval, P value, and change in fit. These estimates describe association;
+they do not validate a score as a clinical predictor.
+
+## Offline terminal assistant
+
+The assistant scans only a chosen workspace and uses numbered terminal selections. It
+does not upload files or infer GWAS column meanings.
 
 ```bash
---input '[path to samplesheet file]'
+bin/dnaprs list /path/to/workspace
+bin/dnaprs configure /path/to/workspace
 ```
 
-### Multiple runs of the same sample
-
-The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth. The pipeline will concatenate the raw reads before performing any downstream analysis. Below is an example for the same sample sequenced across 3 lanes:
-
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L003_R1_001.fastq.gz,AEG588A1_S1_L003_R2_001.fastq.gz
-CONTROL_REP1,AEG588A1_S1_L004_R1_001.fastq.gz,AEG588A1_S1_L004_R2_001.fastq.gz
-```
-
-### Full samplesheet
-
-The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet. The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 3 columns to match those defined in the table below.
-
-A final samplesheet file consisting of both single- and paired-end data may look something like the one below. This is for 6 samples, where `TREATMENT_REP3` has been sequenced twice.
-
-```csv title="samplesheet.csv"
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
-CONTROL_REP2,AEG588A2_S2_L002_R1_001.fastq.gz,AEG588A2_S2_L002_R2_001.fastq.gz
-CONTROL_REP3,AEG588A3_S3_L002_R1_001.fastq.gz,AEG588A3_S3_L002_R2_001.fastq.gz
-TREATMENT_REP1,AEG588A4_S4_L003_R1_001.fastq.gz,
-TREATMENT_REP2,AEG588A5_S5_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L003_R1_001.fastq.gz,
-TREATMENT_REP3,AEG588A6_S6_L004_R1_001.fastq.gz,
-```
-
-| Column    | Description                                                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sample`  | Custom sample name. This entry will be identical for multiple sequencing libraries/runs from the same sample. Spaces in sample names are automatically converted to underscores (`_`). |
-| `fastq_1` | Full path to FastQ file for Illumina short reads 1. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-| `fastq_2` | Full path to FastQ file for Illumina short reads 2. File has to be gzipped and have the extension ".fastq.gz" or ".fq.gz".                                                             |
-
-An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
-
-## Running the pipeline
-
-The typical command for running the pipeline is as follows:
+Review the created YAML and TSV files. Then check strict syntax and configuration:
 
 ```bash
-nextflow run nf-core/dnaprs --input ./samplesheet.csv --outdir ./results  -profile docker
+bin/dnaprs check \
+  --params-file /path/to/workspace/runs/my_run/params.yaml \
+  --profile docker
 ```
 
-This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
+The `check` command is static. The full input preflight runs as the first process of an
+actual workflow.
 
-Note that the pipeline will create the following files in your working directory:
+## Local run
+
+Build the fixed image first, then start the workflow:
 
 ```bash
-work                # Directory containing the nextflow working files
-<OUTDIR>            # Finished results in specified location (defined with --outdir)
-.nextflow_log       # Log file from Nextflow
-# Other nextflow hidden files, eg. history of pipeline runs and old logs.
+docker build --pull -t dnaprs:1.0.0 -f containers/Dockerfile .
+
+nextflow run . \
+  -profile docker \
+  -params-file runs/my_run/params.yaml \
+  --outdir results
 ```
 
-If you wish to repeatedly use the same parameters for multiple runs, rather than specifying each flag in the command, you can specify these in a params file.
+The `standard` profile may be used when the exact required tools are already on `PATH`.
+The `apptainer` profile is available for compatible Linux/HPC systems.
 
-Pipeline settings can be provided in a `yaml` or `json` file via `-params-file <file>`.
+## Resume
 
-> [!WARNING]
-> Do not use `-c <file>` to specify parameters as this will result in errors. Custom config files specified with `-c` must only be used for [tuning process resource specifications](https://nf-co.re/docs/running/run-pipelines#configuring-pipelines), other infrastructural tweaks (such as output directories), or module arguments (args).
-
-The above pipeline run specified with a params file in yaml format:
+Resume only with the same parameter file, inputs, work directory, launch directory, and
+pipeline version:
 
 ```bash
-nextflow run nf-core/dnaprs -profile docker -params-file params.yaml
+nextflow run . \
+  -profile docker \
+  -params-file runs/my_run/params.yaml \
+  --outdir results \
+  -resume
 ```
 
-with:
+Nextflow reuses a task only when its cached command and inputs still match. Do not remove
+the work directory or `.nextflow/cache` while a run may need to resume.
 
-```yaml title="params.yaml"
-input: './samplesheet.csv'
-outdir: './results/'
-<...>
+## Test profiles
+
+The committed fixtures are synthetic software tests. Test the R functions and report
+from PowerShell:
+
+```powershell
+.\tests\smoke.ps1 -OutputDirectory ..\test\synthetic_analysis
 ```
 
-You can also generate such `YAML`/`JSON` files via [nf-core/launch](https://nf-co.re/launch).
-
-### Updating the pipeline
-
-When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
+Use strict stub mode for the complete two-method Nextflow graph:
 
 ```bash
-nextflow pull nf-core/dnaprs
+nextflow run . -profile test_full -stub-run \
+  --outdir ../test/nextflow_results \
+  -work-dir ../test/nextflow_work
 ```
 
-### Reproducibility
-
-It is a good idea to specify the pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
-
-First, go to the [nf-core/dnaprs releases page](https://github.com/nf-core/dnaprs/releases) and find the latest pipeline version - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
-
-This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future.
-
-To further assist in reproducibility, you can use share and reuse [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every single parameter.
-
-> [!TIP]
-> If you wish to share such profile (such as upload as supplementary material for academic publications), make sure to NOT include cluster specific paths to files, nor institutional specific profiles.
-
-## Core Nextflow arguments
-
-> [!NOTE]
-> These options are part of Nextflow and use a _single_ hyphen (pipeline parameters use a double-hyphen)
-
-### `-profile`
-
-Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
-
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Apptainer, Conda) - see below.
-
-> [!IMPORTANT]
-> We highly recommend the use of Docker or Singularity containers for full pipeline reproducibility, however when this is not possible, Conda is also supported.
-
-The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time. For more information and to check if your system is supported, please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
-
-Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
-They are loaded in sequence, so later profiles can overwrite earlier profiles.
-
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer environment.
-
-- `test`
-  - A profile with a complete configuration for automated testing
-  - Includes links to test data so needs no other parameters
-- `docker`
-  - A generic configuration profile to be used with [Docker](https://docker.com/)
-- `singularity`
-  - A generic configuration profile to be used with [Singularity](https://sylabs.io/docs/)
-- `podman`
-  - A generic configuration profile to be used with [Podman](https://podman.io/)
-- `shifter`
-  - A generic configuration profile to be used with [Shifter](https://nersc.gitlab.io/development/shifter/how-to-use/)
-- `charliecloud`
-  - A generic configuration profile to be used with [Charliecloud](https://charliecloud.io/)
-- `apptainer`
-  - A generic configuration profile to be used with [Apptainer](https://apptainer.org/)
-- `wave`
-  - A generic configuration profile to enable [Wave](https://seqera.io/wave/) containers. Use together with one of the above (requires Nextflow `24.03.0-edge` or later).
-- `conda`
-  - A generic configuration profile to be used with [Conda](https://conda.io/docs/). Please only use Conda as a last resort i.e. when it's not possible to run the pipeline with Docker, Singularity, Podman, Shifter, Charliecloud, or Apptainer.
-
-### `-resume`
-
-Specify this when restarting a pipeline. Nextflow will use cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously. For input to be considered the same, not only the names must be identical but the files' contents as well. For more info about this parameter, see [this blog post](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html).
-
-You can also supply a run name to resume a specific run: `-resume [run-name]`. Use the `nextflow log` command to show previous run names.
-
-### `-c`
-
-Specify the path to a specific config file (this is a core Nextflow command). See the [nf-core website documentation](https://nf-co.re/usage/configuration) for more information.
-
-## Custom configuration
-
-### Resource requests
-
-Whilst the default requirements set within the pipeline will hopefully work for most people and with most input data, you may find that you want to customise the compute resources that the pipeline requests. Each step in the pipeline has a default set of requirements for number of CPUs, memory and time. For most of the pipeline steps, if the job exits with any of the error codes specified [here](https://github.com/nf-core/rnaseq/blob/4c27ef5610c87db00c3c5a3eed10b1d161abf575/conf/base.config#L18) it will automatically be resubmitted with higher resources request (2 x original, then 3 x original). If it still fails after the third attempt then the pipeline execution is stopped.
-
-To change the resource requests, please see the [max resources](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#set-max-resources) and [customise process resources](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#customize-process-resources) section of the nf-core website.
-
-### Custom Containers
-
-In some cases, you may wish to change the container or conda environment used by a pipeline steps for a particular tool. By default, nf-core pipelines use containers and software from the [biocontainers](https://biocontainers.pro/) or [bioconda](https://bioconda.github.io/) projects. However, in some cases the pipeline specified version maybe out of date.
-
-To use a different container from the default container or conda environment specified in a pipeline, please see the [updating tool versions](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#update-tool-versions) section of the nf-core website.
-
-### Custom Tool Arguments
-
-A pipeline might not always support every possible argument or option of a particular tool used in pipeline. Fortunately, nf-core pipelines provide some freedom to users to insert additional parameters that the pipeline does not include by default.
-
-To learn how to provide additional arguments to a particular tool of the pipeline, please see the [customising tool arguments](https://nf-co.re/docs/running/configuration/nextflow-for-your-system#modifying-tool-arguments) section of the nf-core website.
-
-### nf-core/configs
-
-In most cases, you will only need to create a custom config as a one-off but if you and others within your organisation are likely to be running nf-core pipelines regularly and need to use the same settings regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter. You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
-
-See the main [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information about creating your own configuration files.
-
-If you have any questions or issues please send us a message on [Slack](https://nf-co.re/join/slack) on the [`#configs` channel](https://nfcore.slack.com/channels/configs).
-
-## Running in the background
-
-Nextflow handles job submissions and supervises the running jobs. The Nextflow process must run until the pipeline is finished.
-
-The Nextflow `-bg` flag launches Nextflow in the background, detached from your terminal so that the workflow does not stop if you log out of your session. The logs are saved to a file.
-
-Alternatively, you can use `screen` / `tmux` or similar tool to create a detached session which you can log back into at a later time.
-Some HPC setups also allow you to run nextflow within a cluster job submitted your job scheduler (from where it submits more jobs).
-
-## Nextflow memory requirements
-
-In some cases, the Nextflow Java virtual machines can start to request a large amount of memory.
-We recommend adding the following line to your environment to limit this (typically in `~/.bashrc` or `~./bash_profile`):
-
-```bash
-NXF_OPTS='-Xms1g -Xmx4g'
-```
+`test` executes the PLINK branch when Linux PLINK and R are available. `test_full`
+checks PLINK and SBayesRC process connections. Synthetic and stub tests do not validate
+biological performance.

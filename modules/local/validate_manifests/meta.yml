@@ -1,0 +1,42 @@
+name: validate_manifests
+description: Validate dnaprs manifests and resolve declared input paths before computation.
+keywords:
+  - prs
+  - manifest
+  - validation
+tools:
+  - r:
+      description: R statistical computing environment
+      homepage: https://www.r-project.org/
+input:
+  - target_manifest:
+      type: file
+      description: Target-cohort manifest.
+  - gwas_manifest:
+      type: file
+      description: GWAS summary-statistic manifest.
+  - reference_manifest:
+      type: file
+      description: Versioned reference-resource manifest.
+  - phenotype_file:
+      type: file
+      description: Phenotype table or the pipeline empty placeholder.
+  - phenotype_models:
+      type: file
+      description: Phenotype-model manifest or the pipeline empty placeholder.
+output:
+  - validated_manifests:
+      type: file
+      description: Normalised manifests containing absolute, checked input paths.
+  - resolved_params:
+      type: file
+      description: Run settings used by the workflow.
+  - input_checksums:
+      type: file
+      description: SHA-256 checksums for file inputs suitable for direct hashing.
+  - preflight_qc:
+      type: file
+      description: Essential input validation results.
+  - versions:
+      type: file
+      description: Software versions used by this process.

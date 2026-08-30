@@ -1,0 +1,85 @@
+---
+title: "Overview"
+pagetitle: "Overview | dnaprs"
+body-classes: dnaprs-overview-page
+---
+
+```{r setup, include=FALSE}
+# Configure rendering and load the report packages.
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+# Load the completed results and shared report controls.
+source("report-setup.R", local = knitr::knit_global())
+```
+
+<div class="dnaprs-hero">
+<img src="assets/nf-core-dnaprs_logo_light.svg" alt="nf-core/dnaprs" data-dnaprs-logo />
+<div>
+<p class="dnaprs-eyebrow">POLYGENIC RISK SCORE REPORT</p>
+<h1>Reproducible score generation and review</h1>
+<p>This website records the inputs, score-generation checks, quantitative figures, phenotype associations, and files produced by the completed run.</p>
+</div>
+</div>
+
+The score-generation checks are separate from phenotype associations. Phenotypes are
+not used to choose variants, PLINK thresholds, or SBayesRC weights.
+
+<div class="dnaprs-kpis">
+<div class="dnaprs-kpi"><strong>`r uniqueN(score$cohort)`</strong><span>Cohorts</span></div>
+<div class="dnaprs-kpi"><strong>`r uniqueN(score[, .(cohort, IID)])`</strong><span>Participants</span></div>
+<div class="dnaprs-kpi"><strong>`r uniqueN(score$trait_id)`</strong><span>PRS traits</span></div>
+<div class="dnaprs-kpi"><strong>`r uniqueN(score$method)`</strong><span>Methods</span></div>
+</div>
+
+## Analysis summary
+
+<div class="dnaprs-summary-grid">
+<section class="dnaprs-card">
+<h3>Target and GWAS</h3>
+<p>The report records genome build, target cohorts, GWAS studies, reference resources, allele alignment, and variant retention.</p>
+</section>
+<section class="dnaprs-card">
+<h3>PRS generation</h3>
+<p>`r paste(unique(score$method_label), collapse = " and ")` scores were calculated for `r uniqueN(score$trait_id)` trait(s). Variant coverage and participant-level score checks are recorded below.</p>
+</section>
+<section class="dnaprs-card">
+<h3>Phenotype analysis</h3>
+<p>`r if (nrow(association)) paste0(uniqueN(association$model_id), " prespecified model(s) were evaluated.") else "No phenotype model was run."` These estimates describe research association, not clinical prediction.</p>
+</section>
+</div>
+
+## Run checks
+
+```{r}
+# Display the checks completed before PRS calculation.
+buttonROW(fileBUTTON("preflight_qc.tsv", "Download run checks"))
+tableVIEW(preflight, "Input and run checks completed before PRS calculation.")
+```
+
+## Score checks
+
+```{r}
+# Display participant counts, scoring coverage, and final score status.
+buttonROW(fileBUTTON("score_qc.tsv", "Download score checks"))
+tableVIEW(
+  scoreQC[, .(
+    cohort,
+    prs_name,
+    method = method_label,
+    participants,
+    used_variants,
+    status
+  )],
+  "Participant score checks and within-cohort scaling."
+)
+```
+
+**Interpretation.** A completed score requires the expected participants, finite values,
+and recorded scoring-variant coverage. These checks confirm calculation quality but do
+not establish prediction or clinical usefulness.

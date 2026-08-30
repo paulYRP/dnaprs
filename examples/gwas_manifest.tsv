@@ -1,0 +1,2 @@
+trait_id	prs_name	path	build	ancestry	effect_type	sample_size	snp_col	chr_col	bp_col	effect_allele_col	other_allele_col	beta_col	se_col	p_col	freq_col	n_col
+MDD	MDD_PRS	/absolute/path/to/mdd_gwas.tsv.gz	GRCh37	European	log_or	100000	SNP	CHR	BP	A1	A2	BETA	SE	P	EAF	N

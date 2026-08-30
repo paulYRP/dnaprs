@@ -5,6 +5,9 @@ nf_core_version: 4.1.0
 lint:
   files_unchanged:
     - assets/sendmail_template.txt
+    - assets/email_template.html
+    - docs/README.md
+    - .github/workflows/nf-test.yml
   multiqc_config: false
   files_exist:
     - conf/igenomes.config
@@ -18,7 +21,7 @@ template:
   author: Paul Ruiz Pinto
   version: 1.0.0dev
   force: true
-  outdir: /home/ruizpint/.cache/nfcore-dnaprs-template
+  outdir: .
   skip_features:
     - igenomes
     - multiqc

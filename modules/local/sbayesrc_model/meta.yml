@@ -1,0 +1,6 @@
+name: sbayesrc_model
+description: Estimate annotation-informed posterior joint effects with official SBayesRC defaults.
+keywords: [sbayesrc, bayesian, prs]
+tools:
+  - sbayesrc:
+      description: Bayesian multiple regression using summary statistics
