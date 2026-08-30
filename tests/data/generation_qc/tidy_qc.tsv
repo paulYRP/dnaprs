@@ -1,0 +1,4 @@
+trait_id	input_variants	ld_aligned_variants	retained_percent	review_below_70_percent
+MDD	9500	9000	94.74	FALSE
+GAD	8000	7600	95.00	FALSE
+PTSD	6800	6400	94.12	FALSE

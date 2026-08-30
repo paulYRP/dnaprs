@@ -8,12 +8,12 @@ from the `dnaprs` directory containing `main.nf` and `nextflow.config`.
 
 The current profile uses these confirmed modules:
 
-| Work | Modules |
-|---|---|
-| Controller | `Java/21.0.8` |
-| PLINK work | `GCC/13.2.0`, `PLINK/2.0.0-a.6.12` |
-| R work | `GCC/13.2.0`, `R/4.4.1` |
-| Report | `GCC/13.2.0`, `R/4.4.1`, `quarto/1.7.32-x64` |
+| Work       | Modules                                      |
+| ---------- | -------------------------------------------- |
+| Controller | `Java/21.0.8`                                |
+| PLINK work | `GCC/13.2.0`, `PLINK/2.0.0-a.6.12`           |
+| R work     | `GCC/13.2.0`, `R/4.4.1`                      |
+| Report     | `GCC/13.2.0`, `R/4.4.1`, `quarto/1.7.32-x64` |
 
 SBayesRC processes use the fixed R 4.4.1 library supplied through
 `DNAPRS_R_LIBS_USER`. The pipeline does not require Docker or Apptainer on Aquarius.

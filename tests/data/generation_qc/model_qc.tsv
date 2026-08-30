@@ -1,0 +1,4 @@
+trait_id	weights	nonzero_weights	maximum_pip	status
+MDD	12000	11750	0.32	PASS
+GAD	10500	10300	0.29	PASS
+PTSD	9100	8900	0.35	PASS

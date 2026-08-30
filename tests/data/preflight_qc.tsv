@@ -1,0 +1,7 @@
+check	value	status
+target_cohorts	1	PASS
+gwas_traits	3	PASS
+reference_resources	3	PASS
+phenotype_models	4	PASS
+genome_build	GRCh37	PASS
+methods	plink_ct,sbayesrc	PASS

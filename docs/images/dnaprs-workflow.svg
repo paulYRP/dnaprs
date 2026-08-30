@@ -1,39 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 620" role="img" aria-labelledby="title description">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1795" height="640" viewBox="0 0 1795 640" role="img" aria-labelledby="title description">
   <title id="title">dnaprs workflow</title>
-  <desc id="description">A metro-style map of target and GWAS validation, PLINK and SBayesRC score generation, score checks, phenotype association, and the offline report.</desc>
+  <desc id="description">Animated metro map showing target and GWAS checks, PLINK C plus T and SBayesRC score generation, phenotype association, quality control, and reporting.</desc>
   <defs>
     <style>
-      .label{font:600 25px Inter,Arial,sans-serif;fill:#161616}.small{font:500 20px Inter,Arial,sans-serif;fill:#525252}.station{fill:#fff;stroke:#161616;stroke-width:6}.line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:14}.plink{stroke:#111}.sbrc{stroke:#0dc09d}.shared{stroke:#777}.optional{stroke-dasharray:18 15}.panel{fill:#fff;stroke:#d7d7d7;stroke-width:2}.pill{fill:#f4f4f4;stroke:#d7d7d7;stroke-width:2}
-      @media (prefers-color-scheme:dark){.label{fill:#f4f4f4}.small{fill:#bdbdbd}.station{fill:#111;stroke:#f4f4f4}.plink{stroke:#f4f4f4}.shared{stroke:#9b9b9b}.panel{fill:#111;stroke:#3a3a3a}.pill{fill:#1c1c1c;stroke:#3a3a3a}}
+      .section{fill:#ededed;stroke:#e0e0e0;stroke-width:1}.section-number{fill:#333}.section-title{font:700 17px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#666}.number{font:700 12px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#fff}.label{font:700 16px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#292929}.small{font:500 14px 'Helvetica Neue',Helvetica,Arial,sans-serif;fill:#555}.station{fill:#fff;stroke:#333;stroke-width:3}.line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:7}.shared{stroke:#777}.plink{stroke:#111}.sbayesrc{stroke:#0dc09d}.conditional{stroke:#777;stroke-dasharray:11 10}.traveller{fill:#fff;stroke-width:2;opacity:.95}.legend-line{stroke-width:5;stroke-linecap:round}
+      @media (prefers-color-scheme:dark){.section{fill:#242424;stroke:#3b3b3b}.section-number{fill:#777}.section-title{fill:#d0d0d0}.label{fill:#f2f2f2}.small{fill:#c2c2c2}.station{fill:#181818;stroke:#f2f2f2}.plink{stroke:#f2f2f2}.shared,.conditional{stroke:#aaa}}
+      @media (prefers-reduced-motion:reduce){.traveller{display:none}}
     </style>
+    <path id="motion-target" d="M75 165 H230 Q285 165 285 215 Q285 250 350 250"/>
+    <path id="motion-gwas" d="M75 335 H230 Q285 335 285 285 Q285 250 350 250"/>
+    <path id="motion-plink" d="M350 250 H470 Q500 250 500 220 V185 Q500 155 530 155 H1175 Q1205 155 1205 185 V250"/>
+    <path id="motion-sbayesrc" d="M350 250 H470 Q500 250 500 280 V315 Q500 345 530 345 H1175 Q1205 345 1205 315 V250"/>
+    <path id="motion-report" d="M1205 250 H1310 Q1340 250 1340 280 V380 H1650"/>
+    <path id="motion-phenotype" d="M1400 380 V205 Q1400 170 1435 170 H1595 Q1630 170 1630 205 V345 Q1630 380 1650 380"/>
   </defs>
-  <rect class="panel" x="15" y="15" width="1470" height="590" rx="28"/>
-  <text class="label" x="70" y="78" font-size="34">dnaprs</text>
-  <text class="small" x="70" y="112">polygenic score generation and review</text>
-  <path class="line shared" d="M120 240 H390 Q430 240 430 280 V310"/>
-  <path class="line shared" d="M120 380 H390 Q430 380 430 340 V310"/>
-  <path class="line plink" d="M430 310 H650 Q690 310 690 250 V205 H930 Q970 205 970 245 V310"/>
-  <path class="line sbrc" d="M430 310 H650 Q690 310 690 370 V415 H930 Q970 415 970 375 V310"/>
-  <path class="line shared" d="M970 310 H1180"/>
-  <path class="line shared optional" d="M1180 310 V455 H1325"/>
-  <path class="line shared" d="M1180 310 H1370"/>
-  <circle class="station" cx="120" cy="240" r="14"/><circle class="station" cx="120" cy="380" r="14"/>
-  <circle class="station" cx="430" cy="310" r="14"/><circle class="station" cx="690" cy="205" r="14"/>
-  <circle class="station" cx="690" cy="415" r="14"/><circle class="station" cx="970" cy="310" r="14"/>
-  <circle class="station" cx="1180" cy="310" r="14"/><circle class="station" cx="1325" cy="455" r="14"/>
-  <circle class="station" cx="1370" cy="310" r="14"/>
-  <g transform="translate(55 155)"><rect class="pill" width="220" height="55" rx="14"/><text class="label" x="20" y="36">Target genotypes</text></g>
-  <g transform="translate(55 405)"><rect class="pill" width="220" height="55" rx="14"/><text class="label" x="20" y="36">GWAS studies</text></g>
-  <text class="label" x="335" y="285">Preflight and</text><text class="label" x="335" y="345">harmonisation</text>
-  <text class="label" x="615" y="160">PLINK C+T</text><text class="small" x="615" y="190">LD clumping and scoring</text>
-  <text class="label" x="615" y="470">SBayesRC</text><text class="small" x="615" y="500">Tidy, impute, model, score</text>
-  <text class="label" x="875" y="285">Combine</text><text class="label" x="875" y="345">and check</text>
-  <text class="label" x="1090" y="270">Final PRS</text><text class="small" x="1090" y="350">raw and standardised</text>
-  <text class="label" x="1205" y="510">Phenotype models</text><text class="small" x="1205" y="542">when declared</text>
-  <text class="label" x="1285" y="270">Offline report</text><text class="small" x="1285" y="350">results, figures, logs</text>
-  <g transform="translate(70 550)">
-    <line class="line plink" x1="0" y1="0" x2="55" y2="0"/><text class="small" x="75" y="7">PLINK</text>
-    <line class="line sbrc" x1="200" y1="0" x2="255" y2="0"/><text class="small" x="275" y="7">SBayesRC</text>
-    <line class="line shared optional" x1="455" y1="0" x2="515" y2="0"/><text class="small" x="535" y="7">conditional stage</text>
+
+  <rect class="section" x="20" y="85" width="455" height="330" rx="8"/>
+  <circle class="section-number" cx="31" cy="70" r="11"/><text class="number" x="31" y="74" text-anchor="middle">1</text>
+  <text class="section-title" x="47" y="76">Inputs and compatibility checks</text>
+
+  <rect class="section" x="525" y="85" width="700" height="330" rx="8"/>
+  <circle class="section-number" cx="536" cy="70" r="11"/><text class="number" x="536" y="74" text-anchor="middle">2</text>
+  <text class="section-title" x="552" y="76">PRS generation</text>
+
+  <rect class="section" x="1275" y="85" width="500" height="145" rx="8"/>
+  <circle class="section-number" cx="1286" cy="70" r="11"/><text class="number" x="1286" y="74" text-anchor="middle">3</text>
+  <text class="section-title" x="1302" y="76">Phenotype association</text>
+
+  <rect class="section" x="1275" y="300" width="500" height="230" rx="8"/>
+  <circle class="section-number" cx="1286" cy="285" r="11"/><text class="number" x="1286" y="289" text-anchor="middle">4</text>
+  <text class="section-title" x="1302" y="291">Scores, quality control and reporting</text>
+
+  <path class="line shared" d="M75 165 H230 Q285 165 285 215 Q285 250 350 250"/>
+  <path class="line shared" d="M75 335 H230 Q285 335 285 285 Q285 250 350 250"/>
+  <path class="line plink" d="M350 250 H470 Q500 250 500 220 V185 Q500 155 530 155 H1175 Q1205 155 1205 185 V250"/>
+  <path class="line sbayesrc" d="M350 250 H470 Q500 250 500 280 V315 Q500 345 530 345 H1175 Q1205 345 1205 315 V250"/>
+  <path class="line shared" d="M1205 250 H1310 Q1340 250 1340 280 V380 H1650"/>
+  <path class="line conditional" d="M1400 380 V205 Q1400 170 1435 170 H1595 Q1630 170 1630 205 V345 Q1630 380 1650 380"/>
+
+  <circle class="station" cx="75" cy="165" r="10"/><circle class="station" cx="75" cy="335" r="10"/>
+  <circle class="station" cx="350" cy="250" r="10"/>
+  <circle class="station" cx="620" cy="155" r="8"/><circle class="station" cx="805" cy="155" r="8"/><circle class="station" cx="980" cy="155" r="8"/><circle class="station" cx="1155" cy="155" r="8"/>
+  <circle class="station" cx="620" cy="345" r="8"/><circle class="station" cx="805" cy="345" r="8"/><circle class="station" cx="980" cy="345" r="8"/><circle class="station" cx="1155" cy="345" r="8"/>
+  <circle class="station" cx="1205" cy="250" r="10"/><circle class="station" cx="1400" cy="380" r="10"/><circle class="station" cx="1500" cy="170" r="10"/><circle class="station" cx="1650" cy="380" r="10"/>
+
+  <text class="label" x="45" y="140">Target genotypes</text>
+  <text class="label" x="45" y="370">GWAS summary statistics</text>
+  <text class="label" x="350" y="225" text-anchor="middle">Validate</text>
+  <text class="small" x="350" y="282" text-anchor="middle">files, build and identifiers</text>
+
+  <text class="label" x="555" y="120">PLINK C+T</text>
+  <text class="small" x="620" y="190" text-anchor="middle">LD frequency</text>
+  <text class="small" x="805" y="190" text-anchor="middle">Clump</text>
+  <text class="small" x="980" y="190" text-anchor="middle">Weights</text>
+  <text class="small" x="1155" y="190" text-anchor="middle">Score</text>
+
+  <text class="label" x="555" y="390">SBayesRC</text>
+  <text class="small" x="620" y="325" text-anchor="middle">Tidy</text>
+  <text class="small" x="805" y="325" text-anchor="middle">Impute</text>
+  <text class="small" x="980" y="325" text-anchor="middle">Model</text>
+  <text class="small" x="1155" y="325" text-anchor="middle">Score</text>
+
+  <text class="label" x="1205" y="235" text-anchor="middle">Combine</text>
+  <text class="label" x="1500" y="145" text-anchor="middle">Prespecified models</text>
+  <text class="small" x="1500" y="202" text-anchor="middle">lm, glm2 or lme4</text>
+  <text class="label" x="1400" y="430" text-anchor="middle">Final PRS</text>
+  <text class="small" x="1400" y="455" text-anchor="middle">raw and standardised</text>
+  <text class="label" x="1650" y="430" text-anchor="middle">Offline report</text>
+  <text class="small" x="1650" y="455" text-anchor="middle">tables and figures</text>
+  <text class="small" x="1650" y="478" text-anchor="middle">downloads and logs</text>
+
+  <g transform="translate(45 495)">
+    <line class="legend-line plink" x1="0" y1="0" x2="55" y2="0"/><text class="small" x="70" y="5">PLINK C+T</text>
+    <line class="legend-line sbayesrc" x1="190" y1="0" x2="245" y2="0"/><text class="small" x="260" y="5">SBayesRC</text>
+    <line class="legend-line shared" x1="390" y1="0" x2="445" y2="0"/><text class="small" x="460" y="5">shared output</text>
+    <line class="legend-line conditional" x1="610" y1="0" x2="665" y2="0"/><text class="small" x="680" y="5">conditional analysis</text>
+    <text class="small" x="0" y="46">Animated markers show the direction of data flow.</text>
   </g>
+
+  <circle class="traveller" r="5" stroke="#777"><animateMotion dur="9s" repeatCount="indefinite" begin="0s"><mpath xlink:href="#motion-target"/></animateMotion></circle>
+  <circle class="traveller" r="5" stroke="#777"><animateMotion dur="9s" repeatCount="indefinite" begin="1.2s"><mpath xlink:href="#motion-gwas"/></animateMotion></circle>
+  <circle class="traveller" r="5" stroke="#111"><animateMotion dur="11s" repeatCount="indefinite" begin="2s"><mpath xlink:href="#motion-plink"/></animateMotion></circle>
+  <circle class="traveller" r="5" stroke="#0dc09d"><animateMotion dur="11s" repeatCount="indefinite" begin="3s"><mpath xlink:href="#motion-sbayesrc"/></animateMotion></circle>
+  <circle class="traveller" r="5" stroke="#777"><animateMotion dur="9s" repeatCount="indefinite" begin="4s"><mpath xlink:href="#motion-report"/></animateMotion></circle>
+  <circle class="traveller" r="5" stroke="#777"><animateMotion dur="12s" repeatCount="indefinite" begin="5s"><mpath xlink:href="#motion-phenotype"/></animateMotion></circle>
 </svg>

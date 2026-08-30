@@ -1,0 +1,4 @@
+trait_id	prs_name	source_variants	harmonised_variants	duplicated_snp	structural_status
+MDD	MDD_PRS	10000	9500	0	PASS
+GAD	GAD_PRS	8500	8000	0	PASS
+PTSD	PTSD_PRS	7200	6800	0	PASS

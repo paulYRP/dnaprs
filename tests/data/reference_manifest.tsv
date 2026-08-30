@@ -1,0 +1,4 @@
+reference_id	reference_type	path	build	ancestry	version	checksum
+TEST_EUR	plink_ld	tests/data/reference/eur_ref	GRCh37	European	synthetic-1	NA
+TEST_SBAYESRC_LD	sbayesrc_ld	tests/data/reference/sbayesrc_ld	GRCh37	European	synthetic-1	NA
+TEST_BASELINE_LD	annotation	tests/data/reference/baseline.annot	GRCh37	European	synthetic-1	NA

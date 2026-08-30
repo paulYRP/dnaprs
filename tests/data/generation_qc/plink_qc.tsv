@@ -1,0 +1,4 @@
+trait_id	prs_name	harmonised_variants	clumped_variants	retained_percent	status
+MDD	MDD_PRS	9500	430	4.53	PASS
+GAD	GAD_PRS	8000	380	4.75	PASS
+PTSD	PTSD_PRS	6800	310	4.56	PASS

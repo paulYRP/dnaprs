@@ -1,0 +1,5 @@
+model_id	outcome	prs_name	family	covariates	participant_id	group_id	expected_direction	primary
+mhc_total	MHC_TOTAL	MDD_PRS	gaussian	Age,Sex	IID		negative	TRUE
+who_total	WHO_TOTAL	GAD_PRS	gaussian	Age,Sex	IID		negative	TRUE
+brs_total	BRS_TOTAL	PTSD_PRS	gaussian	Age,Sex	IID		negative	TRUE
+bdsst_total	BDSST_Total	MDD_PRS	gaussian	Age,Sex	IID		positive	TRUE
