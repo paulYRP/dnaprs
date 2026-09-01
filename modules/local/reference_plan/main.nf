@@ -1,5 +1,5 @@
 process REFERENCE_PLAN {
-    tag reference_mode
+    tag "${reference_mode}"
     label 'process_single'
     label 'process_r'
 

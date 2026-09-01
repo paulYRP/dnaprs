@@ -1,5 +1,5 @@
 process ASSEMBLE_REFERENCES {
-    tag reference_bundle
+    tag "${reference_bundle}"
     label 'process_low'
     label 'process_r'
 

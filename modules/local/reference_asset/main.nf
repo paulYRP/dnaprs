@@ -1,5 +1,5 @@
 process REFERENCE_ASSET {
-    tag row.asset_id
+    tag "${row.asset_id}"
     label 'process_low'
 
     container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'

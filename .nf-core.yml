@@ -4,6 +4,9 @@ nf_core_version: 4.1.0
 
 lint:
   files_unchanged:
+    # Uses the current centralized nf-core/actions workflow instead of the
+    # vendored implementation shipped by the pinned nf-core/tools 4.1.0 template.
+    - .github/workflows/pr-comment.yml
     - LICENSE
     - .github/ISSUE_TEMPLATE/bug_report.yml
     - .github/ISSUE_TEMPLATE/config.yml
