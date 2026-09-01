@@ -14,6 +14,19 @@ readRESULT <- function(fileNAME) {
   fread(path, showProgress = FALSE)
 }
 
+# Read and combine completed cohort- or trait-specific result tables selected by name.
+readRESULTS <- function(pattern) {
+  fileVALUE <- manifest[grepl(pattern, file_name), file_name]
+  if (!length(fileVALUE)) return(data.table())
+  rbindlist(lapply(fileVALUE, function(fileNAME) {
+    value <- readRESULT(fileNAME)
+    if (!nrow(value)) return(NULL)
+    if (!"cohort" %in% names(value)) value[, cohort := sub("\\..*$", "", fileNAME)]
+    value[, source_file := fileNAME]
+    value
+  }), use.names = TRUE, fill = TRUE)
+}
+
 # Purpose:
 #   Return the local report path for one completed pipeline file.
 #
@@ -174,7 +187,7 @@ fileTABLE <- function(pattern, caption) {
 #   page: Page value recorded in the figure manifest.
 #
 # Returns:
-#   An interactive figure gallery with interpretation and three download formats.
+#   An interactive figure gallery with interpretation and four download formats.
 figureGALLERY <- function(page) {
   pageVALUE <- page
   value <- figureMANIFEST[page == pageVALUE]
@@ -201,9 +214,11 @@ figureGALLERY <- function(page) {
       '<div class="dnaprs-gallery-note"><p data-figure-description></p>',
       '<p><strong>What to inspect.</strong> <span data-figure-inspection></span></p></div>',
       '<div class="dnaprs-toolbar">',
+      '<a class="dnaprs-download" data-figure-svg download>Download SVG</a>',
       '<a class="dnaprs-download" data-figure-tiff download>Download TIFF</a>',
       '<a class="dnaprs-download" data-figure-png download>Download PNG</a>',
       '<a class="dnaprs-download" data-figure-jpeg download>Download JPEG</a>',
+      '<a class="dnaprs-download" data-figure-source download>Download source table</a>',
       '</div>',
       '<article class="dnaprs-figure-card">',
       '<div class="dnaprs-figure-heading"><h2 data-figure-title></h2>',
@@ -238,11 +253,11 @@ outputFILE <- fread(file.path("provenance", "output_files.tsv"))
 manifest <- outputFILE
 figureMANIFEST <- fread(file.path("provenance", "figure_manifest.tsv"))
 
-targetMANIFEST <- readRESULT("target_manifest.validated.tsv")
-gwasMANIFEST <- readRESULT("gwas_manifest.validated.tsv")
-referenceMANIFEST <- readRESULT("reference_manifest.validated.tsv")
-phenotypeMANIFEST <- readRESULT("phenotype_models.validated.tsv")
-preflight <- readRESULT("preflight_qc.tsv")
+targetMANIFEST <- readRESULT("targets.tsv")
+gwasMANIFEST <- readRESULT("gwas.tsv")
+referenceMANIFEST <- readRESULT("references.tsv")
+phenotypeMANIFEST <- readRESULT("models.tsv")
+inputCHECK <- readRESULT("input_checks.tsv")
 checksum <- readRESULT("input_checksums.tsv")
 score <- readRESULT("prs_scores_long.tsv")
 scoreQC <- readRESULT("score_qc.tsv")
@@ -250,6 +265,24 @@ concordance <- readRESULT("method_concordance.tsv")
 variantFLOW <- readRESULT("variant_flow.tsv")
 association <- readRESULT("phenotype_associations.tsv")
 fittedMODEL <- readRESULT("phenotype_models_fitted.tsv")
+phenotypePERMUTATION <- readRESULT("phenotype_permutations.tsv")
+phenotypeINFLUENCE <- readRESULT("phenotype_influence.tsv")
+genotypeEDA <- readRESULTS("\\.genotype_eda_summary\\.tsv$")
+genotypeEDACHECK <- readRESULTS("\\.genotype_eda_checks\\.tsv$")
+targetPREP <- readRESULTS("\\.target_prep_summary\\.tsv$")
+targetQC <- readRESULTS("\\.target_qc\\.tsv$")
+targetSAMPLEDECISION <- readRESULTS("\\.sample_decisions\\.tsv$")
+targetVARIANTDECISION <- readRESULTS("\\.variant_decisions\\.tsv$")
+participantDECISION <- readRESULTS("\\.participant_decisions\\.tsv$")
+targetANCESTRY <- readRESULTS("\\.target_ancestry\\.tsv$")
+referencePROJECTION <- readRESULTS("\\.reference_projection\\.tsv$")
+ancestrySUMMARY <- readRESULTS("\\.ancestry_summary\\.tsv$")
+imputationQC <- readRESULTS("\\.imputation_qc\\.tsv$")
+imputationMANIFEST <- readRESULTS("\\.imputation_manifest\\.tsv$")
+imputationDR2 <- readRESULTS("\\.imputation_dr2\\.tsv$")
+plinkSENSITIVITY <- readRESULTS("\\.plink_ct\\.sensitivity\\.tsv$")
+plinkSENSITIVITYQC <- readRESULTS("\\.plink_ct\\.sensitivity_qc\\.tsv$")
+gwasSUMMARY <- readRESULTS("\\.harmonisation_qc\\.tsv$")
 
 methodLABEL <- c(plink_ct = "PLINK C+T", sbayesrc = "SBayesRC")
 score <- addMETHODLABEL(score)

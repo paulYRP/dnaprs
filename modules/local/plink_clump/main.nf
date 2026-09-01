@@ -3,8 +3,10 @@ process PLINK_CLUMP {
     label 'process_high'
     label 'process_plink'
 
+    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
+
     input:
-    tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference)
+    tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)
 
     output:
     tuple val(meta), path(cojo), path("${meta.trait_id}.clumps"), path(harmonisation_qc), path("${meta.trait_id}.clump.log"), emit: clumped

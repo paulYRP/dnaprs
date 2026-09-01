@@ -1,0 +1,44 @@
+# Scientific parameters only; executor, queue, account, and site policy stay outside.
+input: data/plink/raw
+gwas: data/gwas/raw
+
+phenotype: data/pheno/pheno.csv
+participant_id: participant_id
+models:
+  - id: depression
+    outcome: depression_score
+    covariates: [age, sex]
+    model_type: gaussian
+    score_ids: all
+    expected_direction: positive
+    primary: true
+  - id: diagnosis
+    outcome: diagnosis
+    covariates: [age, sex, batch]
+    model_type: binomial
+    control_value: control
+    case_value: case
+    score_ids: [trait1]
+    primary: true
+
+genome: GRCh37
+references: /path/to/reference-root
+reference_mode: local
+reference_dir: references/dnaprs
+reference_bundle: grch37-v1
+
+methods: plink_ct,sbayesrc
+sample_missingness: 0.02
+imputation_variant_missingness: 0.10
+direct_variant_missingness: 0.01
+maf_filter: 0
+hwe_filter: 0
+ancestry_pcs: 10
+ancestry_percentile: 0.99
+target_imputation: true
+imputation_dr2: 0.80
+seed: 20260829
+
+outdir: dnaprs
+run_name: model1
+report_enabled: true

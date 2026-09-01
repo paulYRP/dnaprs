@@ -1,0 +1,2 @@
+cohort	trait_id	prs_name	participants	imputed_scoring_variants	direct_scoring_variants	shared_variants	imputed_only_variants	direct_only_variants	pearson_r	spearman_r	mean_z_difference	status
+TEST	MDD	MDD_PRS	6	430	301	301	129	0	0.995	1.0	0	PASS

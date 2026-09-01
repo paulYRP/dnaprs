@@ -4,8 +4,15 @@ nf_core_version: 4.1.0
 
 lint:
   files_unchanged:
+    - LICENSE
+    - .github/ISSUE_TEMPLATE/bug_report.yml
+    - .github/ISSUE_TEMPLATE/config.yml
+    - .github/ISSUE_TEMPLATE/feature_request.yml
+    - .github/PULL_REQUEST_TEMPLATE.md
+    - .gitignore
     - assets/sendmail_template.txt
     - assets/email_template.html
+    - assets/email_template.txt
     - docs/README.md
     - .github/workflows/nf-test.yml
   multiqc_config: false
@@ -13,11 +20,14 @@ lint:
     - conf/igenomes.config
     - conf/igenomes_ignored.config
     - assets/multiqc_config.yml
+    - .github/workflows/awstest.yml
+    - .github/workflows/awsfulltest.yml
+    - .github/workflows/branch.yml
   template_strings:
     - containers/README.md
 
 template:
-  org: nf-core
+  org: paulYRP
   name: dnaprs
   description: Generate and evaluate polygenic risk scores with PLINK and SBayesRC
   author: Paul Ruiz Pinto
@@ -28,4 +38,4 @@ template:
     - igenomes
     - multiqc
     - fastqc
-  is_nfcore: true
+  is_nfcore: false

@@ -1,0 +1,2 @@
+cohort	matched_variants	pruned_variants	reference_participants	european_reference_participants	target_participants	pcs	percentile	distance_threshold	ancestry_pass	ancestry_outlier	status
+TEST	84210	33764	2504	503	2	10	0.99	3.0	2	0	PASS

@@ -1,2 +1,0 @@
-cohort	role	format	genotype	sample	keep	build	ancestry	dosage
-COHORT1	target	pgen	/absolute/path/to/cohort_chr{chr}		/absolute/path/to/cohort.keep	GRCh37	European	DS

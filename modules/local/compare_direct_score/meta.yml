@@ -1,0 +1,17 @@
+name: compare_direct_score
+description: Compare imputed and direct-genotype PLINK scores and their variant coverage.
+keywords: [prs, sensitivity, plink]
+tools:
+  - R:
+      description: Statistical computing environment
+input:
+  - primary_score:
+      type: file
+      description: Participant score table from the imputed target.
+  - direct_score:
+      type: file
+      description: Participant score table from the direct-genotype target.
+output:
+  - comparison:
+      type: file
+      description: Participant-level and summary sensitivity results.

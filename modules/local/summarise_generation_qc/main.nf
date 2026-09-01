@@ -3,6 +3,8 @@ process SUMMARISE_GENERATION_QC {
     label 'process_low'
     label 'process_r'
 
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+
     input:
     path generation_qc_files
     path score_qc

@@ -1,196 +1,176 @@
 # Running dnaprs
 
-## Input principle
+## Inputs
 
-The target genotype and GWAS must have completed their study-specific QC before they
-enter dnaprs. The pipeline performs only the compatibility checks needed to construct
-scores: file contracts, participant identifiers, genome build, allele columns, finite
-GWAS values, required references, score coverage, and participant-level score output.
+dnaprs has one workflow and two levels of input. A beginner supplies directories; an
+advanced user may replace either directory with a YAML list of explicit records. Both
+routes are normalised to the same internal, provenance-bearing records. Users do not
+create TSV manifests.
 
-All paths in a manifest may be absolute or relative to the directory from which
-Nextflow is launched. Inputs are read but are never edited in place.
+### Target genotypes
 
-## Parameter file
+`--input` defaults to `data/plink/raw`. The directory must resolve unambiguously to one
+coherent PGEN, BED, PED/MAP, BGEN, VCF/BCF, or GenomeStudio FinalReport dataset. PLINK
+sets require all companion files; GenomeStudio requires one assay manifest. Discovery
+never chooses alphabetically between several candidates. For multiple cohorts, use a
+YAML `input` list with an `id`, `path`, `format`, and optional companions per cohort.
 
-Use a YAML file for scientific runs so the settings can be reviewed and archived:
+### GWAS summary statistics
 
-```yaml
-run_name: ukr_prs
-input: manifests/target.tsv
-gwas_manifest: manifests/gwas.tsv
-reference_manifest: manifests/reference.tsv
-manifest_base: .
-phenotype_file: data/pheno/pheno.csv
-phenotype_models: manifests/phenotype_models.tsv
-methods: plink_ct,sbayesrc
-genome_build: GRCh37
-seed: 20260829
-report_enabled: true
-```
+`--gwas` defaults to `data/gwas/raw`. Each supported text or compressed-text GWAS is
+inspected independently. Common column names are resolved only when their roles are
+unambiguous. An unfamiliar release must be described in the advanced YAML `gwas` list,
+including effect scale, study size, build, and source-column mapping.
 
-`run_name` must be unique for a new analysis. Results and technical reports are written
-under `<output-dir>/<run_name>/`.
+The workflow validates numeric effects, uncertainty, P values, frequencies, alleles,
+coordinates, duplicate IDs, palindromic ambiguity, MAF, optional INFO, and orientation.
+It does not recognise a private cohort, trait, or filename.
 
-## Target manifest
+## Beginner commands
 
-One row describes each QC-completed scoring cohort.
-
-| Column     | Meaning                                                             |
-| ---------- | ------------------------------------------------------------------- |
-| `cohort`   | Unique short cohort name                                            |
-| `role`     | `target` or `validation`                                            |
-| `format`   | `pgen`, `bed`, `vcf`, or `bgen`                                     |
-| `genotype` | File, PLINK prefix, or chromosome pattern such as `cohort_chr{chr}` |
-| `sample`   | BGEN sample file when required; otherwise blank                     |
-| `keep`     | Optional two-column PLINK participant keep file                     |
-| `build`    | `GRCh37` or `GRCh38`                                                |
-| `ancestry` | Recorded ancestry description                                       |
-| `dosage`   | VCF dosage field, normally `DS`                                     |
-
-PGEN inputs require `.pgen`, `.pvar`, and `.psam`; BED inputs require `.bed`, `.bim`,
-and `.fam`. SBayesRC scoring expects autosomal chromosome files 1–22 after preparation.
-
-Variant identifiers must be compatible with the selected LD reference and GWAS. dnaprs
-preserves existing target identifiers and creates chromosome-position-allele identifiers
-only when an input identifier is missing. A cohort whose identifiers were not aligned
-during target QC must be aligned before scientific scoring.
-
-## GWAS manifest
-
-One row describes each QC-completed GWAS. dnaprs does not guess source column names.
-
-| Column                                  | Meaning                                                       |
-| --------------------------------------- | ------------------------------------------------------------- |
-| `trait_id`                              | Unique trait identifier, such as `MDD`                        |
-| `prs_name`                              | Stable output name, such as `MDD_PRS`                         |
-| `path`                                  | Tab-delimited GWAS file, optionally gzip-compressed           |
-| `build`                                 | Genome build matching the target and references               |
-| `ancestry`                              | GWAS ancestry description                                     |
-| `effect_type`                           | `beta`, `log_or`, or `or`                                     |
-| `sample_size`                           | Reported or effective study sample size                       |
-| `snp_col`, `chr_col`, `bp_col`          | Source variant identifier and position columns                |
-| `effect_allele_col`, `other_allele_col` | Source allele columns                                         |
-| `beta_col`, `se_col`, `p_col`           | Source effect, standard error, and P-value columns            |
-| `freq_col`                              | Effect-allele-frequency column; required for SBayesRC         |
-| `n_col`                                 | Per-variant sample-size column, or blank to use `sample_size` |
-
-`log_or` means that the source effect is already the natural logarithm of the odds ratio.
-Use `or` only when the declared source column contains positive odds ratios; dnaprs then
-applies the natural logarithm before scoring.
-
-For PLINK C+T, the declared GWAS SNP identifiers must match the independent PLINK LD
-reference and the QC-completed target. For SBayesRC, `tidy()` checks the GWAS against its
-LD panel, and the resulting scoring identifiers must exist in the target. Variant
-coverage files show the retained overlap; the phenotype is never used to repair or tune
-that overlap.
-
-## Reference manifest
-
-The selected methods determine the required rows.
-
-| `reference_type` | Used by   | Required content                         |
-| ---------------- | --------- | ---------------------------------------- |
-| `plink_ld`       | PLINK C+T | Independent PLINK 2 PGEN LD reference    |
-| `sbayesrc_ld`    | SBayesRC  | SBayesRC LD directory matching the build |
-| `annotation`     | SBayesRC  | Matching functional annotation file      |
-
-Every row also records a unique `reference_id`, build, ancestry, version, and optional
-published checksum. Reference data should be installed once on shared storage and
-referenced by path rather than copied into every run.
-
-## Phenotype model manifest
-
-Phenotype analysis is optional and begins only after score construction is fixed. Each
-row declares one matching phenotype–PRS model.
-
-| Column               | Meaning                                                                   |
-| -------------------- | ------------------------------------------------------------------------- |
-| `model_id`           | Unique model name                                                         |
-| `outcome`            | Outcome column in the phenotype file                                      |
-| `prs_name`           | Matching name from the GWAS manifest                                      |
-| `family`             | `gaussian`, `binomial`, `poisson`, or another supported R family          |
-| `covariates`         | Comma-separated covariate columns                                         |
-| `participant_id`     | Participant identifier column                                             |
-| `group_id`           | Group or participant column for a mixed model; blank for independent rows |
-| `expected_direction` | Prespecified direction for interpretation                                 |
-| `primary`            | `TRUE` or `FALSE`                                                         |
-
-Independent Gaussian outcomes use `lm`. Other independent outcomes use `glm2`. A
-declared `group_id` uses `lme4` with a random intercept. dnaprs compares the model with
-the PRS against the same model without the PRS and reports the PRS coefficient, 95%
-confidence interval, P value, and change in fit. These estimates describe association;
-they do not validate a score as a clinical predictor.
-
-## Offline terminal assistant
-
-The assistant scans only a chosen workspace and uses numbered terminal selections. It
-does not upload files or infer GWAS column meanings.
+With the conventional folders and automatic references:
 
 ```bash
-bin/dnaprs list /path/to/workspace
-bin/dnaprs configure /path/to/workspace
+nextflow run . -profile singularity -resume
 ```
 
-Review the created YAML and TSV files. Then check strict syntax and configuration:
-
-```bash
-bin/dnaprs check \
-  --params-file /path/to/workspace/runs/my_run/params.yaml \
-  --profile docker
-```
-
-The `check` command is static. The full input preflight runs as the first process of an
-actual workflow.
-
-## Local run
-
-Build the fixed image first, then start the workflow:
-
-```bash
-docker build --pull -t dnaprs:1.0.0 -f containers/Dockerfile .
-
-nextflow run . \
-  -profile docker \
-  -params-file runs/my_run/params.yaml \
-  --outdir results
-```
-
-The `standard` profile may be used when the exact required tools are already on `PATH`.
-The `apptainer` profile is available for compatible Linux/HPC systems.
-
-## Resume
-
-Resume only with the same parameter file, inputs, work directory, launch directory, and
-pipeline version:
+Explicit equivalent:
 
 ```bash
 nextflow run . \
-  -profile docker \
-  -params-file runs/my_run/params.yaml \
-  --outdir results \
+  -profile singularity \
+  --input data/plink/raw \
+  --gwas data/gwas/raw \
+  --outdir dnaprs \
+  --run_name model1 \
   -resume
 ```
 
-Nextflow reuses a task only when its cached command and inputs still match. Do not remove
-the work directory or `.nextflow/cache` while a run may need to resume.
-
-## Test profiles
-
-The committed fixtures are synthetic software tests. Test the R functions and report
-from PowerShell:
-
-```powershell
-.\tests\smoke.ps1 -OutputDirectory ..\test\synthetic_analysis
-```
-
-Use strict stub mode for the complete two-method Nextflow graph:
+Optional phenotype association:
 
 ```bash
-nextflow run . -profile test_full -stub-run \
-  --outdir ../test/nextflow_results \
-  -work-dir ../test/nextflow_work
+nextflow run . \
+  -profile singularity \
+  --input data/plink/raw \
+  --gwas data/gwas/raw \
+  --phenotype data/pheno/pheno.csv \
+  --outcome depression_score \
+  --covariates age,sex \
+  --model_type gaussian \
+  -resume
 ```
 
-`test` executes the PLINK branch when Linux PLINK and R are available. `test_full`
-checks PLINK and SBayesRC process connections. Synthetic and stub tests do not validate
-biological performance.
+The four phenotype parameters are atomic: omit all four or provide all four.
+`--covariates none` requests an unadjusted model. Use `--participant_id` when exactly
+one CSV column cannot be matched unambiguously to target sample IDs. Binomial models
+accept validated 0/1 data or explicit `--control_value` and `--case_value`; mixed
+models also require `--group_column`.
+
+## Advanced `params.yml`
+
+Run [`examples/params.yml`](../examples/params.yml) with:
+
+```bash
+nextflow run . -profile singularity -params-file examples/params.yml -resume
+```
+
+The YAML may use simple paths or explicit record lists. A multi-model declaration is:
+
+```yaml
+phenotype: data/pheno/pheno.csv
+participant_id: participant_id
+models:
+  - id: depression
+    outcome: depression_score
+    covariates: [age, sex]
+    model_type: gaussian
+    score_ids: all
+    primary: true
+  - id: case_control
+    outcome: diagnosis
+    covariates: [age, sex, batch]
+    model_type: binomial
+    control_value: control
+    case_value: case
+    score_ids: [trait1]
+```
+
+Use `model_id: depression` to run one declared model. Each selected model-score pair is
+an independent task; a one-model run follows the same code path.
+
+## Reference modes
+
+- `auto` (default): use valid cached/local assets and acquire missing pinned assets;
+- `local`: require every selected role under `--references` and perform no scientific
+  download;
+- `download`: acquire the pinned bundle even when another local root is supplied.
+
+The persistent cache defaults to `references/dnaprs/grch37-v1/`. It includes dbSNP157,
+the GRCh37 FASTA/index, Beagle maps and chromosome panel, 1000 Genomes population and
+related-sample metadata, pinned Beagle/unbref3 JARs, and selected SBayesRC resources.
+Each asset is checked independently, so a later failure does not restart successful
+chromosome downloads.
+
+For a cache-only run, create `references.yml`:
+
+```yaml
+reference_only: true
+reference_mode: download
+reference_dir: references/dnaprs
+reference_bundle: grch37-v1
+methods: plink_ct,sbayesrc
+target_imputation: true
+outdir: dnaprs
+run_name: references
+```
+
+Run `nextflow run . -profile singularity -params-file references.yml -resume`.
+
+## QC and analysis controls
+
+```yaml
+genome: GRCh37
+methods: plink_ct,sbayesrc
+sample_missingness: 0.02
+imputation_variant_missingness: 0.10
+direct_variant_missingness: 0.01
+maf_filter: 0
+hwe_filter: 0
+ancestry_pcs: 10
+ancestry_percentile: 0.99
+target_imputation: true
+imputation_dr2: 0.80
+seed: 20260829
+```
+
+The 0.10 checkpoint feeds imputation; the 0.01 checkpoint supports direct-genotype
+sensitivity work. MAF and HWE are reported but are not filters by default. Reference
+ancestry uses exact typed-variant matches, unrelated 1000 Genomes axes, target
+projection, and the empirical European distance percentile. Participant decisions
+separate technical eligibility, relatedness, ancestry, score eligibility, and primary
+analysis.
+
+Each available autosome is emitted as one independent Beagle task. Nextflow schedules
+these tasks concurrently when executor capacity is available and merges them only after
+all expected chromosome checks pass. PLINK C+T is also calculated from the stricter
+direct-genotype checkpoint; variant coverage and standardised participant scores are
+compared with the primary imputed-target score as a sensitivity analysis.
+
+## Portable HPC execution
+
+The pipeline contains task CPU, memory, time, threading, and bounded resource-retry
+rules. Do not put scheduler or site details in `params.yml`. Select the institutional
+Nextflow executor in the installed environment or an external Nextflow configuration;
+Nextflow submits independent cohorts, traits, methods, references, and model-score pairs
+as capacity allows.
+
+For QUT acceptance testing, use the sibling workspace files described in
+`test/test.md`: `pipeline.pbs` requests a small Nextflow-driver job, loads Java 21,
+checks the Singularity-compatible Apptainer command, and invokes this pipeline directly
+with `test/params.yml`. There is no Makefile or Aqua-specific pipeline configuration.
+
+## Resume
+
+Use `-resume` with the same revision, parameters, inputs, launch directory, and work
+directory. Both the Nextflow cache and work directory are required. Published result
+copies are never consumed by downstream tasks.

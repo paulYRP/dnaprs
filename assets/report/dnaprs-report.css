@@ -9,6 +9,12 @@
   --dnaprs-accent: #000000;
   --dnaprs-accent-text: #ffffff;
   --dnaprs-shadow: rgba(0, 0, 0, 0.1);
+  --dnaprs-nav-bg: #f3f6f7;
+  --dnaprs-nav-text: #33404b;
+  --dnaprs-nav-hover: #e5ecef;
+  --dnaprs-nav-border: #cbd5da;
+  --dnaprs-nav-active-bg: #ffffff;
+  --dnaprs-nav-active-text: #111820;
 }
 
 html[data-theme="dark"] {
@@ -21,6 +27,12 @@ html[data-theme="dark"] {
   --dnaprs-accent: #ffffff;
   --dnaprs-accent-text: #000000;
   --dnaprs-shadow: rgba(255, 255, 255, 0.07);
+  --dnaprs-nav-bg: #080b0d;
+  --dnaprs-nav-text: #c5cdd2;
+  --dnaprs-nav-hover: #182126;
+  --dnaprs-nav-border: #364148;
+  --dnaprs-nav-active-bg: #f7fafb;
+  --dnaprs-nav-active-text: #111820;
 }
 
 html {
@@ -84,8 +96,8 @@ select:focus-visible,
   z-index: 1030;
   width: var(--dnaprs-nav-width) !important;
   height: 100dvh !important;
-  background: #080808 !important;
-  border-right: 1px solid #303030 !important;
+  background: var(--dnaprs-nav-bg) !important;
+  border-right: 1px solid var(--dnaprs-nav-border) !important;
   box-shadow: 0.7rem 0 2rem var(--dnaprs-shadow) !important;
 }
 
@@ -104,7 +116,7 @@ select:focus-visible,
   align-items: stretch !important;
   width: 100%;
   height: 100%;
-  padding: 1rem 0.8rem !important;
+  padding: 1rem 0.8rem 4.75rem !important;
 }
 
 #quarto-header .navbar-brand-container {
@@ -170,7 +182,7 @@ select:focus-visible,
   padding: 0.65rem 0.8rem !important;
   border: 1px solid transparent;
   border-radius: 0.55rem;
-  color: #bdbdbd !important;
+  color: var(--dnaprs-nav-text) !important;
   font-size: 0.9rem;
   font-weight: 650;
   white-space: nowrap;
@@ -178,15 +190,15 @@ select:focus-visible,
 
 #navbarCollapse .nav-link:hover,
 #navbarCollapse .nav-link:focus-visible {
-  color: #ffffff !important;
-  background: #1b1b1b;
-  border-color: #404040;
+  color: var(--dnaprs-text) !important;
+  background: var(--dnaprs-nav-hover);
+  border-color: var(--dnaprs-nav-border);
 }
 
 #navbarCollapse .nav-link.active {
-  color: #080808 !important;
-  background: #ffffff;
-  border-color: #ffffff;
+  color: var(--dnaprs-nav-active-text) !important;
+  background: var(--dnaprs-nav-active-bg);
+  border-color: var(--dnaprs-nav-border);
   box-shadow: inset 0.25rem 0 0 #0dc09d;
 }
 
@@ -194,6 +206,36 @@ select:focus-visible,
 #quarto-header .quarto-navbar-tools,
 #quarto-dashboard-header {
   display: none !important;
+}
+
+.dnaprs-github-footer {
+  position: fixed;
+  z-index: 1040;
+  bottom: 1rem;
+  left: calc((var(--dnaprs-nav-width) - 2.8rem) / 2);
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--dnaprs-nav-text) !important;
+  background: var(--dnaprs-nav-bg);
+  text-decoration: none;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.dnaprs-github-footer svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  fill: currentColor;
+}
+
+.dnaprs-github-footer:hover,
+.dnaprs-github-footer:focus-visible {
+  color: var(--dnaprs-text) !important;
+  background: var(--dnaprs-nav-hover);
+  border-color: var(--dnaprs-nav-border);
 }
 
 #quarto-content.page-columns,
@@ -219,16 +261,17 @@ main.content {
 .dnaprs-theme-button {
   position: fixed;
   z-index: 1100;
-  top: 0.9rem;
-  right: 1rem;
+  top: 1.05rem;
+  right: auto;
+  left: calc(var(--dnaprs-nav-width) - 3.35rem);
   display: inline-grid;
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
   padding: 0;
-  color: var(--dnaprs-text);
-  background: var(--dnaprs-panel);
-  border: 1px solid var(--dnaprs-border);
+  color: var(--dnaprs-nav-text);
+  background: var(--dnaprs-nav-bg);
+  border: 1px solid var(--dnaprs-nav-border);
   border-radius: 999px;
   box-shadow: 0 0.25rem 0.8rem var(--dnaprs-shadow);
 }
@@ -326,6 +369,29 @@ main.content {
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 0.8rem;
   margin: 1rem 0 1.5rem;
+}
+
+.dnaprs-opening-card,
+.dnaprs-closing-card {
+  margin: 0.25rem 0 1.4rem;
+  padding: 1rem 1.15rem;
+  background: var(--dnaprs-panel-soft);
+  border: 1px solid var(--dnaprs-border);
+  border-left: 0.34rem solid #0dc09d;
+  border-radius: 0.55rem;
+  box-shadow: 0 0.35rem 1rem var(--dnaprs-shadow);
+}
+
+.dnaprs-opening-card p,
+.dnaprs-closing-card p {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.dnaprs-closing-card {
+  margin-top: 1.8rem;
+  font-style: italic;
 }
 
 .dnaprs-card {
@@ -488,6 +554,31 @@ main.content {
   white-space: nowrap;
 }
 
+.dnaprs-status {
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+
+.dnaprs-status-pass {
+  color: #087f5b !important;
+  background: rgba(13, 192, 157, 0.12) !important;
+}
+
+.dnaprs-status-review {
+  color: #8a5700 !important;
+  background: rgba(224, 154, 0, 0.14) !important;
+}
+
+.dnaprs-status-fail {
+  color: #b42318 !important;
+  background: rgba(180, 35, 24, 0.12) !important;
+}
+
+.dnaprs-status-not-run {
+  color: var(--dnaprs-muted) !important;
+  background: var(--dnaprs-panel-soft) !important;
+}
+
 .dnaprs-gallery {
   margin: 0.8rem 0 1.4rem;
   padding: 1rem;
@@ -555,7 +646,7 @@ main.content {
 .dnaprs-figure-canvas {
   position: relative;
   width: 100%;
-  height: clamp(25rem, 68vh, 54rem);
+  height: clamp(32rem, 76vh, 64rem);
   overflow: auto;
   overscroll-behavior: contain;
   background: #ffffff;
@@ -634,6 +725,71 @@ body.dnaprs-lock-scroll {
   font-size: 0.84rem;
 }
 
+.dnaprs-log-panel {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  color: var(--dnaprs-text);
+  background: var(--dnaprs-panel);
+  border: 1px solid var(--dnaprs-border);
+  border-left: 0.3rem solid #0a8f78;
+  border-radius: 0.55rem;
+}
+
+.dnaprs-log-panel summary {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.dnaprs-log-panel summary:hover,
+.dnaprs-log-panel summary:focus-visible {
+  background: var(--dnaprs-panel-soft);
+}
+
+.dnaprs-log-panel summary span {
+  color: var(--dnaprs-muted);
+  font-size: 0.84rem;
+}
+
+.dnaprs-log-content {
+  height: min(72vh, 52rem);
+  overflow: auto;
+  border-top: 1px solid var(--dnaprs-border);
+  scrollbar-gutter: stable;
+}
+
+.dnaprs-log-content iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 32rem;
+  border: 0;
+  background: #ffffff;
+}
+
+.dnaprs-log-text pre {
+  min-width: max-content;
+  margin: 0;
+  padding: 1rem;
+  color: var(--dnaprs-text);
+  background: var(--dnaprs-panel);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.dnaprs-log-download {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--dnaprs-border);
+  background: var(--dnaprs-panel-soft);
+}
+
+.dnaprs-log-download a {
+  font-weight: 700;
+}
+
 @media (max-width: 960px) {
   body {
     padding-left: 0 !important;
@@ -646,7 +802,7 @@ body.dnaprs-lock-scroll {
     width: 100% !important;
     height: auto !important;
     border-right: 0 !important;
-    border-bottom: 1px solid #303030 !important;
+    border-bottom: 1px solid var(--dnaprs-nav-border) !important;
   }
 
   #quarto-header .navbar-container {
@@ -654,6 +810,13 @@ body.dnaprs-lock-scroll {
     align-items: center !important;
     height: auto;
     padding: 0.55rem 0.8rem !important;
+  }
+
+  .dnaprs-github-footer {
+    right: 0.8rem;
+    bottom: 0.8rem;
+    left: auto;
+    box-shadow: 0 0.35rem 1rem var(--dnaprs-shadow);
   }
 
   #quarto-header .navbar-brand-container {
@@ -687,8 +850,8 @@ body.dnaprs-lock-scroll {
     left: 0;
     max-height: calc(100vh - 4rem);
     padding: 0.65rem;
-    background: #080808;
-    border-bottom: 1px solid #303030;
+    background: var(--dnaprs-nav-bg);
+    border-bottom: 1px solid var(--dnaprs-nav-border);
   }
 
   #navbarCollapse.show {
@@ -696,7 +859,9 @@ body.dnaprs-lock-scroll {
   }
 
   .dnaprs-theme-button {
-    top: 4.2rem;
+    top: 0.7rem;
+    right: 4rem;
+    left: auto;
   }
 
   main.content {

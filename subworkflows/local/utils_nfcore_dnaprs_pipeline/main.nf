@@ -1,5 +1,5 @@
 //
-// Subworkflow with functionality specific to the nf-core/dnaprs pipeline
+// Subworkflow with functionality specific to the paulYRP/dnaprs pipeline
 //
 
 /*
@@ -63,7 +63,7 @@ workflow PIPELINE_INITIALISATION {
 \033[0;34m  |\\ | |__  __ /  ` /  \\ |__) |__         \033[0;33m}  {\033[0m
 \033[0;34m  | \\| |       \\__, \\__/ |  \\ |___     \033[0;32m\\`-._,-`-,\033[0m
                                         \033[0;32m`._,._,\'\033[0m
-\033[0;35m  nf-core/dnaprs ${workflow.manifest.version}\033[0m
+\033[0;35m  ${workflow.manifest.name} ${workflow.manifest.version}\033[0m
 -\033[2m----------------------------------------------------\033[0m-
 """
     after_text = """${workflow.manifest.doi ? "\n* The pipeline\n" : ""}${workflow.manifest.doi.tokenize(",").collect { doi -> "    https://doi.org/${doi.trim().replace('https://doi.org/','')}"}.join("\n")}${workflow.manifest.doi ? "\n" : ""}
@@ -71,13 +71,13 @@ workflow PIPELINE_INITIALISATION {
     https://doi.org/10.1038/s41587-020-0439-x
 
 * Software dependencies
-    https://github.com/nf-core/dnaprs/blob/dev/CITATIONS.md
+    https://github.com/paulYRP/dnaprs/blob/dev/CITATIONS.md
 """
     if (monochrome_logs) {
         before_text = before_text.replaceAll(/\033\[[0-9;]*m/, '')
     }
 
-    command = "nextflow run ${workflow.manifest.name} -profile <docker/apptainer/institute> -params-file params.yaml --outdir <OUTDIR>"
+    command = "nextflow run ${workflow.manifest.name} -profile <docker/apptainer/institute> -params-file params.yml --outdir <OUTDIR>"
 
     UTILS_NFSCHEMA_PLUGIN (
         workflow,
@@ -171,9 +171,9 @@ def dumpParametersToJSON(outdir) {
     def jsonStr   = groovy.json.JsonOutput.toJson(jsonSafeValue(params))
     temp_pf.text  = groovy.json.JsonOutput.prettyPrint(jsonStr)
     if (outdir instanceof Path) {
-        temp_pf.copyTo(outdir.resolve("pipeline_info/${filename}"))
+        temp_pf.copyTo(outdir.resolve("reports/provenance/${filename}"))
     } else {
-        temp_pf.copyTo("${outdir}/pipeline_info/${filename}")
+        temp_pf.copyTo("${outdir}/reports/provenance/${filename}")
     }
     temp_pf.delete()
 }

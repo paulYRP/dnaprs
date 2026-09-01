@@ -1,0 +1,8 @@
+package	install_version	expected_version
+BH	1.84.0-0	1.84.0.0
+data.table	1.18.0	1.18.0
+glm2	1.2.1	1.2.1
+jsonlite	2.0.0	2.0.0
+lme4	2.0.1	2.0.1
+openssl	2.3.4	2.3.4
+yaml	2.3.10	2.3.10

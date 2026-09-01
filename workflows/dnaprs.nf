@@ -1,10 +1,22 @@
 include { VALIDATE_MANIFESTS } from '../modules/local/validate_manifests/main'
 include { HARMONISE_GWAS } from '../modules/local/harmonise_gwas/main'
 include { PREPARE_TARGET } from '../modules/local/prepare_target/main'
+include { TARGET_QC } from '../modules/local/target_qc/main'
+include { PARTICIPANT_DECISIONS } from '../modules/local/participant_decisions/main'
+include { REFERENCE_ANCESTRY } from '../modules/local/reference_ancestry/main'
+include { TARGET_IMPUTE_CHROMOSOME } from '../modules/local/target_impute/main'
+include { ASSEMBLE_TARGET_IMPUTATION } from '../modules/local/assemble_target_imputation/main'
+include { PREPARE_PLINK_REFERENCE } from '../modules/local/prepare_plink_reference/main'
+include { PREPARE_SBAYESRC_REFERENCE } from '../modules/local/prepare_sbayesrc_reference/main'
+include { GENOTYPE_EDA_PLINK as GENOTYPE_EDA } from '../modules/local/genotype_eda/main'
 include { PLINK_REFERENCE_FREQ } from '../modules/local/plink_reference_freq/main'
 include { PLINK_CLUMP } from '../modules/local/plink_clump/main'
 include { BUILD_CT_WEIGHTS } from '../modules/local/build_ct_weights/main'
 include { PLINK_SCORE } from '../modules/local/plink_score/main'
+include { PARSE_PLINK_SCORE } from '../modules/local/parse_plink_score/main'
+include { PLINK_SCORE as PLINK_DIRECT_SCORE } from '../modules/local/plink_score/main'
+include { PARSE_PLINK_SCORE as PARSE_PLINK_DIRECT_SCORE } from '../modules/local/parse_plink_score/main'
+include { COMPARE_DIRECT_SCORE } from '../modules/local/compare_direct_score/main'
 include { SBAYESRC_TIDY } from '../modules/local/sbayesrc_tidy/main'
 include { SBAYESRC_IMPUTE } from '../modules/local/sbayesrc_impute/main'
 include { SBAYESRC_MODEL } from '../modules/local/sbayesrc_model/main'
@@ -12,8 +24,152 @@ include { SBAYESRC_SCORE } from '../modules/local/sbayesrc_score/main'
 include { COMBINE_SCORES } from '../modules/local/combine_scores/main'
 include { SUMMARISE_GENERATION_QC } from '../modules/local/summarise_generation_qc/main'
 include { PHENOTYPE_ASSOCIATION } from '../modules/local/phenotype_association/main'
+include { SPLIT_PHENOTYPE_MODELS } from '../modules/local/split_phenotype_models/main'
+include { COMBINE_PHENOTYPE } from '../modules/local/combine_phenotype/main'
 include { RENDER_REPORT } from '../modules/local/render_report/main'
+include { PUBLIC_FIGURES } from '../modules/local/public_figures/main'
 include { COLLECT_VERSIONS } from '../modules/local/collect_versions/main'
+
+// Resolve every target companion as a Nextflow path so containers receive only declared
+// inputs and task hashes include the actual genotype files. The stable source path remains
+// in meta.source_genotype for provenance; meta.genotype names the staged task-local input.
+def targetBaseName(value) {
+    value.toString().replace('\\', '/').tokenize('/').last()
+}
+
+// Read one field from the single-record internal phenotype-model file. Only this small
+// generated record is inspected by the driver; participant and score tables remain
+// process inputs and are never loaded into workflow memory.
+def modelField(modelFile, field) {
+    def lines = java.nio.file.Files.readAllLines(modelFile)
+    def header = lines.size() > 0 ? lines[0].split('\t', -1) : null
+    def record = lines.size() > 1 ? lines[1].split('\t', -1) : null
+    def index = header?.findIndexOf { it == field }
+    if (index == null || index < 0 || record == null || index >= record.size()) {
+        error "Generated phenotype model '${modelFile}' has no '${field}' value."
+    }
+    record[index]
+}
+
+def addTargetInput(sourceFiles, value) {
+    sourceFiles << file(value, checkIfExists: true)
+}
+
+def addTargetGenotype(sourceFiles, value, format) {
+    if (format == 'pgen') {
+        def prefix = value.replaceFirst(/(?i)\.pgen$/, '')
+        addTargetInput(sourceFiles, "${prefix}.pgen")
+        addTargetInput(sourceFiles, "${prefix}.pvar")
+        addTargetInput(sourceFiles, "${prefix}.psam")
+    } else if (format == 'bed') {
+        def prefix = value.replaceFirst(/(?i)\.bed$/, '')
+        addTargetInput(sourceFiles, "${prefix}.bed")
+        addTargetInput(sourceFiles, "${prefix}.bim")
+        addTargetInput(sourceFiles, "${prefix}.fam")
+    } else if (format == 'ped') {
+        def prefix = value.replaceFirst(/(?i)\.ped$/, '')
+        addTargetInput(sourceFiles, "${prefix}.ped")
+        addTargetInput(sourceFiles, "${prefix}.map")
+    } else {
+        addTargetInput(sourceFiles, value)
+    }
+}
+
+def targetInputFiles(row) {
+    def sourceGenotype = row.genotype.toString()
+    def sourceSample = row.sample?.toString() ?: ''
+    def sourceKeep = row.keep?.toString() ?: ''
+    def sourceAssayManifest = row.assay_manifest?.toString() ?: ''
+    def sourceMarkerMap = row.marker_map?.toString() ?: ''
+    def format = (row.source_format ?: row.format).toString()
+    def sourceFiles = []
+    def hasChromosomePattern = sourceGenotype.contains('{chr}') ||
+        sourceGenotype.contains('{CHR}') ||
+        sourceGenotype.contains('{chromosome}') ||
+        sourceGenotype.contains('#')
+
+    if (sourceGenotype.contains('*') || sourceGenotype.contains('?')) {
+        error "Target '${row.cohort}' uses a raw glob. Use {chr}, {CHR}, {chromosome}, or # as the chromosome placeholder."
+    }
+
+    if (hasChromosomePattern) {
+        (1..22).each { chromosome ->
+            def value = sourceGenotype
+                .replace('{chr}', chromosome.toString())
+                .replace('{CHR}', chromosome.toString())
+                .replace('{chromosome}', chromosome.toString())
+                .replace('#', chromosome.toString())
+            def primary = format == 'pgen' ? "${value.replaceFirst(/(?i)\.pgen$/, '')}.pgen" :
+                format == 'bed' ? "${value.replaceFirst(/(?i)\.bed$/, '')}.bed" : value
+            if (java.nio.file.Files.exists(file(primary))) addTargetGenotype(sourceFiles, value, format)
+        }
+        if (!sourceFiles) error "Target '${row.cohort}' chromosome placeholder matched no genotype files."
+    } else {
+        addTargetGenotype(sourceFiles, sourceGenotype, format)
+    }
+    if (sourceSample) addTargetInput(sourceFiles, sourceSample)
+    if (sourceKeep) addTargetInput(sourceFiles, sourceKeep)
+    if (sourceAssayManifest) addTargetInput(sourceFiles, sourceAssayManifest)
+    if (sourceMarkerMap) addTargetInput(sourceFiles, sourceMarkerMap)
+
+    def stagedMeta = row + [
+        source_genotype: sourceGenotype,
+        source_sample: sourceSample,
+        source_keep: sourceKeep,
+        source_assay_manifest: sourceAssayManifest,
+        source_marker_map: sourceMarkerMap,
+        genotype: targetBaseName(sourceGenotype),
+        sample: sourceSample ? targetBaseName(sourceSample) : '',
+        keep: sourceKeep ? targetBaseName(sourceKeep) : '',
+        assay_manifest: sourceAssayManifest ? targetBaseName(sourceAssayManifest) : '',
+        marker_map: sourceMarkerMap ? targetBaseName(sourceMarkerMap) : '',
+        source_format: format,
+        format: format,
+    ]
+    tuple(stagedMeta, sourceFiles.unique())
+}
+
+def resolveReferenceInputPath(row, value) {
+    def matchedFiles = []
+    def hasChromosomePattern = value.contains('{chr}') || value.contains('{CHR}') ||
+        value.contains('{chromosome}') || value.contains('#')
+    if (value.contains('*') || value.contains('?')) {
+        error "Reference '${row.reference_id}' uses a raw glob. Use {chr}, {CHR}, {chromosome}, or #."
+    }
+    if (hasChromosomePattern) {
+        (1..22).each { chromosome ->
+            def resolved = value
+                .replace('{chr}', chromosome.toString())
+                .replace('{CHR}', chromosome.toString())
+                .replace('{chromosome}', chromosome.toString())
+                .replace('#', chromosome.toString())
+            if (java.nio.file.Files.exists(file(resolved))) {
+                matchedFiles << file(resolved, checkIfExists: true)
+            }
+        }
+        if (!matchedFiles) error "Reference '${row.reference_id}' chromosome placeholder matched no files."
+    } else {
+        matchedFiles << file(value, checkIfExists: true)
+    }
+    matchedFiles
+}
+
+// Stage reference files or directories as declared Nextflow inputs. This keeps
+// external bundles portable across Docker and Apptainer and adds their content to
+// task hashes without copying or modifying the source bundle.
+def referenceInputFiles(row) {
+    def sourcePath = row.path.toString()
+    def sourceCompanion = row.companion?.toString() ?: ''
+    def sourceFiles = resolveReferenceInputPath(row, sourcePath)
+    if (sourceCompanion) sourceFiles.addAll(resolveReferenceInputPath(row, sourceCompanion))
+    def stagedMeta = row + [
+        source_path: sourcePath,
+        source_companion: sourceCompanion,
+        path: targetBaseName(sourcePath),
+        companion: sourceCompanion ? targetBaseName(sourceCompanion) : '',
+    ]
+    tuple(stagedMeta, sourceFiles.unique())
+}
 
 workflow DNAPRS {
     take:
@@ -23,13 +179,27 @@ workflow DNAPRS {
     reference_manifest
     phenotype_file
     phenotype_models
+    phenotype_enabled
     methods
     genome_build
     seed
     report_enabled
+    imputation_variant_missingness
+    direct_variant_missingness
+    sample_missingness
+    target_maf
+    target_hwe
+    ancestry_pcs
+    ancestry_percentile
+    target_imputation
+    imputation_dr2
+    stop_after
     launch_dir
+    reference_base
     script_files
     report_source
+    input_checks
+    input_versions
 
     main:
     VALIDATE_MANIFESTS(
@@ -43,7 +213,9 @@ workflow DNAPRS {
         genome_build,
         seed,
         report_enabled,
+        target_imputation,
         launch_dir,
+        reference_base,
         script_files.validate,
     )
 
@@ -52,43 +224,238 @@ workflow DNAPRS {
         .map { row -> tuple(row, file(row.path)) }
     target_rows = VALIDATE_MANIFESTS.out.target_manifest
         .splitCsv(header: true, sep: '\t')
+    target_inputs = target_rows.map { row -> targetInputFiles(row) }
     reference_rows = VALIDATE_MANIFESTS.out.reference_manifest
         .splitCsv(header: true, sep: '\t')
+    reference_inputs = reference_rows.map { row -> referenceInputFiles(row) }
+
+    dbsnp_source = reference_inputs
+        .filter { row, _files -> row.reference_type == 'dbsnp' }
+        .first()
+    reference_fasta_source = reference_inputs
+        .filter { row, _files -> row.reference_type == 'reference_fasta' }
+        .first()
 
     HARMONISE_GWAS(gwas_rows, script_files.harmonise)
-    PREPARE_TARGET(target_rows, script_files.prepare_target)
+    // Describe the untouched user input before marker renaming, allele correction,
+    // duplicate handling, or technical filtering. The EDA process performs only a
+    // task-local format import and never edits the source files.
+    GENOTYPE_EDA(target_inputs, script_files.genotype_eda, script_files.target_adapter)
+    PREPARE_TARGET(
+        target_inputs,
+        dbsnp_source,
+        reference_fasta_source,
+        script_files.prepare_target,
+        script_files.target_adapter,
+    )
+    TARGET_QC(
+        PREPARE_TARGET.out.prepared,
+        script_files.target_qc,
+        imputation_variant_missingness,
+        direct_variant_missingness,
+        sample_missingness,
+        target_maf,
+        target_hwe,
+    )
+    plink_panel_source = reference_inputs
+        .filter { row, _files -> row.reference_type == 'imputation_panel' }
+        .first()
+    population_panel_source = reference_inputs
+        .filter { row, _files -> row.reference_type == 'population_panel' }
+        .first()
+    related_samples_source = reference_inputs
+        .filter { row, _files -> row.reference_type == 'related_samples' }
+        .first()
+    unbref3_jar_source = reference_inputs
+        .filter { row, _files -> row.reference_type == 'unbref3_jar' }
+        .first()
+    PREPARE_PLINK_REFERENCE(
+        plink_panel_source,
+        population_panel_source,
+        related_samples_source,
+        unbref3_jar_source,
+        script_files.prepare_plink_reference,
+        genome_build,
+    )
+    plink_reference = PREPARE_PLINK_REFERENCE.out.reference.map { source, reference_dir ->
+        def prepared = source + [
+            reference_id: "${source.reference_id}_PLINK_LD",
+            reference_type: 'plink_ld',
+            reference_stage: 'prepared',
+            source_format: 'pgen',
+            path: "${reference_dir.name}/eur_reference",
+        ]
+        tuple(prepared, reference_dir)
+    }
+    ancestry_input = TARGET_QC.out.imputation_ready.combine(plink_reference)
+    REFERENCE_ANCESTRY(
+        ancestry_input,
+        script_files.reference_ancestry,
+        script_files.classify_ancestry,
+        ancestry_pcs,
+        ancestry_percentile,
+    )
+    participant_decision_inputs = TARGET_QC.out.sample_decisions
+        .map { meta, decisions -> tuple(meta.cohort, meta, decisions) }
+        .join(GENOTYPE_EDA.out.tables.map { meta, tables -> tuple(meta.cohort, tables) })
+        .join(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple(meta.cohort, ancestry) })
+        .map { _cohort, meta, decisions, tables, ancestry -> tuple(meta, decisions, tables, ancestry) }
+    PARTICIPANT_DECISIONS(participant_decision_inputs, script_files.participant_decisions)
+
+    checkpoint_files = PREPARE_TARGET.out.checkpoint
+        .filter { meta, _target_dir, _manifest -> ['raw', 'corrected'].contains(meta.input_stage) }
+        .map { meta, target_dir, _manifest ->
+            def stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
+            tuple("checkpoints/${stage}", target_dir)
+        }
+        .mix(TARGET_QC.out.imputation_checkpoint.map { meta, target_dir, _manifest ->
+            tuple("target/prepared/${meta.cohort}/imputation_ready", target_dir)
+        })
+        .mix(TARGET_QC.out.direct_checkpoint.map { meta, target_dir, _manifest ->
+            tuple("target/prepared/${meta.cohort}/direct_ready", target_dir)
+        })
+        .mix(PREPARE_PLINK_REFERENCE.out.reference.map { _meta, reference_dir ->
+            tuple('reference/plink_ct/prepared', reference_dir)
+        })
 
     score_files = channel.empty()
+    score_job_records = channel.empty()
     generation_qc_files = HARMONISE_GWAS.out.harmonised.map { _meta, _cojo, _clump_input, harmonisation_qc -> harmonisation_qc }
-    result_files = VALIDATE_MANIFESTS.out.target_manifest.map { result_file -> tuple('run/preflight', result_file) }
-        .mix(VALIDATE_MANIFESTS.out.gwas_manifest.map { result_file -> tuple('run/preflight', result_file) })
-        .mix(VALIDATE_MANIFESTS.out.reference_manifest.map { result_file -> tuple('run/preflight', result_file) })
-        .mix(VALIDATE_MANIFESTS.out.phenotype_models.map { result_file -> tuple('run/preflight', result_file) })
-        .mix(VALIDATE_MANIFESTS.out.resolved_params.map { result_file -> tuple('run/preflight', result_file) })
-        .mix(VALIDATE_MANIFESTS.out.input_checksums.map { result_file -> tuple('run/preflight', result_file) })
-        .mix(VALIDATE_MANIFESTS.out.preflight_qc.map { result_file -> tuple('qc/preflight', result_file) })
+    result_files = VALIDATE_MANIFESTS.out.target_manifest.map { result_file -> tuple('inputs', result_file) }
+        .mix(VALIDATE_MANIFESTS.out.gwas_manifest.map { result_file -> tuple('inputs', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.reference_manifest.map { result_file -> tuple('inputs', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.phenotype_models.map { result_file -> tuple('inputs', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.run_settings.map { result_file -> tuple('inputs', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.input_checksums.map { result_file -> tuple('inputs', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.input_checks.map { result_file -> tuple('inputs/checks', result_file) })
+        .mix(input_checks.map { result_file -> tuple('inputs', result_file) })
         .mix(HARMONISE_GWAS.out.harmonised.map { meta, cojo, _clump_input, _harmonisation_qc -> tuple("gwas/${meta.trait_id}", cojo) })
         .mix(HARMONISE_GWAS.out.harmonised.map { meta, _cojo, _clump_input, harmonisation_qc -> tuple("qc/gwas/${meta.trait_id}", harmonisation_qc) })
-        .mix(PREPARE_TARGET.out.prepared.map { meta, _target_dir, target_qc -> tuple("qc/target/${meta.cohort}", target_qc) })
+        .mix(GENOTYPE_EDA.out.tables.flatMap { meta, tables -> tables.collect { result_file -> tuple("genotype_eda/${meta.cohort}", result_file) } })
+        .mix(GENOTYPE_EDA.out.logs.map { meta, stage_log -> tuple("logs/genotype_eda/${meta.cohort}", stage_log) })
+        .mix(PREPARE_TARGET.out.prep.map { meta, prep_qc -> tuple("target_prep/${meta.cohort}", prep_qc) })
+        .mix(PREPARE_TARGET.out.marker_decisions.map { meta, marker_decisions -> tuple("target_prep/${meta.cohort}", marker_decisions) })
+        .mix(PREPARE_TARGET.out.checkpoint
+            .filter { meta, _target_dir, _manifest -> ['raw', 'corrected'].contains(meta.input_stage) }
+            .map { meta, _target_dir, manifest ->
+                def stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
+                tuple("checkpoints/${stage}", manifest)
+            })
+        .mix(TARGET_QC.out.imputation_ready.map { meta, _target_dir, target_qc -> tuple("target_qc/${meta.cohort}", target_qc) })
+        .mix(TARGET_QC.out.sample_decisions.map { meta, decisions -> tuple("target_qc/${meta.cohort}", decisions) })
+        .mix(TARGET_QC.out.variant_decisions.map { meta, decisions -> tuple("target_qc/${meta.cohort}", decisions) })
+        .mix(PARTICIPANT_DECISIONS.out.decisions.map { meta, decisions, _keep -> tuple("target_qc/${meta.cohort}", decisions) })
+        .mix(PREPARE_PLINK_REFERENCE.out.summary.map { _meta, summary -> tuple('reference/plink_ct', summary) })
+        .mix(PREPARE_PLINK_REFERENCE.out.source_qc.map { _meta, source_qc -> tuple('reference/plink_ct', source_qc) })
+        .mix(PREPARE_PLINK_REFERENCE.out.logs.map { _meta, log -> tuple('logs/reference/plink_ct', log) })
+        .mix(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple("target_qc/${meta.cohort}/ancestry", ancestry) })
+        .mix(REFERENCE_ANCESTRY.out.reference.map { meta, projection -> tuple("target_qc/${meta.cohort}/ancestry", projection) })
+        .mix(REFERENCE_ANCESTRY.out.summary.map { meta, summary -> tuple("target_qc/${meta.cohort}/ancestry", summary) })
+        .mix(REFERENCE_ANCESTRY.out.logs.map { meta, log -> tuple("logs/target_qc/${meta.cohort}/ancestry", log) })
+        .mix(TARGET_QC.out.imputation_checkpoint.map { meta, _target_dir, manifest ->
+            tuple("target/prepared/${meta.cohort}/imputation_ready", manifest)
+        })
+        .mix(TARGET_QC.out.direct_checkpoint.map { meta, _target_dir, manifest ->
+            tuple("target/prepared/${meta.cohort}/direct_ready", manifest)
+        })
     version_files = VALIDATE_MANIFESTS.out.versions
+        .mix(input_versions)
         .mix(HARMONISE_GWAS.out.versions)
+        .mix(GENOTYPE_EDA.out.versions)
         .mix(PREPARE_TARGET.out.versions)
+        .mix(TARGET_QC.out.versions)
+        .mix(PARTICIPANT_DECISIONS.out.versions)
+        .mix(PREPARE_PLINK_REFERENCE.out.versions)
+        .mix(REFERENCE_ANCESTRY.out.versions)
 
-    if (methods.contains('plink_ct')) {
-        plink_reference = reference_rows
-            .filter { row -> row.reference_type == 'plink_ld' }
+    score_target_files = TARGET_QC.out.direct_ready
+    if (target_imputation && stop_after != 'target_qc') {
+        imputation_panel = reference_inputs
+            .filter { row, _files -> row.reference_type == 'imputation_panel' }
             .first()
+        genetic_map = reference_inputs
+            .filter { row, _files -> row.reference_type == 'genetic_map' }
+            .first()
+        beagle_jar = reference_inputs
+            .filter { row, _files -> row.reference_type == 'beagle_jar' }
+            .first()
+        target_impute_chromosomes = TARGET_QC.out.imputation_ready.flatMap { meta, target_dir, target_qc ->
+            def available = (1..22).findAll { chromosome ->
+                java.nio.file.Files.exists(target_dir.resolve("${meta.cohort}_chr${chromosome}.pgen")) &&
+                    java.nio.file.Files.exists(target_dir.resolve("${meta.cohort}_chr${chromosome}.pvar")) &&
+                    java.nio.file.Files.exists(target_dir.resolve("${meta.cohort}_chr${chromosome}.psam"))
+            }
+            if (!available) error "Target '${meta.cohort}' has no chromosome PGEN files for imputation."
+            def group_key = groupKey(meta, available.size())
+            available.collect { chromosome -> tuple(
+                group_key,
+                chromosome,
+                target_dir.resolve("${meta.cohort}_chr${chromosome}.pgen"),
+                target_dir.resolve("${meta.cohort}_chr${chromosome}.pvar"),
+                target_dir.resolve("${meta.cohort}_chr${chromosome}.psam"),
+                target_qc,
+            ) }
+        }
+        target_impute_input = target_impute_chromosomes
+            .combine(imputation_panel)
+            .combine(genetic_map)
+            .combine(beagle_jar)
+        TARGET_IMPUTE_CHROMOSOME(target_impute_input, script_files.target_impute_chromosome, imputation_dr2)
+        target_impute_gather = TARGET_IMPUTE_CHROMOSOME.out.chromosomes
+            .groupTuple(sort: 'deep')
+            .map { group_key, chromosomes, chromosome_dirs, chromosome_manifests, chromosome_qc, chromosome_dr2, chromosome_logs ->
+                tuple(group_key.getGroupTarget(), chromosome_dirs, chromosome_manifests, chromosome_qc, chromosome_dr2, chromosome_logs)
+            }
+        ASSEMBLE_TARGET_IMPUTATION(target_impute_gather, script_files.assemble_target_imputation)
+        score_target_files = ASSEMBLE_TARGET_IMPUTATION.out.prepared
+        result_files = result_files
+            .mix(ASSEMBLE_TARGET_IMPUTATION.out.manifest.map { meta, manifest -> tuple("target_imputation/${meta.cohort}", manifest) })
+            .mix(ASSEMBLE_TARGET_IMPUTATION.out.qc.map { meta, qc -> tuple("target_imputation/${meta.cohort}", qc) })
+            .mix(ASSEMBLE_TARGET_IMPUTATION.out.dr2.map { meta, dr2 -> tuple("target_imputation/${meta.cohort}", dr2) })
+            .mix(ASSEMBLE_TARGET_IMPUTATION.out.checkpoint.map { _meta, _target_dir, manifest -> tuple('checkpoints/imputed', manifest) })
+            .mix(ASSEMBLE_TARGET_IMPUTATION.out.logs.map { meta, log -> tuple("logs/target_imputation/${meta.cohort}", log) })
+        checkpoint_files = checkpoint_files.mix(
+            ASSEMBLE_TARGET_IMPUTATION.out.checkpoint.map { _meta, target_dir, _manifest -> tuple('checkpoints/imputed', target_dir) }
+        )
+        version_files = version_files
+            .mix(TARGET_IMPUTE_CHROMOSOME.out.versions)
+            .mix(ASSEMBLE_TARGET_IMPUTATION.out.versions)
+    }
+
+    participant_decision_rows = PARTICIPANT_DECISIONS.out.decisions
+        .map { meta, decisions, keep -> tuple(meta.cohort, decisions, keep) }
+    score_targets = score_target_files
+        .map { meta, target_dir, target_qc -> tuple(meta.cohort, meta, target_dir, target_qc) }
+        .join(participant_decision_rows)
+        .map { _cohort, meta, target_dir, target_qc, decisions, keep ->
+            tuple(meta, target_dir, target_qc, decisions, keep)
+        }
+    direct_score_targets = TARGET_QC.out.direct_ready
+        .map { meta, target_dir, target_qc -> tuple(meta.cohort, meta + [score_method: 'plink_ct_direct'], target_dir, target_qc) }
+        .join(participant_decision_rows)
+        .map { _cohort, meta, target_dir, target_qc, decisions, keep ->
+            tuple(meta, target_dir, target_qc, decisions, keep)
+        }
+
+    run_prs = ['prs', 'phenotype', 'report'].contains(stop_after)
+    run_phenotype = phenotype_enabled && ['phenotype', 'report'].contains(stop_after)
+
+    if (run_prs && methods.contains('plink_ct')) {
         PLINK_REFERENCE_FREQ(plink_reference)
 
         clump_input = HARMONISE_GWAS.out.harmonised.combine(plink_reference)
         PLINK_CLUMP(clump_input)
         BUILD_CT_WEIGHTS(PLINK_CLUMP.out.clumped, script_files.ct_weights)
 
-        plink_score_input = PREPARE_TARGET.out.prepared
+        plink_score_input = score_targets
             .combine(BUILD_CT_WEIGHTS.out.weights)
             .combine(PLINK_REFERENCE_FREQ.out.frequency)
-        PLINK_SCORE(plink_score_input, script_files.parse_plink)
-        score_files = score_files.mix(PLINK_SCORE.out.scores.map { _target, _gwas, score, _score_qc -> score })
+        PLINK_SCORE(plink_score_input)
+        PARSE_PLINK_SCORE(PLINK_SCORE.out.raw, script_files.parse_plink)
+        score_files = score_files.mix(PARSE_PLINK_SCORE.out.scores.map { _target, _gwas, score, _score_qc -> score })
+        score_job_records = score_job_records.mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, _score, _score_qc ->
+            [cohort: target.cohort, trait_id: gwas.trait_id, prs_name: gwas.prs_name, method: 'plink_ct']
+        })
         generation_qc_files = generation_qc_files.mix(
             BUILD_CT_WEIGHTS.out.weights.map { _meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> weight_qc }
         )
@@ -99,23 +466,81 @@ workflow DNAPRS {
             .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, weight, _weight_qc, _harmonisation_qc, _clump_log -> tuple("plink_ct/${meta.trait_id}", weight) })
             .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> tuple("qc/plink_ct/${meta.trait_id}", weight_qc) })
             .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, _weight, _weight_qc, _harmonisation_qc, clump_log -> tuple("qc/plink_ct/${meta.trait_id}", clump_log) })
-            .mix(PLINK_SCORE.out.scores.map { target, gwas, score, _score_qc -> tuple("scores/${target.cohort}/${gwas.trait_id}", score) })
-            .mix(PLINK_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
-            .mix(PLINK_SCORE.out.logs.map { target, gwas, score_log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}", score_log) })
+            .mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, score, _score_qc -> tuple("scores/${target.cohort}/${gwas.trait_id}", score) })
+            .mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
+            .mix(PARSE_PLINK_SCORE.out.logs.map { target, gwas, score_log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}", score_log) })
         version_files = version_files
             .mix(PLINK_REFERENCE_FREQ.out.versions)
             .mix(PLINK_CLUMP.out.versions)
             .mix(BUILD_CT_WEIGHTS.out.versions)
             .mix(PLINK_SCORE.out.versions)
+            .mix(PARSE_PLINK_SCORE.out.versions)
+
+        if (target_imputation) {
+            plink_direct_input = direct_score_targets
+                .combine(BUILD_CT_WEIGHTS.out.weights)
+                .combine(PLINK_REFERENCE_FREQ.out.frequency)
+            PLINK_DIRECT_SCORE(plink_direct_input)
+            PARSE_PLINK_DIRECT_SCORE(PLINK_DIRECT_SCORE.out.raw, script_files.parse_plink)
+
+            primary_sensitivity = PARSE_PLINK_SCORE.out.scores
+                .map { target, gwas, score, _qc -> tuple("${target.cohort}\t${gwas.trait_id}", target, gwas, score) }
+            direct_sensitivity = PARSE_PLINK_DIRECT_SCORE.out.scores
+                .map { _target, gwas, score, _qc -> tuple("${_target.cohort}\t${gwas.trait_id}", score) }
+            primary_used = PLINK_SCORE.out.raw
+                .map { target, gwas, _score, used, _log -> tuple("${target.cohort}\t${gwas.trait_id}", used) }
+            direct_used = PLINK_DIRECT_SCORE.out.raw
+                .map { target, gwas, _score, used, _log -> tuple("${target.cohort}\t${gwas.trait_id}", used) }
+            sensitivity_input = primary_sensitivity
+                .join(primary_used)
+                .join(direct_sensitivity)
+                .join(direct_used)
+                .map { _key, target, gwas, primary_score, primary_variants, direct_score, direct_variants ->
+                    tuple(target, gwas, primary_score, primary_variants, direct_score, direct_variants)
+                }
+            COMPARE_DIRECT_SCORE(sensitivity_input, script_files.compare_direct_score)
+
+            result_files = result_files
+                .mix(PARSE_PLINK_DIRECT_SCORE.out.scores.map { target, gwas, score, _qc -> tuple("scores/${target.cohort}/${gwas.trait_id}/sensitivity", score) })
+                .mix(PARSE_PLINK_DIRECT_SCORE.out.scores.map { target, gwas, _score, qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", qc) })
+                .mix(PLINK_DIRECT_SCORE.out.raw.map { target, gwas, _score, _used, log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}/sensitivity", log) })
+                .mix(COMPARE_DIRECT_SCORE.out.comparison.map { target, gwas, comparison, _qc -> tuple("scores/${target.cohort}/${gwas.trait_id}/sensitivity", comparison) })
+                .mix(COMPARE_DIRECT_SCORE.out.comparison.map { target, gwas, _comparison, qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", qc) })
+            version_files = version_files
+                .mix(PLINK_DIRECT_SCORE.out.versions)
+                .mix(PARSE_PLINK_DIRECT_SCORE.out.versions)
+                .mix(COMPARE_DIRECT_SCORE.out.versions)
+        }
     }
 
-    if (methods.contains('sbayesrc')) {
-        sbayesrc_ld = reference_rows
-            .filter { row -> row.reference_type == 'sbayesrc_ld' }
+    if (run_prs && methods.contains('sbayesrc')) {
+        sbayesrc_ld_source = reference_inputs
+            .filter { row, _files -> row.reference_type == 'sbayesrc_ld_source' }
             .first()
-        annotation = reference_rows
-            .filter { row -> row.reference_type == 'annotation' }
+        annotation_source = reference_inputs
+            .filter { row, _files -> row.reference_type == 'annotation_source' }
             .first()
+        PREPARE_SBAYESRC_REFERENCE(
+            sbayesrc_ld_source,
+            annotation_source,
+            script_files.prepare_sbayesrc_reference,
+        )
+        sbayesrc_ld = PREPARE_SBAYESRC_REFERENCE.out.ld.map { source, ld_dir ->
+            tuple(source + [
+                reference_type: 'sbayesrc_ld',
+                reference_stage: 'prepared',
+                source_format: 'directory',
+                path: ld_dir.name,
+            ], ld_dir)
+        }
+        annotation = PREPARE_SBAYESRC_REFERENCE.out.annotation.map { source, annotation_file ->
+            tuple(source + [
+                reference_type: 'annotation',
+                reference_stage: 'prepared',
+                source_format: 'tsv',
+                path: annotation_file.name,
+            ], annotation_file)
+        }
 
         tidy_input = HARMONISE_GWAS.out.harmonised.combine(sbayesrc_ld)
         SBAYESRC_TIDY(tidy_input, script_files.sbayesrc)
@@ -125,15 +550,19 @@ workflow DNAPRS {
             .combine(sbayesrc_ld)
             .combine(annotation)
         SBAYESRC_MODEL(model_input, script_files.sbayesrc, seed)
-        sbayesrc_score_input = PREPARE_TARGET.out.prepared.combine(SBAYESRC_MODEL.out.model)
+        sbayesrc_score_input = score_targets.combine(SBAYESRC_MODEL.out.model)
         SBAYESRC_SCORE(sbayesrc_score_input, script_files.sbayesrc)
         score_files = score_files.mix(SBAYESRC_SCORE.out.scores.map { _target, _gwas, score, _score_qc -> score })
+        score_job_records = score_job_records.mix(SBAYESRC_SCORE.out.scores.map { target, gwas, _score, _score_qc ->
+            [cohort: target.cohort, trait_id: gwas.trait_id, prs_name: gwas.prs_name, method: 'sbayesrc']
+        })
         generation_qc_files = generation_qc_files
             .mix(SBAYESRC_TIDY.out.tidy.map { _meta, _tidy, tidy_qc, _harmonisation_qc -> tidy_qc })
             .mix(SBAYESRC_IMPUTE.out.imputed.map { _meta, _imputed, impute_qc, _tidy_qc, _harmonisation_qc -> impute_qc })
             .mix(SBAYESRC_MODEL.out.model.map { _meta, _weight, _parameter, model_qc, _impute_qc, _tidy_qc, _harmonisation_qc -> model_qc })
 
         result_files = result_files
+            .mix(PREPARE_SBAYESRC_REFERENCE.out.summary.map { summary -> tuple('reference/sbayesrc', summary) })
             .mix(SBAYESRC_TIDY.out.tidy.map { meta, tidy, _tidy_qc, _harmonisation_qc -> tuple("sbayesrc/${meta.trait_id}/summary", tidy) })
             .mix(SBAYESRC_TIDY.out.tidy.map { meta, _tidy, tidy_qc, _harmonisation_qc -> tuple("qc/sbayesrc/${meta.trait_id}", tidy_qc) })
             .mix(SBAYESRC_TIDY.out.logs.map { meta, stage_log -> tuple("logs/sbayesrc/${meta.trait_id}", stage_log) })
@@ -148,48 +577,84 @@ workflow DNAPRS {
             .mix(SBAYESRC_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
             .mix(SBAYESRC_SCORE.out.logs.map { target, gwas, stage_log -> tuple("logs/sbayesrc/${gwas.trait_id}/${target.cohort}", stage_log) })
         version_files = version_files
+            .mix(PREPARE_SBAYESRC_REFERENCE.out.versions)
             .mix(SBAYESRC_TIDY.out.versions)
             .mix(SBAYESRC_IMPUTE.out.versions)
             .mix(SBAYESRC_MODEL.out.versions)
             .mix(SBAYESRC_SCORE.out.versions)
+        checkpoint_files = checkpoint_files
+            .mix(PREPARE_SBAYESRC_REFERENCE.out.ld.map { _meta, ld_dir -> tuple('reference/sbayesrc/prepared', ld_dir) })
+            .mix(PREPARE_SBAYESRC_REFERENCE.out.annotation.map { _meta, annotation_file -> tuple('reference/sbayesrc/prepared', annotation_file) })
     }
 
-    COMBINE_SCORES(score_files.collect(), script_files.combine)
-    SUMMARISE_GENERATION_QC(
-        generation_qc_files.collect(),
-        COMBINE_SCORES.out.score_qc,
-        script_files.generation_qc,
-    )
-    PHENOTYPE_ASSOCIATION(
-        COMBINE_SCORES.out.scores_long,
-        phenotype_file,
-        phenotype_models,
-        script_files.association,
-    )
+    if (run_prs) {
+        COMBINE_SCORES(
+            score_files.collect(),
+            PARTICIPANT_DECISIONS.out.decisions.map { _meta, decisions, _keep -> decisions }.collect(),
+            script_files.combine,
+        )
+        SUMMARISE_GENERATION_QC(
+            generation_qc_files.collect(),
+            COMBINE_SCORES.out.score_qc,
+            script_files.generation_qc,
+        )
+        result_files = result_files
+            .mix(COMBINE_SCORES.out.scores_long.map { result_file -> tuple('scores/combined', result_file) })
+            .mix(COMBINE_SCORES.out.scores_wide.map { result_file -> tuple('scores/combined', result_file) })
+            .mix(COMBINE_SCORES.out.score_qc.map { result_file -> tuple('qc/scores', result_file) })
+            .mix(COMBINE_SCORES.out.concordance.map { result_file -> tuple('qc/scores', result_file) })
+            .mix(SUMMARISE_GENERATION_QC.out.variant_flow.map { result_file -> tuple('qc/generation', result_file) })
+        version_files = version_files
+            .mix(COMBINE_SCORES.out.versions)
+            .mix(SUMMARISE_GENERATION_QC.out.versions)
 
-    result_files = result_files
-        .mix(COMBINE_SCORES.out.scores_long.map { result_file -> tuple('scores/combined', result_file) })
-        .mix(COMBINE_SCORES.out.scores_wide.map { result_file -> tuple('scores/combined', result_file) })
-        .mix(COMBINE_SCORES.out.score_qc.map { result_file -> tuple('qc/scores', result_file) })
-        .mix(COMBINE_SCORES.out.concordance.map { result_file -> tuple('qc/scores', result_file) })
-        .mix(SUMMARISE_GENERATION_QC.out.variant_flow.map { result_file -> tuple('qc/generation', result_file) })
-        .mix(PHENOTYPE_ASSOCIATION.out.associations.map { result_file -> tuple('phenotype', result_file) })
-        .mix(PHENOTYPE_ASSOCIATION.out.fitted_models.map { result_file -> tuple('phenotype', result_file) })
-        .mix(PHENOTYPE_ASSOCIATION.out.plot_data.map { result_file -> tuple('phenotype', result_file) })
-    version_files = version_files
-        .mix(COMBINE_SCORES.out.versions)
-        .mix(SUMMARISE_GENERATION_QC.out.versions)
-        .mix(PHENOTYPE_ASSOCIATION.out.versions)
+        if (run_phenotype) {
+            SPLIT_PHENOTYPE_MODELS(phenotype_models)
+            phenotype_model_jobs = SPLIT_PHENOTYPE_MODELS.out.models.flatten().map { model_file ->
+                tuple([model_id: modelField(model_file, 'model_id'), prs_name: modelField(model_file, 'prs_name')], model_file)
+            }
+            phenotype_jobs = score_job_records
+                .combine(COMBINE_SCORES.out.scores_long)
+                .combine(phenotype_model_jobs)
+                .filter { score_job, _scores, model_job, _model_file -> score_job.prs_name == model_job.prs_name }
+                .map { score_job, scores, _model_job, model_file -> tuple(score_job, scores, model_file) }
+            PHENOTYPE_ASSOCIATION(
+                phenotype_jobs,
+                phenotype_file,
+                script_files.association,
+                seed,
+            )
+            COMBINE_PHENOTYPE(
+                PHENOTYPE_ASSOCIATION.out.associations.collect(),
+                PHENOTYPE_ASSOCIATION.out.fitted_models.collect(),
+                PHENOTYPE_ASSOCIATION.out.plot_data.collect(),
+                PHENOTYPE_ASSOCIATION.out.permutations.collect(),
+                PHENOTYPE_ASSOCIATION.out.influence.collect(),
+                PHENOTYPE_ASSOCIATION.out.phenotype_prs.collect(),
+                script_files.combine_phenotype,
+            )
+            result_files = result_files
+                .mix(COMBINE_PHENOTYPE.out.associations.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.fitted_models.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.plot_data.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.permutations.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.influence.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.phenotype_prs.map { result_file -> tuple('phenotype', result_file) })
+            version_files = version_files
+                .mix(PHENOTYPE_ASSOCIATION.out.versions)
+                .mix(COMBINE_PHENOTYPE.out.versions)
+        }
+    }
 
     COLLECT_VERSIONS(version_files.collect())
     result_files = result_files.mix(COLLECT_VERSIONS.out.versions.map { result_file -> tuple('pipeline_info', result_file) })
 
-    if (report_enabled) {
+    if (report_enabled && stop_after == 'report') {
         output_manifest = result_files
             .map { publish_path, result_file -> "${publish_path}\t${result_file.name}" }
             .collectFile(
                 name: 'output_files.tsv',
-                seed: 'publish_path\tfile_name\n',
+                seed: 'publish_path\tfile_name',
                 sort: true,
                 newLine: true,
             )
@@ -201,6 +666,7 @@ workflow DNAPRS {
             output_manifest,
             report_source,
         )
+        PUBLIC_FIGURES(RENDER_REPORT.out.figures)
         published_files = result_files
             .mix(RENDER_REPORT.out.pages.flatten().map { report_file -> tuple('', report_file) })
             .mix(RENDER_REPORT.out.libraries.map { report_file -> tuple('', report_file) })
@@ -208,10 +674,20 @@ workflow DNAPRS {
             .mix(RENDER_REPORT.out.downloads.map { report_file -> tuple('', report_file) })
             .mix(RENDER_REPORT.out.figures.map { report_file -> tuple('', report_file) })
             .mix(RENDER_REPORT.out.provenance.flatten().map { report_file -> tuple('', report_file) })
+            .mix(PUBLIC_FIGURES.out.figures.map { report_file -> tuple('', report_file) })
+            .mix(checkpoint_files)
     } else {
-        published_files = result_files
+        published_files = result_files.mix(checkpoint_files)
     }
 
     emit:
-    published_files.map { publish_path, result_file -> tuple(publish_path, result_file) }
+    published_files.map { publish_path, result_file ->
+        if (!publish_path) {
+            tuple('', result_file)
+        } else if (publish_path == 'logs' || publish_path.startsWith('logs/')) {
+            tuple(publish_path, result_file)
+        } else {
+            tuple("data/${publish_path}", result_file)
+        }
+    }
 }

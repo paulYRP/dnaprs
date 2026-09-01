@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/nf-core/dnaprs/main/nextflow_schema.json",
-    "title": "nf-core/dnaprs pipeline parameters",
+    "$id": "https://raw.githubusercontent.com/paulYRP/dnaprs/main/nextflow_schema.json",
+    "title": "paulYRP/dnaprs pipeline parameters",
     "description": "Generate and evaluate polygenic risk scores with PLINK and SBayesRC.",
     "type": "object",
     "$defs": {
@@ -9,215 +9,212 @@
             "title": "Input and output options",
             "type": "object",
             "fa_icon": "fas fa-terminal",
-            "description": "Define the quality-controlled inputs and the result directory.",
-            "required": ["input", "gwas_manifest", "reference_manifest", "outdir"],
+            "required": ["input", "gwas", "outdir"],
             "properties": {
                 "input": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "mimetype": "text/tab-separated-values",
-                    "description": "TSV manifest describing quality-controlled target genotype cohorts.",
-                    "help_text": "Each row declares one target cohort, its genotype format and paths, and the participant keep file. Source genotype files are read-only.",
-                    "fa_icon": "fas fa-dna"
+                    "type": ["string", "array"],
+                    "mimetype": "application/octet-stream",
+                    "default": "data/plink/raw",
+                    "description": "Raw target-genotype directory or advanced list of explicit target records.",
+                    "oneOf": [
+                        { "type": "string", "format": "directory-path" },
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["id", "path", "format"],
+                                "properties": {
+                                    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$" },
+                                    "path": { "type": "string", "format": "path" },
+                                    "format": { "type": "string", "enum": ["pgen", "bed", "ped", "bgen", "vcf", "genomestudio"] },
+                                    "stage": { "type": "string", "enum": ["raw", "corrected", "qc_completed", "imputed"], "default": "raw" },
+                                    "build": { "type": "string", "enum": ["GRCh37"], "default": "GRCh37" },
+                                    "role": { "type": "string", "enum": ["target", "validation"], "default": "target" },
+                                    "ancestry": { "type": "string", "default": "unspecified" },
+                                    "sample": { "type": ["string", "null"], "format": "path" },
+                                    "keep": { "type": ["string", "null"], "format": "path" },
+                                    "dosage": { "type": ["string", "null"] },
+                                    "assay_manifest": { "type": ["string", "null"], "format": "path" },
+                                    "marker_map": { "type": ["string", "null"], "format": "path" }
+                                }
+                            }
+                        }
+                    ]
                 },
-                "gwas_manifest": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "mimetype": "text/tab-separated-values",
-                    "description": "TSV manifest describing quality-controlled GWAS summary statistics.",
-                    "help_text": "Each row declares one trait and the exact source columns for chromosome, position, alleles, effect, uncertainty, P value, sample size, and allele frequency where required.",
-                    "fa_icon": "fas fa-table"
+                "gwas": {
+                    "type": ["string", "array"],
+                    "default": "data/gwas/raw",
+                    "description": "Raw GWAS directory or advanced list of explicit GWAS records.",
+                    "oneOf": [
+                        { "type": "string", "format": "directory-path" },
+                        {
+                            "type": "array",
+                            "minItems": 1,
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": ["id", "path", "effect_type", "sample_size", "columns"],
+                                "properties": {
+                                    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$" },
+                                    "path": { "type": "string", "format": "file-path", "exists": true },
+                                    "build": { "type": "string", "enum": ["GRCh37"], "default": "GRCh37" },
+                                    "ancestry": { "type": "string", "default": "unspecified" },
+                                    "effect_type": { "type": "string", "enum": ["beta", "log_or", "or"] },
+                                    "sample_size": { "type": "number", "exclusiveMinimum": 0 },
+                                    "prs_name": { "type": ["string", "null"] },
+                                    "source_format": { "type": "string", "default": "auto" },
+                                    "columns": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": ["variant", "chromosome", "position", "effect_allele", "other_allele", "effect", "standard_error", "p_value"],
+                                        "properties": {
+                                            "variant": { "type": "string" },
+                                            "chromosome": { "type": "string" },
+                                            "position": { "type": "string" },
+                                            "effect_allele": { "type": "string" },
+                                            "other_allele": { "type": "string" },
+                                            "effect": { "type": "string" },
+                                            "standard_error": { "type": "string" },
+                                            "p_value": { "type": "string" },
+                                            "frequency": { "type": ["string", "null"] },
+                                            "case_frequency": { "type": ["string", "null"] },
+                                            "control_frequency": { "type": ["string", "null"] },
+                                            "case_n": { "type": ["string", "null"] },
+                                            "control_n": { "type": ["string", "null"] },
+                                            "sample_size": { "type": ["string", "null"] },
+                                            "info": { "type": ["string", "null"] }
+                                        }
+                                    },
+                                    "maf_min": { "type": "number", "minimum": 0, "maximum": 0.5, "default": 0.01 },
+                                    "info_min": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+                                }
+                            }
+                        }
+                    ]
                 },
-                "reference_manifest": {
-                    "type": "string",
-                    "format": "file-path",
-                    "exists": true,
-                    "mimetype": "text/tab-separated-values",
-                    "description": "TSV manifest describing the independent LD and annotation resources.",
-                    "help_text": "The declared resources must use the same genome build and compatible variant identifiers as the target and GWAS inputs.",
-                    "fa_icon": "fas fa-book"
+                "phenotype": { "type": ["string", "null"], "format": "file-path", "exists": true, "description": "Optional participant-level phenotype CSV." },
+                "outdir": { "type": "string", "format": "directory-path", "default": "dnaprs", "description": "Result directory." },
+                "run_name": { "type": "string", "default": "model1", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$", "description": "Run-specific result folder." }
+            }
+        },
+        "phenotype_options": {
+            "title": "Phenotype model options",
+            "type": "object",
+            "description": "Declare one model on the command line or several models in params.yml.",
+            "properties": {
+                "outcome": { "type": ["string", "null"], "description": "Outcome column in the phenotype CSV." },
+                "covariates": { "type": ["string", "null"], "description": "Comma-separated phenotype covariate columns, or none." },
+                "model_type": { "type": ["string", "null"], "enum": ["gaussian", "binomial", "mixed", null], "description": "Statistical model family for the declared outcome." },
+                "participant_id": { "type": ["string", "null"], "description": "Participant-ID column; inferred only when one column matches target IDs unambiguously." },
+                "group_column": { "type": ["string", "null"], "description": "Grouping column required by a mixed model." },
+                "control_value": { "type": ["string", "number", "boolean", "null"], "description": "Phenotype value treated as the control level in a binomial model." },
+                "case_value": { "type": ["string", "number", "boolean", "null"], "description": "Phenotype value treated as the case level in a binomial model." },
+                "models": {
+                    "type": "array",
+                    "description": "One or more advanced phenotype model records supplied in params.yml.",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["id", "outcome", "model_type"],
+                        "properties": {
+                            "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$" },
+                            "outcome": { "type": "string" },
+                            "covariates": { "type": ["string", "array"], "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" }, "uniqueItems": true }], "default": "none" },
+                            "model_type": { "type": "string", "enum": ["gaussian", "binomial", "mixed"] },
+                            "participant_id": { "type": ["string", "null"] },
+                            "group_column": { "type": ["string", "null"] },
+                            "control_value": { "type": ["string", "number", "boolean", "null"] },
+                            "case_value": { "type": ["string", "number", "boolean", "null"] },
+                            "score_ids": { "type": ["string", "array"], "oneOf": [{ "const": "all" }, { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }], "default": "all" },
+                            "expected_direction": { "type": ["string", "null"], "enum": ["positive", "negative", null] },
+                            "primary": { "type": "boolean", "default": true },
+                            "subset": { "type": ["string", "null"] }
+                        }
+                    }
                 },
-                "manifest_base": {
-                    "type": ["string", "null"],
-                    "format": "directory-path",
-                    "exists": true,
-                    "description": "Base directory for relative paths inside manifests.",
-                    "help_text": "When omitted, relative paths are resolved from the directory where Nextflow was launched.",
-                    "fa_icon": "fas fa-folder-tree"
+                "model_id": { "type": ["string", "null"], "description": "Run one selected model from models." }
+            }
+        },
+        "reference_options": {
+            "title": "Reference options",
+            "type": "object",
+            "properties": {
+                "references": {
+                    "type": ["null", "string", "object"],
+                    "default": null,
+                    "description": "Optional local reference root or explicit role-to-path object.",
+                    "oneOf": [
+                        { "type": "null" },
+                        { "type": "string", "format": "directory-path", "exists": true },
+                        {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["root", "assets"],
+                            "properties": {
+                                "root": { "type": "string", "format": "directory-path", "exists": true },
+                                "assets": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "string", "format": "path" } }
+                            }
+                        }
+                    ]
                 },
-                "phenotype_file": {
-                    "type": ["string", "null"],
-                    "format": "file-path",
-                    "exists": true,
-                    "description": "Optional phenotype table for prespecified PRS association models.",
-                    "fa_icon": "fas fa-user-group"
-                },
-                "phenotype_models": {
-                    "type": ["string", "null"],
-                    "format": "file-path",
-                    "exists": true,
-                    "description": "Optional TSV declaring phenotype association models.",
-                    "fa_icon": "fas fa-chart-line"
-                },
-                "outdir": {
-                    "type": "string",
-                    "format": "directory-path",
-                    "default": "results",
-                    "description": "Directory where run-specific results and reports are saved.",
-                    "fa_icon": "fas fa-folder-open"
-                },
-                "email": {
-                    "type": "string",
-                    "description": "Email address for the completion summary.",
-                    "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
-                    "fa_icon": "fas fa-envelope"
-                }
+                "reference_mode": { "type": "string", "enum": ["auto", "local", "download"], "default": "auto", "description": "Resolve references from local files, downloads, or both in automatic mode." },
+                "reference_dir": { "type": "string", "format": "directory-path", "default": "references/dnaprs", "description": "Persistent cache and output directory for verified reference assets." },
+                "reference_bundle": { "type": "string", "default": "grch37-v1", "description": "Pinned reference catalogue bundle identifier." },
+                "reference_only": { "type": "boolean", "description": "Resolve and verify references without running participant analyses." },
+                "beagle_jar": { "type": ["string", "null"], "format": "file-path", "exists": true, "description": "Optional local Beagle JAR overriding the catalogue asset." },
+                "unbref3_jar": { "type": ["string", "null"], "format": "file-path", "exists": true, "description": "Optional local unbref3 JAR overriding the catalogue asset." }
             }
         },
         "analysis_options": {
             "title": "PRS analysis options",
             "type": "object",
-            "fa_icon": "fas fa-chart-column",
-            "description": "Select the scoring methods and fixed run settings.",
             "properties": {
-                "run_name": {
-                    "type": "string",
-                    "default": "dnaprs_run",
-                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
-                    "description": "Stable name for the run-specific result folder.",
-                    "fa_icon": "fas fa-tag"
-                },
-                "methods": {
-                    "type": "string",
-                    "enum": ["plink_ct", "sbayesrc", "plink_ct,sbayesrc"],
-                    "default": "plink_ct,sbayesrc",
-                    "description": "PRS methods to run.",
-                    "help_text": "PLINK C+T and SBayesRC are independent branches that share harmonised GWAS and prepared target inputs.",
-                    "fa_icon": "fas fa-code-branch"
-                },
-                "genome_build": {
-                    "type": "string",
-                    "enum": ["GRCh37", "GRCh38"],
-                    "default": "GRCh37",
-                    "description": "Genome build shared by the target, GWAS, and reference resources.",
-                    "fa_icon": "fas fa-dna"
-                },
-                "seed": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 20260829,
-                    "description": "Seed used by stochastic model steps.",
-                    "fa_icon": "fas fa-dice"
-                },
-                "report_enabled": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Render the portable dnaprs scientific report.",
-                    "fa_icon": "fas fa-file-lines"
-                }
-            }
-        },
-        "institutional_config_options": {
-            "title": "Institutional configuration options",
-            "type": "object",
-            "fa_icon": "fas fa-university",
-            "description": "Parameters used to describe centralised compute profiles.",
-            "properties": {
-                "custom_config_version": {
-                    "type": "string",
-                    "default": "master",
-                    "description": "Git revision for nf-core institutional configurations.",
-                    "hidden": true
-                },
-                "custom_config_base": {
-                    "type": "string",
-                    "default": "https://raw.githubusercontent.com/nf-core/configs/master",
-                    "description": "Base URL or local directory for nf-core institutional configurations.",
-                    "hidden": true
-                },
-                "config_profile_name": {
-                    "type": ["string", "null"],
-                    "description": "Institutional configuration name.",
-                    "hidden": true
-                },
-                "config_profile_description": {
-                    "type": ["string", "null"],
-                    "description": "Institutional configuration description.",
-                    "hidden": true
-                },
-                "config_profile_contact": {
-                    "type": ["string", "null"],
-                    "description": "Institutional configuration contact.",
-                    "hidden": true
-                },
-                "config_profile_url": {
-                    "type": ["string", "null"],
-                    "description": "Institutional configuration documentation URL.",
-                    "hidden": true
-                }
+                "methods": { "type": "string", "enum": ["plink_ct", "sbayesrc", "plink_ct,sbayesrc"], "default": "plink_ct,sbayesrc", "description": "Comma-separated PRS methods to run." },
+                "genome": { "type": "string", "enum": ["GRCh37"], "default": "GRCh37", "description": "Genome build required by the current reference bundle." },
+                "seed": { "type": "integer", "minimum": 1, "default": 20260829, "description": "Reproducible random seed used by stochastic analysis steps." },
+                "sample_missingness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.02, "description": "Maximum missing-call fraction allowed per participant." },
+                "imputation_variant_missingness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.1, "description": "Maximum variant missingness before the imputation checkpoint." },
+                "direct_variant_missingness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.01, "description": "Maximum variant missingness for direct-genotype sensitivity scoring." },
+                "maf_filter": { "type": "number", "minimum": 0, "maximum": 0.5, "default": 0, "description": "Optional minor-allele-frequency threshold for target QC." },
+                "hwe_filter": { "type": "number", "minimum": 0, "maximum": 1, "default": 0, "description": "Optional Hardy-Weinberg exact-test p-value threshold for target QC." },
+                "ancestry_pcs": { "type": "integer", "minimum": 2, "maximum": 20, "default": 10, "description": "Number of reference principal components used for ancestry distance." },
+                "ancestry_percentile": { "type": "number", "exclusiveMinimum": 0.9, "exclusiveMaximum": 1, "default": 0.99, "description": "Empirical European-reference distance percentile for the primary-analysis flag." },
+                "target_imputation": { "type": "boolean", "default": true, "description": "Run chromosome-level Beagle imputation before primary scoring." },
+                "imputation_dr2": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.8, "description": "Minimum Beagle dosage R-squared retained after imputation." },
+                "report_enabled": { "type": "boolean", "default": true, "description": "Render the portable HTML report and downloadable report assets." },
+                "stop_after": { "type": "string", "enum": ["target_qc", "imputation", "prs", "phenotype", "report"], "default": "report", "description": "Last scientific stage to execute." }
             }
         },
         "generic_options": {
             "title": "Generic options",
             "type": "object",
-            "fa_icon": "fas fa-gears",
-            "description": "Common nf-core execution options.",
             "properties": {
-                "version": {
-                    "type": "boolean",
-                    "description": "Display the pipeline version and exit.",
-                    "hidden": true
-                },
-                "publish_dir_mode": {
-                    "type": "string",
-                    "default": "copy",
-                    "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"],
-                    "description": "Method used by Nextflow to save final workflow outputs.",
-                    "hidden": true
-                },
-                "email_on_fail": {
-                    "type": "string",
-                    "description": "Email address for a completion summary only when the pipeline fails.",
-                    "pattern": "^([a-zA-Z0-9_\\-\\.]+)@([a-zA-Z0-9_\\-\\.]+)\\.([a-zA-Z]{2,5})$",
-                    "hidden": true
-                },
-                "plaintext_email": {
-                    "type": "boolean",
-                    "description": "Send a plain-text completion email instead of HTML.",
-                    "hidden": true
-                },
-                "monochrome_logs": {
-                    "type": "boolean",
-                    "description": "Disable coloured terminal output.",
-                    "hidden": true
-                },
-                "validate_params": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Validate parameters against the pipeline schema.",
-                    "hidden": true
-                },
-                "help": {
-                    "type": ["boolean", "string"],
-                    "description": "Display the help message."
-                },
-                "help_full": {
-                    "type": "boolean",
-                    "description": "Display the full help message."
-                },
-                "show_hidden": {
-                    "type": "boolean",
-                    "description": "Display hidden parameters in the help message."
-                }
+                "version": { "type": "boolean", "hidden": true, "description": "Print the pipeline version and exit." },
+                "publish_dir_mode": { "type": "string", "default": "copy", "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"], "hidden": true, "description": "Nextflow publishDir transfer mode." },
+                "email": { "type": ["string", "null"], "hidden": true, "description": "Email address that receives the completion summary." },
+                "email_on_fail": { "type": ["string", "null"], "hidden": true, "description": "Email address notified only when execution fails." },
+                "plaintext_email": { "type": "boolean", "hidden": true, "description": "Send completion email as plain text." },
+                "monochrome_logs": { "type": "boolean", "hidden": true, "description": "Disable coloured terminal log output." },
+                "validate_params": { "type": "boolean", "default": true, "hidden": true, "description": "Validate supplied parameters against this schema." },
+                "help": { "type": "boolean", "hidden": true, "description": "Print the concise parameter help text." },
+                "help_full": { "type": "boolean", "hidden": true, "description": "Print the complete parameter help text." },
+                "show_hidden": { "type": "boolean", "hidden": true, "description": "Include hidden generic parameters in help output." },
+                "custom_config_version": { "type": "string", "default": "master", "hidden": true, "description": "Version of the optional nf-core institutional configuration." },
+                "custom_config_base": { "type": "string", "default": "https://raw.githubusercontent.com/nf-core/configs/master", "hidden": true, "description": "Base URL for optional nf-core institutional configurations." },
+                "config_profile_name": { "type": ["string", "null"], "hidden": true, "description": "Display name of an active institutional configuration." },
+                "config_profile_description": { "type": ["string", "null"], "hidden": true, "description": "Description of an active institutional configuration." },
+                "config_profile_contact": { "type": ["string", "null"], "hidden": true, "description": "Support contact for an active institutional configuration." },
+                "config_profile_url": { "type": ["string", "null"], "hidden": true, "description": "Documentation URL for an active institutional configuration." }
             }
         }
     },
     "allOf": [
         { "$ref": "#/$defs/input_output_options" },
+        { "$ref": "#/$defs/phenotype_options" },
+        { "$ref": "#/$defs/reference_options" },
         { "$ref": "#/$defs/analysis_options" },
-        { "$ref": "#/$defs/institutional_config_options" },
         { "$ref": "#/$defs/generic_options" }
     ]
 }

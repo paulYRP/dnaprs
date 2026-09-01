@@ -1,0 +1,7 @@
+name: public_figures
+description: Copy the completed report figure bundle to the public figures output.
+keywords: [report, figures]
+output:
+  - figures:
+      type: directory
+      description: SVG, TIFF, PNG, JPEG, and source-table figure bundle.

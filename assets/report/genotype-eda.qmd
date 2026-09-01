@@ -1,0 +1,63 @@
+---
+title: "Genotype EDA"
+pagetitle: "Genotype EDA | dnaprs"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({
+  library(data.table)
+  library(knitr)
+}))
+```
+
+```{r, include=FALSE}
+source("report-setup.R", local = knitr::knit_global())
+```
+
+## Target composition
+
+```{r}
+tableVIEW(
+  genotypeEDA[, .(
+    cohort, role, input_stage, format, participants, variants, chromosomes,
+    autosomal_variants, x_variants, y_variants, mitochondrial_variants,
+    unplaced_or_nonstandard_variants, recorded_sex_participants,
+    phenotype_participants, duplicated_participant_identifiers,
+    duplicated_variant_identifier_groups, review_items, status
+  )],
+  "Supplied target composition by declared cohort."
+)
+```
+
+## Results requiring attention
+
+```{r}
+tableVIEW(
+  genotypeEDACHECK,
+  "Exploratory checks, including explicit reasons when a diagnostic could not be run."
+)
+```
+
+## Figures
+
+```{r, results='asis'}
+figureGALLERY("Genotype EDA")
+```
+
+Internal PCA describes major genotype differences within the target. In a small cohort,
+the leading components can be strongly influenced by relatives. It does not assign
+ancestry without an external reference.
+
+## Result tables and logs
+
+```{r}
+fileTABLE(
+  "^(genotype_eda|logs/genotype_eda)",
+  "Genotype EDA summaries, exact figure-source tables, PLINK diagnostics, and the complete stage log."
+)
+```
+
+<div class="dnaprs-closing-card">
+<p>The supplied target structure supports continued preparation when format import passes and every unavailable or unusual diagnostic has an explicit record. REVIEW results remain visible for Target PREP and Target QC; this exploratory stage does not silently remove participants or variants.</p>
+</div>

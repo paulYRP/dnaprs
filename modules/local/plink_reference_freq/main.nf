@@ -3,8 +3,10 @@ process PLINK_REFERENCE_FREQ {
     label 'process_high'
     label 'process_plink'
 
+    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
+
     input:
-    val reference
+    tuple val(reference), path(reference_files)
 
     output:
     tuple val(reference), path('reference.afreq'), path('reference.log'), emit: frequency

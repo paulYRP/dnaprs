@@ -1,0 +1,33 @@
+---
+title: "Target PREP"
+pagetitle: "Target PREP | dnaprs"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({library(data.table); library(knitr)}))
+```
+
+```{r, include=FALSE}
+source("report-setup.R", local = knitr::knit_global())
+```
+
+## Preparation outcome
+
+```{r, results='asis'}
+figureGALLERY("Target PREP")
+```
+
+```{r}
+tableVIEW(targetPREP, "Target preparation steps and retained dimensions.")
+```
+
+## Outputs and downloads
+
+```{r}
+fileTABLE("^target_prep/", "Prepared target dimensions and conversion summaries.")
+```
+
+<div class="dnaprs-closing-card">
+<p>A passed preparation result means that the declared QC-completed input was converted into non-empty autosomal PGEN output. It does not certify array annotation, ancestry, imputation quality, or study-specific participant and variant exclusions that must already have been completed upstream.</p>
+</div>

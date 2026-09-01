@@ -2,17 +2,38 @@
 
 All notable changes to dnaprs are recorded here.
 
-## 1.0.0dev - 2026-08-29
+## 1.0.0dev - 2026-09-01
 
-- Added strict Nextflow 25.10.4 DSL2 structure and typed parameters.
-- Added validated target, GWAS, reference, and phenotype-model manifests.
+- Added a strict Nextflow DSL2 workflow with typed parameters and nf-schema
+  validation.
+- Added beginner input discovery for raw genotype, GWAS, and optional phenotype
+  files, while retaining YAML configuration and parameter overrides for advanced
+  users.
+- Added support for PLINK 1 BED, PLINK 2 PGEN, PED/MAP, BGEN, VCF, and Illumina
+  GenomeStudio inputs without dataset-specific names.
+- Added validated local, cached, and downloaded reference modes, including pinned
+  Beagle, unbref3, dbSNP, genome, genetic-map, ancestry, and SBayesRC assets.
+- Added raw-genotype exploration, target conversion, two-stage QC, chromosome-level
+  Beagle imputation, chromosome gathering, ancestry projection, and integrated
+  participant decisions.
 - Added fixed PLINK 2 C+T scoring with an independent LD reference.
 - Added the SBayesRC 0.2.6 `tidy`, `impute`, model, and score sequence.
+- Added concurrent trait, chromosome, scoring-method, and phenotype-model tasks with
+  portable process labels for executor-specific CPU and memory allocation.
 - Added combined raw and within-cohort standardised score tables.
-- Added prespecified `lm`, `glm2`, and `lme4` phenotype associations.
-- Added a tabbed Quarto report with displayed TIFF quantitative figures.
-- Added standard, Docker, Apptainer, Aquarius PBS Pro, and artificial stub-test profiles.
-- Added the offline terminal configuration assistant and run-specific PBS logs.
-- Added unique process/trait/cohort software-version keys and run-specific technical
-  report paths to prevent output overlap.
-- Updated nf-schema to the version used by the current nf-core development template.
+- Added optional Gaussian, binomial, ordinal, and mixed-model phenotype associations
+  driven directly by CSV columns and YAML model records.
+- Added typed-versus-imputed PLINK sensitivity and scoring-variant coverage checks.
+- Added a tabbed Quarto report containing genotype, GWAS, QC, imputation, ancestry,
+  PRS, phenotype, provenance, and execution-log results, with downloadable TIFF
+  figures and XLSX tables.
+- Added standard, Docker, Apptainer, and artificial stub-test profiles.
+- Separated process software into pinned analysis, PLINK, SBayesRC, and report
+  environments, while keeping production references outside containers.
+- Added an executor-independent PBS example that requests HPC CPU and memory once and
+  lets Nextflow schedule the pipeline; Apptainer is loaded through Singularity for
+  compatibility with the available module environment.
+- Organised published results under only `data/`, `figures/`, `logs/`, and `reports/`,
+  rooted at `dnaprs/<run_name>` by default.
+- Reworked the README, workflow diagram, documentation, and operational test bundle;
+  removed unused template and Aqua-specific files.

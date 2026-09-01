@@ -1,0 +1,8 @@
+reference_only: true
+reference_mode: download
+reference_dir: /tmp/dnaprs-reference-cache
+reference_bundle: grch37-v1
+methods: plink_ct,sbayesrc
+target_imputation: true
+outdir: /tmp/dnaprs-reference-only
+run_name: references

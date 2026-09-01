@@ -1,0 +1,30 @@
+name: genotype_eda
+description: Describe raw target genotype composition and exploratory sample and variant diagnostics without applying QC exclusions.
+keywords: [plink, genotype, eda, missingness, heterozygosity, relatedness, pca]
+tools:
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset
+input:
+  - meta:
+      type: map
+      description: Target metadata containing stable cohort, format, build, and input-stage identifiers.
+  - target_files:
+      type: file
+      description: Staged target genotype files and required format companions.
+output:
+  - tables:
+      type: file
+      description: Cohort-specific exploratory summaries and exact figure-source tables.
+      pattern: "*.tsv"
+  - logs:
+      type: file
+      description: Complete command and PLINK log for the exploratory stage.
+      pattern: "*.genotype_eda.log"
+  - versions:
+      type: file
+      description: Software versions used by the process.
+      pattern: versions.yml
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

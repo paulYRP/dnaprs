@@ -17,8 +17,15 @@ suppressWarnings(suppressPackageStartupMessages({
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-This page groups method logs, software versions, task status, resource use, and the
-workflow structure. Full logs are downloaded rather than repeated inside the website.
+## Run workbook
+
+The workbook contains the report tables, exact figure-source tables, a contents index,
+and a column dictionary. Participant-level and phenotype-derived worksheets are marked
+as restricted research results in the contents sheet.
+
+```{r, results='asis'}
+buttonROW(downloadBUTTON("downloads/dnaprs_report_tables.xlsx", "Download dnaprs_report_tables.xlsx"))
+```
 
 ## Method and software records
 
@@ -37,9 +44,41 @@ status and resource use; the timeline shows task timing; the trace provides task
 metrics; and the directed acyclic graph (DAG) records workflow structure.
 
 <div class="dnaprs-log-grid">
-<a class="dnaprs-log-card" href="provenance/execution_report.html"><strong>Execution report</strong><span>Run summary, resources, and task status</span></a>
-<a class="dnaprs-log-card" href="provenance/execution_timeline.html"><strong>Execution timeline</strong><span>Scheduling and execution time by task</span></a>
-<a class="dnaprs-log-card" href="provenance/pipeline_dag.html"><strong>Pipeline DAG</strong><span>Processes and their data connections</span></a>
-<a class="dnaprs-log-card" href="provenance/execution_trace.tsv" download><strong>Task trace</strong><span>Download detailed task metrics</span></a>
-<a class="dnaprs-log-card" href="provenance/report_software_versions.tsv" download><strong>Report software</strong><span>Download report software versions</span></a>
+<details class="dnaprs-log-panel">
+<summary><strong>Execution report</strong><span>Run summary, resources, and task status</span></summary>
+<div class="dnaprs-log-content"><iframe src="provenance/execution_report.html" title="Nextflow execution report" loading="lazy"></iframe></div>
+</details>
+<details class="dnaprs-log-panel">
+<summary><strong>Execution timeline</strong><span>Scheduling and execution time by task</span></summary>
+<div class="dnaprs-log-content"><iframe src="provenance/execution_timeline.html" title="Nextflow execution timeline" loading="lazy"></iframe></div>
+</details>
+<details class="dnaprs-log-panel">
+<summary><strong>Pipeline DAG</strong><span>Processes and their data connections</span></summary>
+<div class="dnaprs-log-content"><iframe src="provenance/pipeline_dag.html" title="Nextflow pipeline DAG" loading="lazy"></iframe></div>
+</details>
+<details class="dnaprs-log-panel">
+<summary><strong>Task trace</strong><span>Detailed task metrics</span></summary>
+<div class="dnaprs-log-content dnaprs-log-text"><pre data-log-source="provenance/execution_trace.txt">Open this panel to load the completed task trace.</pre></div>
+<div class="dnaprs-log-download"><a href="provenance/execution_trace.txt" download>Download task trace</a></div>
+</details>
+
+```{r, results='asis'}
+# Embed this small table directly so it remains readable even when a browser blocks
+# tab-separated files in an iframe.
+softwareTEXT <- paste(readLines("provenance/report_software_versions.tsv", warn = FALSE), collapse = "\n")
+cat(sprintf(
+  paste0(
+    '<details class="dnaprs-log-panel">',
+    '<summary><strong>Report software</strong><span>Versions used to build the website</span></summary>',
+    '<div class="dnaprs-log-content dnaprs-log-text"><pre>%s</pre></div>',
+    '<div class="dnaprs-log-download"><a href="provenance/report_software_versions.tsv" download>Download report software versions</a></div>',
+    '</details>'
+  ),
+  htmlESCAPE(softwareTEXT)
+))
+```
+</div>
+
+<div class="dnaprs-closing-card">
+<p>All required execution records are available when the run completes successfully. Any task, scientific check, integrity result, or stage marked REVIEW or FAIL remains visible in its source table and should be resolved before the run is treated as accepted.</p>
 </div>

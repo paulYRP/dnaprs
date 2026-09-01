@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/nf-core-dnaprs_logo_dark.png">
-    <img src="docs/images/nf-core-dnaprs_logo_light.png" alt="nf-core/dnaprs">
+    <img src="docs/images/nf-core-dnaprs_logo_light.png" alt="dnaprs">
   </picture>
 </p>
 
@@ -14,144 +14,137 @@
 
 ## Introduction
 
-**nf-core/dnaprs** is a Nextflow pipeline for reproducible polygenic risk score (PRS)
-generation from quality-controlled target genotypes and genome-wide association study
-(GWAS) summary statistics. It supports two established scoring methods:
+**dnaprs** is a portable Nextflow DSL2 pipeline for generating and evaluating polygenic
+risk scores from raw target genotypes and raw GWAS summary statistics. It is derived
+from the nf-core template and follows nf-core practices, but it is maintained at
+`paulYRP/dnaprs` and is not an official `nf-core/*` pipeline.
 
-- PLINK 2 clumping and thresholding (C+T), using fixed settings and an independent
-  linkage-disequilibrium (LD) reference;
-- SBayesRC 0.2.6, using the authors' `tidy()`, `impute()`, `sbayesrc()`, and `prs()`
-  sequence.
-
-The workflow creates allele-explicit weights, scores each declared cohort, checks score
-coverage, combines raw and standardised PRSs, and can fit prespecified phenotype-PRS
-models. It produces a portable offline report with results, quantitative figures,
-dictionaries, logs, and downloads.
+The pipeline discovers PGEN, BED, PED/MAP, BGEN, VCF/BCF, or GenomeStudio FinalReport
+inputs; records raw genotype EDA; resolves markers against pinned GRCh37 references;
+applies two target-QC checkpoints; and projects participants onto unrelated 1000 Genomes
+reference PCA axes. It can impute with Beagle, generate PLINK C+T and/or SBayesRC
+scores, apply participant eligibility consistently, and fit one or many declared
+phenotype models. Source files are read-only.
 
 ![dnaprs workflow](docs/images/dnaprs-workflow.svg)
 
-1. Validate run parameters and the target, GWAS, reference, and phenotype-model
-   manifests.
-2. Harmonise each GWAS and prepare each quality-controlled target dataset without
-   changing source files.
-3. Generate PLINK C+T weights and/or SBayesRC posterior effects using declared reference
-   resources.
-4. Calculate one finite score per participant and record the variants used.
-5. Save raw scores and within-cohort standardised scores.
-6. Evaluate prespecified phenotype associations without using the phenotype to tune the
-   PRS.
-7. Build a self-contained report with contextual downloads and execution records.
+The workflow publishes one run under `dnaprs/model1/` by default:
 
-Phenotype associations are research estimates. They do not turn a PRS into a clinical
-risk prediction and are not used to select scoring settings.
+- `data/` — generated records, checkpoints, QC, weights, scores, and model tables;
+- `figures/` — a convenient copy of every report figure;
+- `logs/` — scientific and execution logs;
+- `reports/` — the portable HTML website, downloads, and provenance.
 
-## Usage
+## Beginner run
 
-> [!NOTE]
-> Install Java 17 or newer and Nextflow 25.10.4 or newer. Run the synthetic profile
-> before using study data.
+Install Java 17 or newer, Nextflow 25.10.4 or newer, and Docker, Apptainer, or
+Singularity. With one raw target dataset in `data/plink/raw/` and raw GWAS files in
+`data/gwas/raw/`:
 
-Test the complete R and report implementation from PowerShell:
+```bash
+nextflow run . -profile singularity -resume
+```
+
+The defaults are equivalent to:
+
+```bash
+nextflow run . \
+  -profile singularity \
+  --input data/plink/raw \
+  --gwas data/gwas/raw \
+  --outdir dnaprs \
+  --run_name model1 \
+  -resume
+```
+
+Add one phenotype model directly from the user-provided CSV:
+
+```bash
+nextflow run . \
+  -profile singularity \
+  --input data/plink/raw \
+  --gwas data/gwas/raw \
+  --phenotype data/pheno/pheno.csv \
+  --outcome depression_score \
+  --covariates age,sex \
+  --model_type gaussian \
+  -resume
+```
+
+`depression_score`, `age`, and `sex` are examples, not built-in names. If the
+participant-ID column cannot be matched uniquely to target IDs, also supply
+`--participant_id <column>`. Without phenotype parameters, PRS generation and the
+genetic report still complete.
+
+## References
+
+`--reference_mode auto` is the default. The pipeline downloads only the required assets
+from a pinned catalogue, verifies size and checksum (or the documented pinned ETag when
+the source provides no digest), and reuses each valid asset from
+`references/dnaprs/grch37-v1/`. Beagle and unbref3 are handled in the same way.
+
+To use an existing reference collection:
+
+```bash
+nextflow run . \
+  -profile singularity \
+  --references /path/to/rData \
+  --reference_mode local \
+  -resume
+```
+
+To build or verify only the reusable reference cache, set `reference_only: true` in a
+small YAML parameter file and run with `-params-file`.
+
+## Advanced and HPC runs
+
+Advanced users declare paths, GWAS column roles, thresholds, selected methods, and
+multiple phenotype models in YAML; they never create target/GWAS/reference/model TSV
+manifests. See [the complete usage guide](docs/usage.md) and
+[`examples/params.yml`](examples/params.yml).
+
+Processes use standard nf-core-style resource labels and pass `task.cpus` and bounded
+task memory to capable tools. Nextflow handles cohort, chromosome-imputation, trait,
+method, reference, and model tasks concurrently, then validates deterministic gathers.
+Scheduler, queue, project, and filesystem settings remain
+outside the pipeline, so the same workflow runs locally or through PBS Pro, Slurm, SGE,
+LSF, and other Nextflow executors. The workspace-level `test/` directory contains the
+minimal QUT PBS/Singularity acceptance launcher.
+
+SBayesRC is a high-memory, long-running method. Use `--methods plink_ct` for a smaller
+run; selecting fewer methods changes the scientific work requested, not the executor.
+
+## Report and validation
+
+Open `dnaprs/model1/reports/index.html` after completion. The report preserves every
+available plot and provides SVG plus high-resolution PNG, TIFF, and JPEG downloads. Its
+Logs page displays execution artifacts in expandable, scrollable panels.
+When imputation is enabled, the PLINK page also reports typed-versus-imputed scoring
+coverage and agreement between the primary imputed score and direct-genotype sensitivity
+score; sensitivity scores are not added to phenotype models.
+
+Run the pipeline-level stub regression test with:
+
+```bash
+nf-test test tests/default.nf.test --ci
+```
+
+Run the R and report smoke suite from PowerShell with:
 
 ```powershell
-.\tests\smoke.ps1 -OutputDirectory ..\test\synthetic_analysis
+.\tests\smoke.ps1
 ```
 
-Test the complete Nextflow graph from Linux or WSL:
-
-```bash
-nextflow-25.10.4 lint .
-python3 -m nf_core pipelines lint --dir .
-nf-test test tests/default.nf.test --ci
-nextflow-25.10.4 run . -profile test_full -stub-run \
-  --outdir ../test/nextflow_results \
-  -work-dir ../test/nextflow_work
-```
-
-The tests check pipeline behavior and report generation. They do not provide biological
-validation of a PRS.
-
-Create a run configuration with the offline terminal assistant:
-
-```bash
-bin/dnaprs configure /path/to/workspace
-bin/dnaprs check --params-file /path/to/workspace/runs/my_run/params.yaml
-```
-
-After reviewing the generated manifests and parameters, run locally:
-
-```bash
-docker build --pull --tag dnaprs:1.0.0 --file containers/Dockerfile .
-nextflow-25.10.4 run . \
-  -profile docker \
-  -params-file /path/to/workspace/runs/my_run/params.yaml \
-  --outdir results
-```
-
-The Docker profile uses the locally built `dnaprs:1.0.0` image. The image is not yet
-claimed as a published registry image. Exact installation, verification, and synthetic
-test commands are recorded in the [contributing guide](docs/CONTRIBUTING.md) and the
-[container guide](containers/README.md).
-
-Advanced users can write the three manifests and parameter YAML directly. See
-[`docs/usage.md`](docs/usage.md) and the files under [`examples/`](examples/).
-
-## Aquarius HPC
-
-Submit the controller from the pipeline directory. Nextflow submits each scientific
-process to PBS Pro and uses the versioned Aquarius modules defined by the pipeline.
-
-```bash
-cd /path/to/QPASST/dnaprs
-export DNAPRS_PARAMS_FILE=runs/ukr/params.yaml
-export DNAPRS_R_LIBS_USER=/path/to/fixed/R-4.4.1-library
-export DNAPRS_WORK_DIR=/path/to/shared/dnaprs-work
-export DNAPRS_OUTPUT_DIR=/path/to/shared/dnaprs-results
-qsub aqua.pbs
-```
-
-Set `DNAPRS_RESUME=true` only to continue the same unchanged run with its existing work
-directory and `.nextflow/cache`. Full instructions are in
-[`docs/aqua.md`](docs/aqua.md).
-
-## Pipeline output
-
-Open `<output-dir>/<run-name>/reports/index.html` after the run finishes. The report can
-contain Overview, Inputs, Target and GWAS, PLINK, SBayesRC, PRS, Phenotype, Dictionary,
-and Logs pages. A method or phenotype page is included only when its analysis ran.
-Tables, figures, and logs are downloadable from the section where they are described.
-Quantitative figures are supplied as TIFF, PNG, and JPEG.
-
-The main safeguards are:
-
-- typed parameters and manifest validation before large computations;
-- explicit genome build, ancestry, source columns, effect scale, and resource versions;
-- no phenotype-based selection of variants, thresholds, or SBayesRC weights;
-- read-only inputs and isolated Nextflow work directories;
-- participant and variant-coverage checks for every score;
-- input checksums, software versions, method logs, and Nextflow execution records;
-- one output registry controlling publication, report downloads, and the data
-  dictionary.
-
-For a complete description of output files and their interpretation, see
-[`docs/output.md`](docs/output.md).
+These are software-contract tests, not biological or clinical validation. Phenotype
+associations are research estimates and do not make a PRS a clinical risk prediction.
 
 ## Documentation
 
-- [Input and run instructions](docs/usage.md)
+- [Input, reference, phenotype, and run options](docs/usage.md)
 - [Output files and interpretation](docs/output.md)
-- [Aquarius deployment](docs/aqua.md)
-- [Container build](containers/README.md)
+- [Pinned software environments](containers/README.md)
 - [Contributing and testing](docs/CONTRIBUTING.md)
-- [Software and method citations](CITATIONS.md)
+- [Citations](CITATIONS.md)
 
-## Citations
-
-The software and method references required for a run are listed in
-[`CITATIONS.md`](CITATIONS.md). Cite Nextflow and each selected PRS method.
-
-## Licence
-
-The dnaprs workflow code is released under the [MIT licence](LICENSE). PLINK, SBayesRC,
-reference panels, GWAS files, and other external resources retain their own licences and
-access conditions.
+The code is released under the [MIT licence](LICENSE). External tools, GWAS data, and
+reference resources retain their own licences and access conditions.

@@ -6,6 +6,7 @@ name <- sub("^--", "", argument[seq.int(1L, length(argument), 2L)])
 value <- argument[seq.int(2L, length(argument), 2L)]
 option <- stats::setNames(as.list(value), name)
 if (!requireNamespace("data.table", quietly = TRUE)) stop("The data.table package is required.", call. = FALSE)
+if (is.null(option[["method"]]) || !nzchar(option[["method"]])) option[["method"]] <- "plink_ct"
 
 score <- data.table::fread(option[["score"]], colClasses = "character")
 scoreCOLUMN <- grep("_SUM$", names(score), value = TRUE)
@@ -24,16 +25,17 @@ result <- data.table::data.table(
   role = option[["role"]],
   trait_id = option[["trait-id"]],
   prs_name = option[["prs-name"]],
-  method = "plink_ct",
+  method = option[["method"]],
   FID = as.character(score[["#FID"]]),
   IID = as.character(score[["IID"]]),
   raw_prs = rawPRS,
   allele_count = alleleCOUNT,
   used_variants = length(usedVARIANT)
 )
-data.table::fwrite(result, paste0(option[["cohort"]], ".", option[["trait-id"]], ".plink_ct.score.tsv"), sep = "\t")
+outputPREFIX <- paste(option[["cohort"]], option[["trait-id"]], option[["method"]], sep = ".")
+data.table::fwrite(result, paste0(outputPREFIX, ".score.tsv"), sep = "\t")
 data.table::fwrite(
   unique(result[, .(cohort, role, trait_id, prs_name, method, participants = .N, used_variants)]),
-  paste0(option[["cohort"]], ".", option[["trait-id"]], ".plink_ct.score_qc.tsv"),
+  paste0(outputPREFIX, ".score_qc.tsv"),
   sep = "\t"
 )

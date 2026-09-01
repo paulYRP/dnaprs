@@ -1,0 +1,6 @@
+cohort	identifier_class	variants	percent
+TEST	rsid	0	0
+TEST	array_probe	0	0
+TEST	coordinate	2	100
+TEST	missing	0	0
+TEST	other	0	0

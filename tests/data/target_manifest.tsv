@@ -1,2 +1,2 @@
-cohort	role	format	genotype	sample	keep	build	ancestry	dosage
-TEST	target	pgen	tests/data/target/test_target		tests/data/target/test.keep	GRCh37	European	DS
+cohort	role	format	genotype	sample	keep	build	ancestry	dosage	input_stage
+TEST	target	pgen	tests/data/target/test_target		tests/data/target/test.keep	GRCh37	European	DS	raw

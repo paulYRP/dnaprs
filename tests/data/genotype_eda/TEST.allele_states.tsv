@@ -1,0 +1,7 @@
+cohort	allele_state	variants	percent
+TEST	acgt_snp	2	100
+TEST	one_allele_missing	0	0
+TEST	both_alleles_missing	0	0
+TEST	insertion_deletion	0	0
+TEST	multiallelic	0	0
+TEST	other	0	0

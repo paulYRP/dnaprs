@@ -3,6 +3,8 @@ process BUILD_CT_WEIGHTS {
     label 'process_low'
     label 'process_r'
 
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+
     input:
     tuple val(meta), path(cojo), path(clumps), path(harmonisation_qc), path(clump_log)
     path weight_script

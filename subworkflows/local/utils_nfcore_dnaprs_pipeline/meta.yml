@@ -1,5 +1,5 @@
 name: pipeline_initialisation
-description: Initialise and complete nf-core/dnaprs runs using shared nf-core utilities.
+description: Initialise and complete paulYRP/dnaprs runs using shared nf-core utilities.
 keywords:
   - utility
   - initialisation

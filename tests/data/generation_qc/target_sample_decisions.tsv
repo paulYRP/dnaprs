@@ -1,0 +1,6 @@
+cohort	FID	IID	missingness	decision	reason
+TEST	TEST01	TEST01	0.001	RETAIN	Sample missingness within threshold
+TEST	TEST02	TEST02	0.003	RETAIN	Sample missingness within threshold
+TEST	TEST03	TEST03	0.008	RETAIN	Sample missingness within threshold
+TEST	TEST04	TEST04	0.012	RETAIN	Sample missingness within threshold
+TEST	TEST05	TEST05	0.027	FILTER	Sample missingness exceeds target_mind

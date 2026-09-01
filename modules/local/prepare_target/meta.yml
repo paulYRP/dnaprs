@@ -1,6 +1,8 @@
 name: prepare_target
-description: Import a QC-completed PGEN, BED, VCF, or BGEN target into chromosome and merged PGEN datasets.
+description: Import raw or checkpointed target genotypes, apply source marker references, and create PGEN datasets.
 keywords: [plink, genotype, prs]
 tools:
+  - bcftools:
+      description: Utilities for variant calling and manipulating VCF and BCF files
   - plink2:
       description: Whole-genome association and genotype-processing toolset

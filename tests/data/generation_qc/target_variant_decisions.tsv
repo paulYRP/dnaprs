@@ -1,0 +1,6 @@
+cohort	ID	chromosome	position	ref	alt	missingness	maf	hwe_midp	decision	reason
+TEST	rs100	1	100	A	G	0.000	0.220	0.750	RETAIN	Variant passes declared technical thresholds
+TEST	rs200	1	200	C	T	0.125	0.310	0.420	FILTER	Variant missingness exceeds target_geno
+TEST	rs300	1	300	G	A	0.000	0.004	0.820	FILTER	Minor allele frequency below target_maf
+TEST	rs400	2	400	T	C	0.000	0.180	0.000001	FILTER	Hardy-Weinberg mid-P below target_hwe
+TEST	rs500	2	500	A	C	0.000	0.340	0.660	RETAIN	Variant passes declared technical thresholds

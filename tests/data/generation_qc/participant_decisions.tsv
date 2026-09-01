@@ -1,0 +1,7 @@
+cohort	FID	IID	missingness	technical_pass	score_eligible	related_flag	ancestry_flag	ancestry_distance	primary_analysis	reason
+TEST	TEST01	TEST01	0	TRUE	TRUE	FALSE	PASS	0.5	TRUE	Eligible for primary analysis
+TEST	TEST02	TEST02	0	TRUE	TRUE	FALSE	PASS	0.6	TRUE	Eligible for primary analysis
+TEST	TEST03	TEST03	0	TRUE	TRUE	FALSE	PASS	0.7	TRUE	Eligible for primary analysis
+TEST	TEST04	TEST04	0	TRUE	TRUE	FALSE	PASS	0.8	TRUE	Eligible for primary analysis
+TEST	TEST05	TEST05	0	TRUE	TRUE	FALSE	PASS	0.9	TRUE	Eligible for primary analysis
+TEST	TEST06	TEST06	0	TRUE	TRUE	FALSE	PASS	1.0	TRUE	Eligible for primary analysis

@@ -1,0 +1,16 @@
+name: assemble_references
+description: Assemble validated local and downloaded assets into one reusable reference bundle.
+keywords: [reference, cache, provenance]
+tools:
+  - R:
+      description: Statistical computing environment
+output:
+  - references:
+      type: file
+      description: Generated canonical reference records.
+  - bundle:
+      type: directory
+      description: Validated reference bundle.
+  - receipt:
+      type: file
+      description: Reference source, checksum, size, and cache receipt.

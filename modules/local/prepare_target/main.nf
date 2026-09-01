@@ -3,15 +3,24 @@ process PREPARE_TARGET {
     label 'process_high'
     label 'process_plink'
 
+    container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'
+
     input:
-    val meta
+    tuple val(meta), path(target_files)
+    tuple val(dbsnp), path(dbsnp_files)
+    tuple val(reference_fasta), path(reference_fasta_files)
     path prepare_script
+    path adapter_script
 
     output:
-    tuple val(meta), path("${meta.cohort}"), path("${meta.cohort}.target_qc.tsv"), emit: prepared
+    tuple val(meta), path("${meta.cohort}"), path("${meta.cohort}.target_prep_summary.tsv"), emit: prepared
+    tuple val(meta), path("${meta.cohort}.target_prep_summary.tsv"), emit: prep
+    tuple val(meta), path("${meta.cohort}.marker_decisions.tsv"), emit: marker_decisions
+    tuple val(meta), path("${meta.cohort}"), path("${meta.cohort}.corrected_target_manifest.tsv"), emit: checkpoint
     path 'versions.yml', emit: versions
 
     script:
+    checkpoint_stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
     """
     bash ${prepare_script} \
         '${meta.cohort}' \
@@ -20,15 +29,30 @@ process PREPARE_TARGET {
         '${meta.sample ?: ''}' \
         '${meta.keep ?: ''}' \
         '${meta.dosage ?: 'DS'}' \
-        '${task.cpus}'
+        '${task.cpus}' \
+        '${meta.input_stage ?: 'raw'}' \
+        '${meta.assay_manifest ?: ''}' \
+        '${meta.marker_map ?: ''}' \
+        '${adapter_script}' \
+        '${dbsnp.path}' \
+        '${reference_fasta.path}'
+
+    printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.corrected_target_manifest.tsv
+    printf '%s\t%s\tpgen\t%s\t\t\t%s\t%s\tDS\t%s\t\t\n' \
+        '${meta.cohort}' '${meta.role}' \
+        'checkpoints/${checkpoint_stage}/${meta.cohort}/${meta.cohort}.pgen' \
+        '${meta.build}' '${meta.ancestry}' '${checkpoint_stage}' \
+        >> ${meta.cohort}.corrected_target_manifest.tsv
 
     cat > versions.yml <<-VERSIONS
     "${task.process}:${meta.cohort}":
+        bcftools: \$(bcftools --version | head -n 1 | awk '{print \$2}')
         plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
     VERSIONS
     """
 
     stub:
+    checkpoint_stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
     """
     mkdir -p ${meta.cohort}
     printf 'stub\n' > ${meta.cohort}/${meta.cohort}.pgen
@@ -37,7 +61,11 @@ process PREPARE_TARGET {
     cp ${meta.cohort}/${meta.cohort}.pgen ${meta.cohort}/${meta.cohort}_chr1.pgen
     cp ${meta.cohort}/${meta.cohort}.pvar ${meta.cohort}/${meta.cohort}_chr1.pvar
     cp ${meta.cohort}/${meta.cohort}.psam ${meta.cohort}/${meta.cohort}_chr1.psam
-    printf 'cohort\tparticipants\tvariants\tchromosomes\tstatus\n${meta.cohort}\t2\t1\t1\tPASS\n' > ${meta.cohort}.target_qc.tsv
-    printf '"${task.process}:${meta.cohort}":\n  plink2: stub\n' > versions.yml
+    printf 'cohort\tinput_stage\tstep\tparticipants\tvariants\tstatus\n${meta.cohort}\t${meta.input_stage ?: 'qc_completed'}\tNormalised to PGEN\t2\t1\tPASS\n' > ${meta.cohort}.target_prep_summary.tsv
+    printf 'cohort\tinput_stage\tparticipants\tvariants\tchromosomes\tstatus\n${meta.cohort}\t${meta.input_stage ?: 'qc_completed'}\t2\t1\t1\tPASS\n' > ${meta.cohort}.target_qc.tsv
+    printf 'source_id\tfinal_id\tsource_chr\tsource_pos\tfinal_chr\tfinal_pos\tsource_ref\tsource_alt\tfinal_ref\tfinal_alt\tdecision\treason\n1:100:A:G\t1:100:A:G\t1\t100\t1\t100\tA\tG\tA\tG\tINHERITED\tStub target\n' > ${meta.cohort}.marker_decisions.tsv
+    printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.corrected_target_manifest.tsv
+    printf '${meta.cohort}\t${meta.role}\tpgen\tcheckpoints/${checkpoint_stage}/${meta.cohort}/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\t${checkpoint_stage}\t\t\n' >> ${meta.cohort}.corrected_target_manifest.tsv
+    printf '"${task.process}:${meta.cohort}":\n  bcftools: stub\n  plink2: stub\n' > versions.yml
     """
 }

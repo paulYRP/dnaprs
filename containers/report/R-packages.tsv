@@ -1,0 +1,7 @@
+package	install_version	expected_version
+ggplot2	4.0.2	4.0.2
+scales	1.4.0	1.4.0
+knitr	1.51	1.51
+rmarkdown	2.31	2.31
+jsonlite	2.0.0	2.0.0
+openxlsx	4.2.8.1	4.2.8.1

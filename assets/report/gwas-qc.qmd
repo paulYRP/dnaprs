@@ -1,0 +1,39 @@
+---
+title: "GWAS QC"
+pagetitle: "GWAS QC | dnaprs"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({library(data.table); library(knitr)}))
+```
+
+```{r, include=FALSE}
+source("report-setup.R", local = knitr::knit_global())
+```
+
+## Discovery studies
+
+```{r}
+tableVIEW(gwasMANIFEST, "Declared discovery studies, effect definitions, builds, and source fields.")
+```
+
+## Diagnostics and filtering
+
+```{r, results='asis'}
+figureGALLERY("GWAS QC")
+```
+
+```{r}
+tableVIEW(gwasSUMMARY, "GWAS source and post-QC variant counts.")
+```
+
+## Method-ready outputs
+
+```{r}
+fileTABLE("^(gwas|qc/gwas)/", "Harmonised GWAS fields, clumping inputs, and structural QC summaries.")
+```
+
+<div class="dnaprs-closing-card">
+<p>A passed GWAS QC result means the declared records have valid scoring fields, one row per variant identifier, and an auditable effect scale. It does not repeat discovery-consortium participant QC, establish target allele compatibility by itself, or prove phenotype prediction; method-specific reference alignment and target score coverage remain downstream evidence.</p>
+</div>

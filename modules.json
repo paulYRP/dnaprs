@@ -1,6 +1,6 @@
 {
-    "name": "nf-core/dnaprs",
-    "homePage": "https://github.com/nf-core/dnaprs",
+    "name": "paulYRP/dnaprs",
+    "homePage": "https://github.com/paulYRP/dnaprs",
     "repos": {
         "https://github.com/nf-core/modules.git": {
             "modules": {

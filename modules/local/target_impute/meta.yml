@@ -1,0 +1,30 @@
+name: target_impute_chromosome
+description: Phase and impute one target chromosome with Beagle and retain typed or high-DR2 variants.
+keywords:
+  - genotype
+  - imputation
+  - beagle
+tools:
+  - beagle:
+      description: Genotype phasing and imputation
+      homepage: https://faculty.washington.edu/browning/beagle/beagle.html
+  - bcftools:
+      description: Variant calling and manipulation toolkit
+      homepage: https://samtools.github.io/bcftools/
+input:
+  - target_pgen:
+      type: file
+      description: One chromosome from the QC target PGEN checkpoint.
+  - reference_files:
+      type: directory
+      description: Read-only per-chromosome imputation panel and optional genetic maps.
+output:
+  - chromosomes:
+      type: directory
+      description: One chromosome-level imputed PGEN and VCF checkpoint.
+  - manifest:
+      type: file
+      description: Reusable chromosome-level handoff manifest.
+  - qc:
+      type: file
+      description: Typed, retained, and imputed variant counts.

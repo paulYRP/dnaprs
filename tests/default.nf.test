@@ -16,17 +16,43 @@ nextflow_pipeline {
             def run_dir = "$outputDir/test_full"
             assert workflow.success
             assertAll(
-                { assert path("$run_dir/run/preflight/target_manifest.validated.tsv").exists() },
-                { assert path("$run_dir/gwas/MDD/MDD.cojo.ma").exists() },
-                { assert path("$run_dir/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
-                { assert path("$run_dir/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },
-                { assert path("$run_dir/scores/combined/prs_scores_long.tsv").exists() },
-                { assert path("$run_dir/phenotype/phenotype_associations.tsv").exists() },
-                { assert path("$run_dir/qc/generation/variant_flow.tsv").exists() },
+                { assert path("$run_dir/data/inputs/targets.tsv").exists() },
+                { assert path("$run_dir/data/genotype_eda/TEST/TEST.genotype_eda_summary.tsv").exists() },
+                { assert path("$run_dir/data/genotype_eda/TEST/TEST.genotype_eda_checks.tsv").exists() },
+                { assert path("$run_dir/data/genotype_eda/TEST/TEST.marker_density.tsv").exists() },
+                { assert path("$run_dir/data/target_prep/TEST/TEST.target_prep_summary.tsv").exists() },
+                { assert path("$run_dir/data/target_qc/TEST/TEST.target_qc.tsv").exists() },
+                { assert path("$run_dir/data/target_qc/TEST/TEST.participant_decisions.tsv").exists() },
+                { assert path("$run_dir/data/target_qc/TEST/ancestry/TEST.target_ancestry.tsv").exists() },
+                { assert path("$run_dir/data/target_qc/TEST/ancestry/TEST.ancestry_summary.tsv").exists() },
+                { assert path("$run_dir/data/target_imputation/TEST/TEST.imputation_qc.tsv").exists() },
+                { assert path("$run_dir/data/target_imputation/TEST/TEST.imputation_manifest.tsv").exists() },
+                { assert path("$run_dir/data/target_imputation/TEST/TEST.imputation_dr2.tsv").exists() },
+                { assert path("$run_dir/data/checkpoints/corrected/TEST/TEST.pgen").exists() },
+                { assert path("$run_dir/data/checkpoints/corrected/TEST.corrected_target_manifest.tsv").exists() },
+                { assert path("$run_dir/data/target/prepared/TEST/imputation_ready/TEST.imputation_ready/TEST.pgen").exists() },
+                { assert path("$run_dir/data/target/prepared/TEST/direct_ready/TEST.direct_ready/TEST.pgen").exists() },
+                { assert path("$run_dir/data/checkpoints/imputed/TEST.imputed/TEST.pgen").exists() },
+                { assert path("$run_dir/data/reference/plink_ct/TEST_IMPUTATION.plink_ld.summary.tsv").exists() },
+                { assert path("$run_dir/data/reference/plink_ct/TEST_IMPUTATION.plink_ld.source_qc.tsv").exists() },
+                { assert path("$run_dir/data/reference/sbayesrc/prepared_sbayesrc.summary.tsv").exists() },
+                { assert path("$run_dir/data/gwas/MDD/MDD.cojo.ma").exists() },
+                { assert path("$run_dir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
+                { assert path("$run_dir/data/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },
+                { assert path("$run_dir/data/scores/combined/prs_scores_long.tsv").exists() },
+                { assert path("$run_dir/data/scores/TEST/MDD/sensitivity/TEST.MDD.plink_ct.sensitivity.tsv").exists() },
+                { assert path("$run_dir/data/qc/scores/TEST/MDD/sensitivity/TEST.MDD.plink_ct.sensitivity_qc.tsv").exists() },
+                { assert path("$run_dir/data/phenotype/phenotype_associations.tsv").exists() },
+                { assert path("$run_dir/data/phenotype/phenotype_permutations.tsv").exists() },
+                { assert path("$run_dir/data/phenotype/phenotype_influence.tsv").exists() },
+                { assert path("$run_dir/data/phenotype/phenoPRS.csv").exists() },
+                { assert path("$run_dir/data/qc/generation/variant_flow.tsv").exists() },
                 { assert path("$run_dir/reports/index.html").exists() },
-                { assert path("$run_dir/run/published_files.json").exists() },
+                { assert path("$run_dir/figures").exists() },
+                { assert path("$run_dir/data/inputs/published_files.json").exists() },
+                { assert path(run_dir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] },
                 { assert snapshot(
-                    removeNextflowVersion("$run_dir/pipeline_info/software_versions.yml")
+                    removeNextflowVersion("$run_dir/data/pipeline_info/software_versions.yml")
                 ).match() }
             )
         }

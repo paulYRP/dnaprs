@@ -1,0 +1,19 @@
+name: resolve_inputs
+description: Discover raw target and GWAS inputs or normalise nested YAML declarations into internal records.
+keywords: [input, discovery, yaml, validation]
+tools:
+  - R:
+      description: Statistical computing environment
+output:
+  - targets:
+      type: file
+      description: Internally generated target records.
+  - gwas:
+      type: file
+      description: Internally generated GWAS records.
+  - references:
+      type: file
+      description: Internally generated local-reference records.
+  - models:
+      type: file
+      description: Internally generated phenotype-model records.

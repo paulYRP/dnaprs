@@ -4,8 +4,10 @@ process SBAYESRC_SCORE {
     label 'process_plink'
     label 'process_r'
 
+    container 'docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb'
+
     input:
-    tuple val(target), path(target_dir), path(target_qc), val(gwas), path(weight), path(parameter), path(model_qc), path(impute_qc), path(tidy_qc), path(harmonisation_qc)
+    tuple val(target), path(target_dir), path(target_qc), path(participant_decisions), path(participant_keep), val(gwas), path(weight), path(parameter), path(model_qc), path(impute_qc), path(tidy_qc), path(harmonisation_qc)
     path sbayesrc_script
 
     output:
@@ -24,6 +26,7 @@ process SBAYESRC_SCORE {
         --role '${target.role}' \
         --trait-id '${gwas.trait_id}' \
         --prs-name '${gwas.prs_name}' \
+        --keep '${participant_keep}' \
         --plink \$(command -v plink2)
 
     cat > versions.yml <<-VERSIONS

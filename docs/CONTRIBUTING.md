@@ -26,8 +26,8 @@ private reference resources. Tests must use artificial or openly licensed data.
 
 ## Scientific rules
 
-- Treat declared inputs as QC-completed; add only checks required for method
-  compatibility and score integrity.
+- Treat declared source inputs as immutable; record every conversion, correction,
+  exclusion, and prepared-reference derivative.
 - Keep target phenotypes out of GWAS harmonisation, variant selection, C+T thresholds,
   and SBayesRC model fitting.
 - Preserve raw scores and record the exact standardisation population and formula.
@@ -40,14 +40,20 @@ private reference resources. Tests must use artificial or openly licensed data.
 Run before proposing a change:
 
 ```bash
-bash -n aqua.pbs bin/dnaprs bin/prepare_target.sh
+find bin -maxdepth 1 -name '*.sh' -exec bash -n '{}' \;
 nextflow-25.10.4 lint .
 python3 -m nf_core pipelines lint --dir .
 nf-test test tests/default.nf.test --ci
 nextflow-25.10.4 run . -profile test_full -stub-run \
   --outdir /tmp/dnaprs-test-full \
   -work-dir /tmp/dnaprs-test-work
-docker build --pull --tag dnaprs:1.0.0 --file containers/Dockerfile .
+docker build --file containers/analysis/Dockerfile \
+  --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 .
+docker build --file containers/plink2/Dockerfile \
+  --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 .
+docker build --build-arg ANALYSIS_IMAGE=ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+  --file containers/report/Dockerfile \
+  --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 .
 nextflow-25.10.4 run . -profile docker,test_full -stub-run \
   --outdir /tmp/dnaprs-docker-test \
   -work-dir /tmp/dnaprs-docker-work
@@ -69,6 +75,7 @@ Check that process and workflow names are unique:
 grep -RHE '^(process|workflow)[[:space:]]+' --include='*.nf' .
 ```
 
-Review the resolved local and Aquarius configurations before release. Docker releases
-must be built, inspected for tool versions, pushed, and referenced by an immutable image
-digest.
+Review the resolved local and Apptainer configurations before release. Every container
+must be built, inspected for tool versions, and published with a stable version. Site
+executors, queues, accounts, and storage paths remain in external institutional
+configuration files.

@@ -1,0 +1,30 @@
+name: parse_plink_score
+description: Convert a completed PLINK score file into the dnaprs score and QC contracts.
+keywords:
+  - prs
+  - plink
+  - score
+tools:
+  - r:
+      description: A language and environment for statistical computing.
+      homepage: https://www.r-project.org/
+  - data.table:
+      description: High-performance tabular data processing for R.
+      homepage: https://r-datatable.com/
+input:
+  - raw_score:
+      type: tuple
+      description: Target and GWAS metadata with PLINK score, used-variant, and log files.
+  - parser_script:
+      type: file
+      description: dnaprs PLINK-score parser.
+output:
+  - scores:
+      type: tuple
+      description: Participant scores and their score-level QC summary.
+  - logs:
+      type: tuple
+      description: PLINK scoring log carried forward unchanged.
+  - versions:
+      type: file
+      description: Software versions in YAML format.

@@ -81,15 +81,10 @@ if (action == "tidy") {
   )
 } else if (action == "score") {
   targetPREFIX <- file.path(option[["target-dir"]], paste0(option[["cohort"]], "_chr{CHR}"))
-  targetPSAM <- data.table::fread(
-    file.path(option[["target-dir"]], paste0(option[["cohort"]], ".psam")),
-    colClasses = "character"
-  )
-  iidCOLUMN <- if ("IID" %in% names(targetPSAM)) "IID" else "#IID"
-  fidCOLUMN <- if ("#FID" %in% names(targetPSAM)) "#FID" else iidCOLUMN
-  keep <- targetPSAM[, .(FID = get(fidCOLUMN), IID = get(iidCOLUMN))]
-  keepPATH <- paste0(option[["cohort"]], ".keep.tsv")
-  data.table::fwrite(keep, keepPATH, sep = "\t", col.names = FALSE)
+  keepPATH <- option[["keep"]]
+  keep <- data.table::fread(keepPATH, header = FALSE, colClasses = "character")
+  if (ncol(keep) != 2L || nrow(keep) == 0L) stop("The score-eligible keep file is empty or invalid.", call. = FALSE)
+  data.table::setnames(keep, c("FID", "IID"))
 
   output <- paste0(option[["cohort"]], ".", traitID, ".sbayesrc")
   SBayesRC::prs(

@@ -1,0 +1,6 @@
+name: prepare_sbayesrc_reference
+description: Extract and validate downloaded SBayesRC LD and annotation archives.
+keywords: [reference, sbayesrc, ld, annotation, prs]
+tools:
+  - unzip:
+      description: Extract ZIP archives

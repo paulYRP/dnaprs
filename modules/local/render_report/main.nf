@@ -3,6 +3,8 @@ process RENDER_REPORT {
     label 'process_report'
     label 'process_r'
 
+    container 'ghcr.io/paulyrp/dnaprs-report:1.0.0'
+
     input:
     path report_files, stageAs: 'report_inputs/*'
     path output_manifest
@@ -25,6 +27,10 @@ process RENDER_REPORT {
     export DNAPRS_REPORT_INPUTS="\$report_root/report_inputs"
     export DNAPRS_OUTPUT_MANIFEST="\$report_root/${output_manifest}"
     export QUARTO_VERSION=\$(quarto --version)
+    export HOME="\$report_root"
+    export XDG_CACHE_HOME="\$report_root/.cache"
+    export QUARTO_CACHE_DIR="\$report_root/.cache/quarto"
+    mkdir -p "\$QUARTO_CACHE_DIR"
     cd report_project
     Rscript prepare-report.R
     quarto render .

@@ -1,0 +1,18 @@
+name: reference_ancestry
+description: Project target participants onto population-reference PCs and classify European-reference distance.
+keywords: [ancestry, pca, genotype]
+tools:
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset
+  - R:
+      description: Statistical computing environment
+output:
+  - target:
+      type: file
+      description: Target PC projection, distance, threshold, and classification.
+  - reference:
+      type: file
+      description: Population-reference projection and labels.
+  - summary:
+      type: file
+      description: Reference matching and target classification summary.

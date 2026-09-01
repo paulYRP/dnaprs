@@ -1,0 +1,2 @@
+cohort	role	input_stage	format	participants	variants	chromosomes	autosomal_variants	x_variants	y_variants	mitochondrial_variants	unplaced_or_nonstandard_variants	recorded_sex_participants	phenotype_participants	duplicated_participant_identifiers	duplicated_variant_identifier_groups	duplicated_variant_identifier_records	review_items	status
+TEST	target	qc_completed	pgen	6	2	1	2	0	0	0	0	0	0	0	0	0	0	PASS

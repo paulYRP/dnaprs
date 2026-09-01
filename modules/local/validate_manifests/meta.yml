@@ -17,7 +17,10 @@ input:
       description: GWAS summary-statistic manifest.
   - reference_manifest:
       type: file
-      description: Versioned reference-resource manifest.
+      description: Versioned manifest of immutable downloaded reference sources.
+  - reference_base:
+      type: directory
+      description: Base directory used to resolve relative paths in the reference manifest.
   - phenotype_file:
       type: file
       description: Phenotype table or the pipeline empty placeholder.
@@ -28,13 +31,13 @@ output:
   - validated_manifests:
       type: file
       description: Normalised manifests containing absolute, checked input paths.
-  - resolved_params:
+  - run_settings:
       type: file
       description: Run settings used by the workflow.
   - input_checksums:
       type: file
       description: SHA-256 checksums for file inputs suitable for direct hashing.
-  - preflight_qc:
+  - input_checks:
       type: file
       description: Essential input validation results.
   - versions:

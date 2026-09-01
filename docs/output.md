@@ -1,143 +1,91 @@
 # dnaprs outputs
 
-Each run is isolated under `<output-dir>/<run_name>/`. When reporting is enabled, the
-published scientific results are contained in one portable directory:
+Each run is published below `<outdir>/<run_name>/`; the defaults are
+`dnaprs/model1/`. A complete run has exactly four top-level result folders:
 
 ```text
-<run_name>/
-└── reports/
-    ├── index.html
-    ├── inputs.html
-    ├── target-gwas.html
-    ├── plink.html                # included when PLINK C+T was run
-    ├── sbayesrc.html             # included when SBayesRC was run
-    ├── prs.html
-    ├── phenotype.html            # included when phenotype models were run
-    ├── dictionary.html
-    ├── logs.html
-    ├── assets/
-    ├── site_libs/
-    ├── downloads/
-    ├── figures/
-    │   ├── tiff/
-    │   ├── png/
-    │   └── jpeg/
-    └── provenance/
+model1/
+|-- data/
+|-- figures/
+|-- logs/
+`-- reports/
 ```
 
-Open `reports/index.html`. All report links are relative, so the complete `reports/`
-directory can be reviewed without an internet connection. Participant-level score and
-phenotype files remain sensitive research data and require the same access controls as
-their source data.
+## `data/`
 
-## Report pages
+`data/` contains scientific tables and reusable checkpoints, organised by stage:
 
-- **Overview** summarises the completed run and final score checks.
-- **Inputs** contains validated manifests, resolved parameters, and input checksums.
-- **Target and GWAS** reports target and GWAS preparation and variant retention.
-- **PLINK** is included only when PLINK C+T was run.
-- **SBayesRC** is included only when SBayesRC was run.
-- **PRS** contains participant distributions, coverage, correlations, and method
-  agreement when both methods are available.
-- **Phenotype** is included only when phenotype models were declared.
-- **Dictionary** defines report files, table columns, and figures.
-- **Logs** contains method logs, software versions, the Nextflow task trace, timeline,
-  execution report, and pipeline DAG.
+- `inputs/`: internally resolved targets, GWAS, references, models, effective settings,
+  checksums, input checks, and the workflow-output index;
+- `genotype_eda/<cohort>/`: untouched-input composition, missingness, allele frequency,
+  heterozygosity, sex checks, relatedness, and descriptive internal PCA;
+- `target_prep/<cohort>/`: target conversion, marker decisions, and checks;
+- `target_qc/<cohort>/`: sample/variant decisions, reference ancestry projections,
+  distance summary, and integrated `participant_decisions.tsv`;
+- `target/prepared/<cohort>/`: separate imputation-ready and direct-genotype PGEN
+  checkpoints;
+- `target_imputation/<cohort>/`: deterministically gathered chromosome handoff, DR2
+  distribution, sample/order, chromosome/key/dosage checks, and SHA-256 receipts;
+- `gwas/<trait>/` and `qc/gwas/<trait>/`: harmonised statistics and decisions;
+- `reference/`: prepared PLINK and SBayesRC resources used by the run;
+- `plink_ct/`, `sbayesrc/`, `scores/`, and `qc/`: weights, method results, combined
+  scores, coverage, and agreement;
+- `phenotype/`: model declarations, coefficients, fit, permutation, influence, plotting,
+  and analysis-ready phenotype/PRS tables;
+- `pipeline_info/software_versions.yml`: combined tool versions.
 
-Each table, figure, and log is downloadable in the section where it is shown. There is
-no separate Downloads page.
+Large public source references remain in `--reference_dir`; the run records their
+validated receipt rather than publishing a second source copy.
 
-## Input and provenance records
+`participant_decisions.tsv` contains `technical_pass`, `score_eligible`,
+`related_flag`, `ancestry_flag`, `ancestry_distance`, `primary_analysis`, and a reason.
+Scoring uses score-eligible participants; phenotype models use the integrated primary
+analysis decision.
 
-`downloads/run/preflight/` contains validated manifests and resolved scientific
-settings. `downloads/qc/preflight/preflight_qc.tsv` records the inputs accepted before
-large tasks. `downloads/run/preflight/input_checksums.tsv` identifies the source files
-with SHA-256 checksums.
+## `figures/`
 
-`provenance/output_files.tsv` is the file dictionary for the report bundle.
-`provenance/data_dictionary.tsv` defines columns in tabular results.
-`provenance/figure_manifest.tsv` records each figure, its dimensions, resolution,
-description, and available formats.
-`provenance/report_state.tsv` records which conditional report pages were included.
-`provenance/report_software_versions.tsv` records the software used to build the
-website.
+This is a convenient copy of all report figures. The website retains its own copy under
+`reports/figures/` so the complete `reports/` directory remains portable. Every plot is
+generated from a published table and, when requested, is available as vector SVG and
+360 dpi PNG, TIFF, and JPEG. No plot is removed when a viewer has several figures.
 
-## PLINK C+T results
+## `logs/`
 
-PLINK results are organised under:
+Logs are grouped by target, reference, imputation, GWAS, PRS method, and report stage.
+The report Logs page displays supported text/HTML artifacts inline in expandable,
+collapsible, scrollable panels. Execution trace, timeline, report, and DAG files are
+also copied into report provenance when enabled.
 
-```text
-downloads/
-├── reference/plink_ct/
-├── plink_ct/<trait_id>/
-├── qc/plink_ct/<trait_id>/
-└── logs/plink_ct/
-```
+## `reports/`
 
-The weight QC file reports the harmonised and clumped variant counts and retained
-percentage. A low retained count is interpreted as score coverage and is not repaired
-by choosing a threshold from the target phenotype.
+Open `reports/index.html`. The site may include Overview, Genotype EDA, Target PREP,
+Target QC, Target Imputation, GWAS QC, PLINK PRS, SBayesRC PRS, Phenotype, and Logs,
+depending on completed stages. Only Overview has introductory text. Figure viewers use
+Previous, one selector, Next, and a counter; they do not repeat figure names as a second
+button row.
 
-## SBayesRC results
+Important portable subfolders are:
 
-SBayesRC results are organised under:
+- `downloads/`: tables, logs, score files, and `dnaprs_report_tables.xlsx`;
+- `figures/`: all report figure formats;
+- `provenance/`: effective parameters, output/figure indexes, data dictionary, report
+  state, software versions, and available Nextflow execution records;
+- `assets/` and `site_libs/`: local styling and libraries required offline.
 
-```text
-downloads/
-├── sbayesrc/<trait_id>/summary/
-├── sbayesrc/<trait_id>/model/
-├── qc/sbayesrc/<trait_id>/
-└── logs/sbayesrc/<trait_id>/
-```
+All links are relative. Treat participant-level score and phenotype files as sensitive
+research data.
 
-QC tables report LD-aligned variants, summary-imputed variants, model weights, non-zero
-effects, and posterior inclusion probability summaries. The phenotype is not used to
-filter or tune SBayesRC weights.
+## Score interpretation
 
-## Participant scores
+`prs_scores_long.tsv` contains one participant, trait, and method per row, including
+raw PRS, cohort standardisation values, `prs_z`, variants used, and participant-decision
+fields. `prs_scores_wide.tsv` contains analysis-ready score columns plus the same
+eligibility fields. `method_concordance.tsv` compares methods when both were selected.
+With imputation enabled, `scores/<cohort>/<trait>/sensitivity/` contains the typed-only
+PLINK score and participant comparison; the matching QC table records shared,
+imputed-only, and direct-only scoring variants plus Pearson and Spearman agreement. The
+typed-only score is not included in the combined primary scores or phenotype models.
 
-Method-specific and combined scores are organised under `downloads/scores/`. The main
-combined files are:
-
-- `prs_scores_long.tsv`: one participant, trait, and method per row;
-- `prs_scores_wide.tsv`: analysis-ready raw and standardised score columns;
-- `score_qc.tsv`: participant counts, scoring coverage, and scale checks;
-- `method_concordance.tsv`: Pearson and Spearman agreement when both methods exist.
-
-Important long-form fields are:
-
-| Field                      | Meaning                                                    |
-| -------------------------- | ---------------------------------------------------------- |
-| `raw_prs`                  | Weighted allele or dosage sum on the method's native scale |
-| `used_variants`            | Variants contributing to the score                         |
-| `cohort_mean`, `cohort_sd` | Values used for within-cohort standardisation              |
-| `prs_z`                    | `(raw_prs - cohort_mean) / cohort_sd`                      |
-
-Within-cohort standardisation gives a one-standard-deviation unit for models within the
-cohort. It does not compare absolute genetic risk between cohorts.
-
-## Phenotype associations
-
-Phenotype results are under `downloads/phenotype/`:
-
-- `phenotype_associations.tsv` contains the matching PRS coefficient, standard error,
-  confidence interval, P value, and change in model fit;
-- `phenotype_models_fitted.tsv` records the exact full and reduced formulas;
-- `phenotype_plot_data.tsv` contains participant-level fitted values, residuals, and
-  adjusted values used by the report.
-
-For independent Gaussian outcomes, incremental fit is the increase in R-squared. For
-generalised models it is the recorded pseudo-R-squared change. For mixed models it is
-the AIC reduction. These are research association estimates, not clinical risk
-predictions.
-
-## Figures
-
-Every quantitative plot is saved in three forms from the same R plot object:
-
-- 300 dpi LZW-compressed TIFF for publication-quality output;
-- 300 dpi lossless PNG for browser and presentation use;
-- 300 dpi high-quality JPEG with a white background.
-
-The PNG is displayed in the report. TIFF, PNG, and JPEG downloads are available beside
-each figure.
+Within-cohort standardisation expresses effects per cohort standard deviation; it does
+not make absolute genetic risk comparable between cohorts. Phenotype coefficients are
+research association estimates, not clinical predictions.

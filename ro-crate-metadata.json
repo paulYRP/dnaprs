@@ -22,14 +22,17 @@
             "@id": "./",
             "@type": "Dataset",
             "creativeWorkStatus": "InProgress",
-            "datePublished": "2026-08-29T23:27:27+00:00",
-            "description": "<p align=\"center\">\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"docs/images/nf-core-dnaprs_logo_dark.png\">\n    <img src=\"docs/images/nf-core-dnaprs_logo_light.png\" alt=\"nf-core/dnaprs\">\n  </picture>\n</p>\n\n[![nf-test status](https://github.com/paulYRP/dnaprs/actions/workflows/nf-test.yml/badge.svg)](https://github.com/paulYRP/dnaprs/actions/workflows/nf-test.yml)\n[![nf-core linting status](https://github.com/paulYRP/dnaprs/actions/workflows/linting.yml/badge.svg)](https://github.com/paulYRP/dnaprs/actions/workflows/linting.yml)\n[![Nextflow](https://img.shields.io/badge/version-%E2%89%A525.10.4-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)\n[![nf-core template version](https://img.shields.io/badge/nf--core_template-4.1.0-green?style=flat&logo=nfcore&logoColor=white&color=%2324B064&link=https%3A%2F%2Fnf-co.re)](https://github.com/nf-core/tools/releases/tag/4.1.0)\n[![nf-test](https://img.shields.io/badge/tested_with-nf--test-337ab7)](https://www.nf-test.com/)\n[![MIT licence](https://img.shields.io/badge/license-MIT-111111)](LICENSE)\n\n## Introduction\n\n**nf-core/dnaprs** is a Nextflow pipeline for reproducible polygenic risk score (PRS)\ngeneration from quality-controlled target genotypes and genome-wide association study\n(GWAS) summary statistics. It supports two established scoring methods:\n\n- PLINK 2 clumping and thresholding (C+T), using fixed settings and an independent\n  linkage-disequilibrium (LD) reference;\n- SBayesRC 0.2.6, using the authors' `tidy()`, `impute()`, `sbayesrc()`, and `prs()`\n  sequence.\n\nThe workflow creates allele-explicit weights, scores each declared cohort, checks score\ncoverage, combines raw and standardised PRSs, and can fit prespecified phenotype-PRS\nmodels. It produces a portable offline report with results, quantitative figures,\ndictionaries, logs, and downloads.\n\n![dnaprs workflow](docs/images/dnaprs-workflow.svg)\n\n1. Validate run parameters and the target, GWAS, reference, and phenotype-model\n   manifests.\n2. Harmonise each GWAS and prepare each quality-controlled target dataset without\n   changing source files.\n3. Generate PLINK C+T weights and/or SBayesRC posterior effects using declared reference\n   resources.\n4. Calculate one finite score per participant and record the variants used.\n5. Save raw scores and within-cohort standardised scores.\n6. Evaluate prespecified phenotype associations without using the phenotype to tune the\n   PRS.\n7. Build a self-contained report with contextual downloads and execution records.\n\nPhenotype associations are research estimates. They do not turn a PRS into a clinical\nrisk prediction and are not used to select scoring settings.\n\n## Usage\n\n> [!NOTE]\n> Install Java 17 or newer and Nextflow 25.10.4 or newer. Run the synthetic profile\n> before using study data.\n\nTest the complete R and report implementation from PowerShell:\n\n```powershell\n.\\tests\\smoke.ps1 -OutputDirectory ..\\test\\synthetic_analysis\n```\n\nTest the complete Nextflow graph from Linux or WSL:\n\n```bash\nnextflow-25.10.4 lint .\npython3 -m nf_core pipelines lint --dir .\nnf-test test tests/default.nf.test --ci\nnextflow-25.10.4 run . -profile test_full -stub-run \\\n  --outdir ../test/nextflow_results \\\n  -work-dir ../test/nextflow_work\n```\n\nThe tests check pipeline behavior and report generation. They do not provide biological\nvalidation of a PRS.\n\nCreate a run configuration with the offline terminal assistant:\n\n```bash\nbin/dnaprs configure /path/to/workspace\nbin/dnaprs check --params-file /path/to/workspace/runs/my_run/params.yaml\n```\n\nAfter reviewing the generated manifests and parameters, run locally:\n\n```bash\ndocker build --pull --tag dnaprs:1.0.0 --file containers/Dockerfile .\nnextflow-25.10.4 run . \\\n  -profile docker \\\n  -params-file /path/to/workspace/runs/my_run/params.yaml \\\n  --outdir results\n```\n\nThe Docker profile uses the locally built `dnaprs:1.0.0` image. The image is not yet\nclaimed as a published registry image. Exact installation, verification, and synthetic\ntest commands are recorded in the [contributing guide](docs/CONTRIBUTING.md) and the\n[container guide](containers/README.md).\n\nAdvanced users can write the three manifests and parameter YAML directly. See\n[`docs/usage.md`](docs/usage.md) and the files under [`examples/`](examples/).\n\n## Aquarius HPC\n\nSubmit the controller from the pipeline directory. Nextflow submits each scientific\nprocess to PBS Pro and uses the versioned Aquarius modules defined by the pipeline.\n\n```bash\ncd /path/to/QPASST/dnaprs\nexport DNAPRS_PARAMS_FILE=runs/ukr/params.yaml\nexport DNAPRS_R_LIBS_USER=/path/to/fixed/R-4.4.1-library\nexport DNAPRS_WORK_DIR=/path/to/shared/dnaprs-work\nexport DNAPRS_OUTPUT_DIR=/path/to/shared/dnaprs-results\nqsub aqua.pbs\n```\n\nSet `DNAPRS_RESUME=true` only to continue the same unchanged run with its existing work\ndirectory and `.nextflow/cache`. Full instructions are in\n[`docs/aqua.md`](docs/aqua.md).\n\n## Pipeline output\n\nOpen `<output-dir>/<run-name>/reports/index.html` after the run finishes. The report can\ncontain Overview, Inputs, Target and GWAS, PLINK, SBayesRC, PRS, Phenotype, Dictionary,\nand Logs pages. A method or phenotype page is included only when its analysis ran.\nTables, figures, and logs are downloadable from the section where they are described.\nQuantitative figures are supplied as TIFF, PNG, and JPEG.\n\nThe main safeguards are:\n\n- typed parameters and manifest validation before large computations;\n- explicit genome build, ancestry, source columns, effect scale, and resource versions;\n- no phenotype-based selection of variants, thresholds, or SBayesRC weights;\n- read-only inputs and isolated Nextflow work directories;\n- participant and variant-coverage checks for every score;\n- input checksums, software versions, method logs, and Nextflow execution records;\n- one output registry controlling publication, report downloads, and the data\n  dictionary.\n\nFor a complete description of output files and their interpretation, see\n[`docs/output.md`](docs/output.md).\n\n## Documentation\n\n- [Input and run instructions](docs/usage.md)\n- [Output files and interpretation](docs/output.md)\n- [Aquarius deployment](docs/aqua.md)\n- [Container build](containers/README.md)\n- [Contributing and testing](docs/CONTRIBUTING.md)\n- [Software and method citations](CITATIONS.md)\n\n## Citations\n\nThe software and method references required for a run are listed in\n[`CITATIONS.md`](CITATIONS.md). Cite Nextflow and each selected PRS method.\n\n## Licence\n\nThe dnaprs workflow code is released under the [MIT licence](LICENSE). PLINK, SBayesRC,\nreference panels, GWAS files, and other external resources retain their own licences and\naccess conditions.\n",
+            "datePublished": "2026-09-01T03:24:35+00:00",
+            "description": "<p align=\"center\">\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"docs/images/nf-core-dnaprs_logo_dark.png\">\n    <img src=\"docs/images/nf-core-dnaprs_logo_light.png\" alt=\"dnaprs\">\n  </picture>\n</p>\n\n[![nf-test status](https://github.com/paulYRP/dnaprs/actions/workflows/nf-test.yml/badge.svg)](https://github.com/paulYRP/dnaprs/actions/workflows/nf-test.yml)\n[![nf-core linting status](https://github.com/paulYRP/dnaprs/actions/workflows/linting.yml/badge.svg)](https://github.com/paulYRP/dnaprs/actions/workflows/linting.yml)\n[![Nextflow](https://img.shields.io/badge/version-%E2%89%A525.10.4-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)\n[![nf-core template version](https://img.shields.io/badge/nf--core_template-4.1.0-green?style=flat&logo=nfcore&logoColor=white&color=%2324B064&link=https%3A%2F%2Fnf-co.re)](https://github.com/nf-core/tools/releases/tag/4.1.0)\n[![nf-test](https://img.shields.io/badge/tested_with-nf--test-337ab7)](https://www.nf-test.com/)\n[![MIT licence](https://img.shields.io/badge/license-MIT-111111)](LICENSE)\n\n## Introduction\n\n**dnaprs** is a portable Nextflow DSL2 pipeline for generating and evaluating polygenic\nrisk scores from raw target genotypes and raw GWAS summary statistics. It is derived\nfrom the nf-core template and follows nf-core practices, but it is maintained at\n`paulYRP/dnaprs` and is not an official `nf-core/*` pipeline.\n\nThe pipeline discovers PGEN, BED, PED/MAP, BGEN, VCF/BCF, or GenomeStudio FinalReport\ninputs; records raw genotype EDA; resolves markers against pinned GRCh37 references;\napplies two target-QC checkpoints; and projects participants onto unrelated 1000 Genomes\nreference PCA axes. It can impute with Beagle, generate PLINK C+T and/or SBayesRC\nscores, apply participant eligibility consistently, and fit one or many declared\nphenotype models. Source files are read-only.\n\n![dnaprs workflow](docs/images/dnaprs-workflow.svg)\n\nThe workflow publishes one run under `dnaprs/model1/` by default:\n\n- `data/` \u2014 generated records, checkpoints, QC, weights, scores, and model tables;\n- `figures/` \u2014 a convenient copy of every report figure;\n- `logs/` \u2014 scientific and execution logs;\n- `reports/` \u2014 the portable HTML website, downloads, and provenance.\n\n## Beginner run\n\nInstall Java 17 or newer, Nextflow 25.10.4 or newer, and Docker, Apptainer, or\nSingularity. With one raw target dataset in `data/plink/raw/` and raw GWAS files in\n`data/gwas/raw/`:\n\n```bash\nnextflow run . -profile singularity -resume\n```\n\nThe defaults are equivalent to:\n\n```bash\nnextflow run . \\\n  -profile singularity \\\n  --input data/plink/raw \\\n  --gwas data/gwas/raw \\\n  --outdir dnaprs \\\n  --run_name model1 \\\n  -resume\n```\n\nAdd one phenotype model directly from the user-provided CSV:\n\n```bash\nnextflow run . \\\n  -profile singularity \\\n  --input data/plink/raw \\\n  --gwas data/gwas/raw \\\n  --phenotype data/pheno/pheno.csv \\\n  --outcome depression_score \\\n  --covariates age,sex \\\n  --model_type gaussian \\\n  -resume\n```\n\n`depression_score`, `age`, and `sex` are examples, not built-in names. If the\nparticipant-ID column cannot be matched uniquely to target IDs, also supply\n`--participant_id <column>`. Without phenotype parameters, PRS generation and the\ngenetic report still complete.\n\n## References\n\n`--reference_mode auto` is the default. The pipeline downloads only the required assets\nfrom a pinned catalogue, verifies size and checksum (or the documented pinned ETag when\nthe source provides no digest), and reuses each valid asset from\n`references/dnaprs/grch37-v1/`. Beagle and unbref3 are handled in the same way.\n\nTo use an existing reference collection:\n\n```bash\nnextflow run . \\\n  -profile singularity \\\n  --references /path/to/rData \\\n  --reference_mode local \\\n  -resume\n```\n\nTo build or verify only the reusable reference cache, set `reference_only: true` in a\nsmall YAML parameter file and run with `-params-file`.\n\n## Advanced and HPC runs\n\nAdvanced users declare paths, GWAS column roles, thresholds, selected methods, and\nmultiple phenotype models in YAML; they never create target/GWAS/reference/model TSV\nmanifests. See [the complete usage guide](docs/usage.md) and\n[`examples/params.yml`](examples/params.yml).\n\nProcesses use standard nf-core-style resource labels and pass `task.cpus` and bounded\ntask memory to capable tools. Nextflow handles cohort, chromosome-imputation, trait,\nmethod, reference, and model tasks concurrently, then validates deterministic gathers.\nScheduler, queue, project, and filesystem settings remain\noutside the pipeline, so the same workflow runs locally or through PBS Pro, Slurm, SGE,\nLSF, and other Nextflow executors. The workspace-level `test/` directory contains the\nminimal QUT PBS/Singularity acceptance launcher.\n\nSBayesRC is a high-memory, long-running method. Use `--methods plink_ct` for a smaller\nrun; selecting fewer methods changes the scientific work requested, not the executor.\n\n## Report and validation\n\nOpen `dnaprs/model1/reports/index.html` after completion. The report preserves every\navailable plot and provides SVG plus high-resolution PNG, TIFF, and JPEG downloads. Its\nLogs page displays execution artifacts in expandable, scrollable panels.\nWhen imputation is enabled, the PLINK page also reports typed-versus-imputed scoring\ncoverage and agreement between the primary imputed score and direct-genotype sensitivity\nscore; sensitivity scores are not added to phenotype models.\n\nRun the pipeline-level stub regression test with:\n\n```bash\nnf-test test tests/default.nf.test --ci\n```\n\nRun the R and report smoke suite from PowerShell with:\n\n```powershell\n.\\tests\\smoke.ps1\n```\n\nThese are software-contract tests, not biological or clinical validation. Phenotype\nassociations are research estimates and do not make a PRS a clinical risk prediction.\n\n## Documentation\n\n- [Input, reference, phenotype, and run options](docs/usage.md)\n- [Output files and interpretation](docs/output.md)\n- [Pinned software environments](containers/README.md)\n- [Contributing and testing](docs/CONTRIBUTING.md)\n- [Citations](CITATIONS.md)\n\nThe code is released under the [MIT licence](LICENSE). External tools, GWAS data, and\nreference resources retain their own licences and access conditions.\n",
             "hasPart": [
                 {
                     "@id": "main.nf"
                 },
                 {
                     "@id": "assets/"
+                },
+                {
+                    "@id": "bin/"
                 },
                 {
                     "@id": "conf/"
@@ -39,6 +42,15 @@
                 },
                 {
                     "@id": "docs/images/"
+                },
+                {
+                    "@id": "modules/"
+                },
+                {
+                    "@id": "modules/local/"
+                },
+                {
+                    "@id": "modules/nf-core/"
                 },
                 {
                     "@id": "workflows/"
@@ -86,17 +98,17 @@
                     "@id": ".prettierignore"
                 }
             ],
-            "isBasedOn": "https://github.com/nf-core/dnaprs",
+            "isBasedOn": "https://github.com/paulYRP/dnaprs",
             "license": "MIT",
             "mainEntity": {
                 "@id": "main.nf"
             },
             "mentions": [
                 {
-                    "@id": "#c3a9b93d-4582-47eb-b62f-5aef19deff26"
+                    "@id": "#a529257c-1237-4224-aa9a-1c2f0271a82b"
                 }
             ],
-            "name": "nf-core/dnaprs"
+            "name": "paulYRP/dnaprs"
         },
         {
             "@id": "ro-crate-metadata.json",
@@ -120,14 +132,15 @@
                 "SoftwareSourceCode",
                 "ComputationalWorkflow"
             ],
-            "contributor": [
+            "author": [
                 {
-                    "@id": "#6d0cc2da-e02d-42ba-b593-68d1f82ef2f9"
+                    "@id": "#56698ce3-383d-4d86-a992-d4cde973c933"
                 }
             ],
             "dateCreated": "",
-            "dateModified": "2026-08-30T09:27:27Z",
+            "dateModified": "2026-09-01T13:24:35Z",
             "dct:conformsTo": "https://bioschemas.org/profiles/ComputationalWorkflow/1.0-RELEASE/",
+            "description": "Generate and evaluate polygenic risk scores with PLINK and SBayesRC.",
             "keywords": [
                 "nf-core",
                 "nextflow"
@@ -135,8 +148,13 @@
             "license": [
                 "MIT"
             ],
+            "maintainer": [
+                {
+                    "@id": "#56698ce3-383d-4d86-a992-d4cde973c933"
+                }
+            ],
             "name": [
-                "nf-core/dnaprs"
+                "paulYRP/dnaprs"
             ],
             "programmingLanguage": {
                 "@id": "https://w3id.org/workflowhub/workflow-ro-crate#nextflow"
@@ -145,8 +163,8 @@
                 "@id": "https://nf-co.re/"
             },
             "url": [
-                "https://github.com/nf-core/dnaprs",
-                "https://nf-co.re/dnaprs/dev/"
+                "https://github.com/paulYRP/dnaprs",
+                "https://nf-co.re/paulYRP/dnaprs/dev/"
             ],
             "version": [
                 "1.0.0dev"
@@ -165,23 +183,23 @@
             "version": "!>=25.10.4"
         },
         {
-            "@id": "#c3a9b93d-4582-47eb-b62f-5aef19deff26",
+            "@id": "#a529257c-1237-4224-aa9a-1c2f0271a82b",
             "@type": "TestSuite",
             "instance": [
                 {
-                    "@id": "#7ce3361b-5fa4-43d1-8090-042c17aca02b"
+                    "@id": "#f61af9c1-d249-43b7-a8d0-7c7f3da084ce"
                 }
             ],
             "mainEntity": {
                 "@id": "main.nf"
             },
-            "name": "Test suite for nf-core/dnaprs"
+            "name": "Test suite for paulYRP/dnaprs"
         },
         {
-            "@id": "#7ce3361b-5fa4-43d1-8090-042c17aca02b",
+            "@id": "#f61af9c1-d249-43b7-a8d0-7c7f3da084ce",
             "@type": "TestInstance",
-            "name": "GitHub Actions workflow for testing nf-core/dnaprs",
-            "resource": "repos/nf-core/dnaprs/actions/workflows/nf-test.yml",
+            "name": "GitHub Actions workflow for testing paulYRP/dnaprs",
+            "resource": "repos/paulYRP/dnaprs/actions/workflows/nf-test.yml",
             "runsOn": {
                 "@id": "https://w3id.org/ro/terms/test#GithubService"
             },
@@ -201,6 +219,11 @@
             "description": "Additional files"
         },
         {
+            "@id": "bin/",
+            "@type": "Dataset",
+            "description": "Scripts that must be callable from a pipeline process"
+        },
+        {
             "@id": "conf/",
             "@type": "Dataset",
             "description": "Configuration files"
@@ -214,6 +237,21 @@
             "@id": "docs/images/",
             "@type": "Dataset",
             "description": "Images for the documentation files"
+        },
+        {
+            "@id": "modules/",
+            "@type": "Dataset",
+            "description": "Modules used by the pipeline"
+        },
+        {
+            "@id": "modules/local/",
+            "@type": "Dataset",
+            "description": "Pipeline-specific modules"
+        },
+        {
+            "@id": "modules/nf-core/",
+            "@type": "Dataset",
+            "description": "nf-core modules"
         },
         {
             "@id": "workflows/",
@@ -297,9 +335,11 @@
             "url": "https://nf-co.re/"
         },
         {
-            "@id": "#6d0cc2da-e02d-42ba-b593-68d1f82ef2f9",
+            "@id": "#56698ce3-383d-4d86-a992-d4cde973c933",
             "@type": "Person",
-            "name": "Paul Ruiz Pinto"
+            "affiliation": "Queensland University of Technology",
+            "name": "Paul Ruiz Pinto",
+            "url": "https://github.com/paulYRP"
         }
     ]
 }

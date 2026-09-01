@@ -4,5 +4,3 @@ keywords: [plink, scoring, prs]
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
-  - r:
-      description: R statistical computing environment

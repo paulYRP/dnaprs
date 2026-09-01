@@ -1,0 +1,81 @@
+name: Build release containers
+
+on:
+  pull_request:
+    paths:
+      - "containers/**"
+      - ".github/workflows/containers.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  containers:
+    name: Build pinned dnaprs containers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'release' && (github.event.release.tag_name == '1.0.0' || github.event.release.tag_name == 'v1.0.0')
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build analysis image
+        run: |
+          docker build \
+            --file containers/analysis/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            .
+
+      - name: Build PLINK 2 image
+        run: |
+          docker build \
+            --file containers/plink2/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+            .
+
+      - name: Build report image
+        run: |
+          docker build \
+            --build-arg ANALYSIS_IMAGE=ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            --file containers/report/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+            .
+
+      - name: Build target-imputation image
+        run: |
+          docker build \
+            --file containers/imputation/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
+            .
+
+      - name: Verify software versions
+        run: |
+          docker run --rm ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            Rscript -e "stopifnot(as.character(getRversion()) == '4.4.1', as.character(packageVersion('data.table')) == '1.18.0', as.character(packageVersion('glm2')) == '1.2.1', as.character(packageVersion('lme4')) == '2.0.1')"
+          docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+            plink2 --version | grep 'v2.0.0-a.6.12'
+          docker run --rm --entrypoint Rscript \
+            docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb \
+            -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
+          docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+            quarto --version | grep '^1.7.32$'
+          docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
+            bash -c "bcftools --version | head -n 1 && java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2 && java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2 && plink2 --version"
+
+      - name: Publish immutable release images
+        if: github.event_name == 'release' && (github.event.release.tag_name == '1.0.0' || github.event.release.tag_name == 'v1.0.0')
+        run: |
+          docker push ghcr.io/paulyrp/dnaprs-analysis:1.0.0
+          docker push ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12
+          docker push ghcr.io/paulyrp/dnaprs-report:1.0.0
+          docker push ghcr.io/paulyrp/dnaprs-imputation:1.1.0

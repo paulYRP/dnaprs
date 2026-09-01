@@ -1,0 +1,43 @@
+---
+title: "SBayesRC PRS"
+pagetitle: "SBayesRC PRS | dnaprs"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({library(data.table); library(knitr)}))
+```
+
+```{r, include=FALSE}
+source("report-setup.R", local = knitr::knit_global())
+```
+
+## Alignment, imputation, and model counts
+
+```{r}
+tableVIEW(
+  variantFLOW[method == "sbayesrc", .(
+    cohort, trait_id, prs_name, stage, variant_count, percent_of_source
+  )],
+  "SBayesRC alignment, summary-imputation, model, and scoring counts."
+)
+```
+
+## Target coverage and participant PRS review
+
+```{r, results='asis'}
+figureGALLERY("SBayesRC PRS")
+```
+
+## Outputs and downloads
+
+```{r}
+fileTABLE(
+  "^(sbayesrc|qc/sbayesrc|qc/scores|scores|logs/sbayesrc)",
+  "SBayesRC tidy, summary-imputed, model, participant-score, quality, and log files."
+)
+```
+
+<div class="dnaprs-closing-card">
+<p>A passed SBayesRC result requires successful reference alignment, summary imputation, joint-model completion, valid posterior weights, non-zero target coverage, and one finite score per eligible participant. The phenotype analysis remains separate and does not alter the model or weights.</p>
+</div>

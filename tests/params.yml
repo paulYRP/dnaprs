@@ -1,0 +1,15 @@
+run_name: test_full
+input: tests/data/target
+gwas: tests/data/gwas
+references: tests/data/reference
+reference_mode: local
+phenotype: tests/data/phenotype.tsv
+outcome: MHC_TOTAL
+covariates: Age,Sex
+model_type: gaussian
+participant_id: IID
+methods: plink_ct,sbayesrc
+genome: GRCh37
+seed: 20260829
+report_enabled: true
+target_imputation: true

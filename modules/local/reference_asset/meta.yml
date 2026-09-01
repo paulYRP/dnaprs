@@ -1,0 +1,10 @@
+name: reference_asset
+description: Fetch or reuse one pinned reference asset and verify its declared integrity metadata.
+keywords: [reference, download, checksum, cache]
+tools:
+  - curl:
+      description: Command-line data transfer tool
+output:
+  - asset:
+      type: file
+      description: Verified reference asset.

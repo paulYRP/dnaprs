@@ -1,0 +1,13 @@
+name: assemble_target_imputation
+description: Validate and deterministically gather completed chromosome-imputation tasks.
+keywords: [genotype, imputation, scatter-gather]
+tools:
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset
+output:
+  - prepared:
+      type: directory
+      description: Merged imputed target PGEN checkpoint.
+  - manifest:
+      type: file
+      description: Ordered chromosome-level imputation handoff manifest.

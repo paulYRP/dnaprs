@@ -19,16 +19,16 @@ source("report-setup.R", local = knitr::knit_global())
 ```
 
 <div class="dnaprs-hero">
-<img src="assets/nf-core-dnaprs_logo_light.svg" alt="nf-core/dnaprs" data-dnaprs-logo />
+<img src="assets/nf-core-dnaprs_logo_light.svg" alt="dnaprs" data-dnaprs-logo />
 <div>
 <p class="dnaprs-eyebrow">POLYGENIC RISK SCORE REPORT</p>
 <h1>Reproducible score generation and review</h1>
-<p>This website records the inputs, score-generation checks, quantitative figures, phenotype associations, and files produced by the completed run.</p>
 </div>
 </div>
 
-The score-generation checks are separate from phenotype associations. Phenotypes are
-not used to choose variants, PLINK thresholds, or SBayesRC weights.
+<div class="dnaprs-opening-card">
+<p>dnaprs prepares target genotypes and GWAS summary statistics, evaluates their quality, and generates polygenic risk scores with PLINK clumping and thresholding, SBayesRC, or both methods. The report records the data, reference resources, decisions, score calculations, phenotype associations, and software used in this run. The phenotype is not used to select variants or tune the PRS methods.</p>
+</div>
 
 <div class="dnaprs-kpis">
 <div class="dnaprs-kpi"><strong>`r uniqueN(score$cohort)`</strong><span>Cohorts</span></div>
@@ -36,6 +36,12 @@ not used to choose variants, PLINK thresholds, or SBayesRC weights.
 <div class="dnaprs-kpi"><strong>`r uniqueN(score$trait_id)`</strong><span>PRS traits</span></div>
 <div class="dnaprs-kpi"><strong>`r uniqueN(score$method)`</strong><span>Methods</span></div>
 </div>
+
+## Run-level quantitative summary
+
+```{r, results='asis'}
+figureGALLERY("Overview")
+```
 
 ## Analysis summary
 
@@ -58,8 +64,8 @@ not used to choose variants, PLINK thresholds, or SBayesRC weights.
 
 ```{r}
 # Display the checks completed before PRS calculation.
-buttonROW(fileBUTTON("preflight_qc.tsv", "Download run checks"))
-tableVIEW(preflight, "Input and run checks completed before PRS calculation.")
+buttonROW(fileBUTTON("input_checks.tsv", "Download run checks"))
+tableVIEW(inputCHECK, "Input and run checks completed before PRS calculation.")
 ```
 
 ## Score checks
@@ -80,6 +86,6 @@ tableVIEW(
 )
 ```
 
-**Interpretation.** A completed score requires the expected participants, finite values,
-and recorded scoring-variant coverage. These checks confirm calculation quality but do
-not establish prediction or clinical usefulness.
+<div class="dnaprs-closing-card">
+<p>The technical checks establish that the declared inputs were processed consistently and that every reported score can be traced to its GWAS, reference resources, target variants, and software. Phenotype associations describe research agreement in the analysed cohort. They do not make the scores clinical risk estimates or provide independent predictive validation.</p>
+</div>

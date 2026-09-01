@@ -1,0 +1,7 @@
+cohort	check	status	value	reason
+TEST	format_import	PASS	6 participants; 2 variants	The supplied target was imported without changing the source files.
+TEST	variant_identifiers	PASS	0 duplicate groups	No duplicated non-missing identifiers were found.
+TEST	heterozygosity	PASS	6 participants	Autosomal heterozygosity was calculated.
+TEST	reported_sex	NOT_RUN	0 recorded; 0 X variants	Recorded sex or X-chromosome variants were unavailable.
+TEST	relatedness	NOT_RUN	1 pruned variant	LD pruning retained fewer than two informative variants.
+TEST	internal_pca	NOT_RUN	1 pruned variant	LD pruning retained fewer than two informative variants.

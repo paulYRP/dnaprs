@@ -1,0 +1,59 @@
+---
+title: "Target QC"
+pagetitle: "Target QC | dnaprs"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({library(data.table); library(knitr)}))
+```
+
+```{r, include=FALSE}
+source("report-setup.R", local = knitr::knit_global())
+```
+
+## Scoring readiness
+
+```{r, results='asis'}
+figureGALLERY("Target QC")
+```
+
+```{r}
+tableVIEW(targetQC, "Final target dimensions and scoring-readiness status.")
+```
+
+## Participant decisions
+
+```{r}
+tableVIEW(targetSAMPLEDECISION, "Participant-level missingness decisions; heterozygosity, sex, relatedness, and PCA remain review evidence in Genotype EDA.")
+```
+
+```{r}
+tableVIEW(participantDECISION, "Integrated technical-QC, relatedness, reference-ancestry, score-eligibility, and primary-analysis decisions.")
+```
+
+## Reference ancestry
+
+```{r}
+tableVIEW(ancestrySUMMARY, "Reference matching, PCA, empirical European distance threshold, and target classification summary.")
+```
+
+```{r}
+tableVIEW(targetANCESTRY, "Target participant projections and explicit ancestry classifications.")
+```
+
+## Variant decisions
+
+```{r}
+tableVIEW(targetVARIANTDECISION, "Variant-level missingness, allele, chromosome, MAF, and HWE decisions.")
+```
+
+## Outputs and downloads
+
+```{r}
+fileTABLE("^target_qc/", "Target QC summaries and participant/variant decision tables.")
+```
+
+<div class="dnaprs-closing-card">
+<p>A passed Target QC summary means the raw or corrected checkpoint was evaluated with the declared technical thresholds and produced non-empty autosomal PGEN output. Reference ancestry and relatedness are recorded as explicit participant decisions: technically eligible participants remain available for sensitivity analysis, while the primary analysis uses the declared ancestry and unrelated-participant rules.</p>
+</div>

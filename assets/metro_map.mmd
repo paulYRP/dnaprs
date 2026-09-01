@@ -1,0 +1,99 @@
+%%metro title: dnaprs
+%%metro file: target_in | TARGET
+%%metro file: gwas_in | GWAS
+%%metro file: reference_in | REF
+%%metro file: phenotype_in | PHENO
+%%metro file: report_out | HTML
+%%metro line: shared | Shared workflow | #68737D
+%%metro line: plink_ct | PLINK C+T | #3B6FB6
+%%metro line: sbayesrc | SBayesRC | #0A8F78
+%%metro line: phenotype | Phenotype models | #D97706
+%%metro legend: bl
+
+graph LR
+    subgraph inputs [Raw inputs and references]
+        target_in[ ]
+        gwas_in[ ]
+        reference_in[ ]
+        phenotype_in[ ]
+        input_checks[Input checks]
+
+        target_in -->|shared| input_checks
+        gwas_in -->|shared| input_checks
+        reference_in -->|shared| input_checks
+    end
+
+    subgraph preparation [Target and GWAS preparation]
+        raw_eda[Raw target EDA]
+        target_prep[Marker preparation]
+        target_qc[Two QC checkpoints]
+        ancestry[Reference ancestry]
+        target_impute[Beagle by chromosome]
+        imputation_merge[Checked chromosome merge]
+        participant_decisions[Participant decisions]
+        score_target[Scoring target]
+        gwas_qc[GWAS QC]
+        plink_reference_prep[LD and PCA reference]
+        sbayes_reference_prep[SBayesRC references]
+
+        input_checks -->|shared| raw_eda
+        raw_eda -->|shared| target_prep
+        target_prep -->|shared| target_qc
+        input_checks -->|plink_ct| plink_reference_prep
+        target_qc -->|shared| ancestry
+        plink_reference_prep -->|shared| ancestry
+        target_qc -->|shared| target_impute
+        target_impute -->|shared| imputation_merge
+        ancestry -->|shared| participant_decisions
+        target_qc -->|shared| participant_decisions
+        participant_decisions -->|shared| score_target
+        imputation_merge -->|shared| score_target
+        input_checks -->|shared| gwas_qc
+        input_checks -->|sbayesrc| sbayes_reference_prep
+    end
+
+    subgraph scoring [PRS generation]
+        reference_freq[LD frequency]
+        clump[Clump]
+        ct_weights[C+T weights]
+        plink_score[PLINK score]
+        direct_score[Direct sensitivity score]
+        sensitivity[Typed and imputed agreement]
+        tidy[Tidy]
+        impute[Summary impute]
+        model[Joint model]
+        sbayes_score[SBayesRC score]
+
+        plink_reference_prep -->|plink_ct| reference_freq
+        gwas_qc -->|plink_ct| clump
+        reference_freq -->|plink_ct| clump
+        clump -->|plink_ct| ct_weights
+        ct_weights -->|plink_ct| plink_score
+        score_target -->|plink_ct| plink_score
+        ct_weights -->|plink_ct| direct_score
+        target_qc -->|plink_ct| direct_score
+        plink_score -->|plink_ct| sensitivity
+        direct_score -->|plink_ct| sensitivity
+
+        gwas_qc -->|sbayesrc| tidy
+        sbayes_reference_prep -->|sbayesrc| tidy
+        tidy -->|sbayesrc| impute
+        impute -->|sbayesrc| model
+        sbayes_reference_prep -->|sbayesrc| model
+        model -->|sbayesrc| sbayes_score
+        score_target -->|sbayesrc| sbayes_score
+    end
+
+    subgraph results [Results and report]
+        combine[Combine scores]
+        associations[Phenotype models]
+        report_out[ ]
+
+        plink_score -->|plink_ct| combine
+        sensitivity -->|plink_ct| report_out
+        sbayes_score -->|sbayesrc| combine
+        combine -->|shared| report_out
+        combine -->|phenotype| associations
+        phenotype_in -->|phenotype| associations
+        associations -->|phenotype| report_out
+    end

@@ -17,10 +17,6 @@ suppressWarnings(suppressPackageStartupMessages({
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-Phenotype models evaluate the prespecified association between each psychological
-phenotype and its matching PRS while accounting for the declared covariates. The
-phenotype results do not change the PRS weights or scoring settings.
-
 ## Quantitative review
 
 ```{r, results='asis'}
@@ -28,9 +24,9 @@ phenotype results do not change the PRS weights or scoring settings.
 figureGALLERY("Phenotype")
 ```
 
-**Interpretation.** Effect estimates, confidence intervals, added model fit, adjusted
-patterns, and diagnostics should be interpreted together. In a small sample, uncertainty
-and individual observations can be more informative than a P value alone.
+Effect estimates, confidence intervals, added model fit, adjusted patterns, and
+diagnostics should be interpreted together. In a small sample, uncertainty and
+individual observations can be more informative than a P value alone.
 
 ## Association estimates
 
@@ -47,6 +43,9 @@ tableVIEW(
     ci_low,
     ci_high,
     p_value,
+    empirical_p,
+    permutation_scheme,
+    permutations,
     incremental_fit,
     fit_metric,
     status
@@ -81,8 +80,15 @@ restricted result directory.
 ```{r}
 # Provide the association, fitted-model, and plot-data files.
 buttonROW(
+  fileBUTTON("phenoPRS.csv", "Download phenoPRS.csv"),
   fileBUTTON("phenotype_associations.tsv", "Download associations"),
   fileBUTTON("phenotype_models_fitted.tsv", "Download fitted formulas"),
-  fileBUTTON("phenotype_plot_data.tsv", "Download plot data")
+  fileBUTTON("phenotype_plot_data.tsv", "Download plot data"),
+  fileBUTTON("phenotype_permutations.tsv", "Download permutations"),
+  fileBUTTON("phenotype_influence.tsv", "Download influence diagnostics")
 )
 ```
+
+<div class="dnaprs-closing-card">
+<p>The PRS coefficient describes the expected phenotype difference per one target-cohort PRS standard deviation after accounting for the declared covariates. Change in model fit shows how much additional variation is described after adding the PRS. In a small sample, confidence intervals, permutation results, and leave-one-participant-out changes are interpreted together. These are research associations and not independent clinical validation.</p>
+</div>

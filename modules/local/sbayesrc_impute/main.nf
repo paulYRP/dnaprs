@@ -3,8 +3,10 @@ process SBAYESRC_IMPUTE {
     label 'process_high'
     label 'process_r'
 
+    container 'docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb'
+
     input:
-    tuple val(meta), path(tidy), path(tidy_qc), path(harmonisation_qc), val(ld_reference)
+    tuple val(meta), path(tidy), path(tidy_qc), path(harmonisation_qc), val(ld_reference), path(ld_reference_files)
     path sbayesrc_script
 
     output:

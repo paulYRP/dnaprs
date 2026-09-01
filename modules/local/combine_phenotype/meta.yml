@@ -1,0 +1,13 @@
+name: combine_phenotype
+description: Deterministically gather independently fitted phenotype models.
+keywords: [phenotype, prs, gather]
+tools:
+  - R:
+      description: Statistical computing environment
+output:
+  - associations:
+      type: file
+      description: Combined phenotype association estimates.
+  - fitted_models:
+      type: file
+      description: Combined fitted-model specifications.

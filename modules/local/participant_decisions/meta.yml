@@ -1,0 +1,10 @@
+name: participant_decisions
+description: Integrate technical QC, relatedness, and reference ancestry into explicit participant decisions.
+keywords: [genotype, quality-control, ancestry, relatedness]
+tools:
+  - R:
+      description: Statistical computing environment
+output:
+  - decisions:
+      type: file
+      description: Participant decisions and score-eligible PLINK keep file.

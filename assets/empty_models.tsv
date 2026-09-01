@@ -1,1 +1,1 @@
-model_id	outcome	prs_name	family	covariates	participant_id	group_id	expected_direction	primary
+model_id	outcome	prs_name	family	covariates	participant_id	group_id	expected_direction	primary	control_value	case_value	subset

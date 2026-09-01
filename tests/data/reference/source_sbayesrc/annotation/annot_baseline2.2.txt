@@ -1,0 +1,2 @@
+SNP	A1	A2	Coding
+rsMini1	G	A	1

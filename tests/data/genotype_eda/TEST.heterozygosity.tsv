@@ -1,0 +1,7 @@
+cohort	FID	IID	observed_homozygotes	expected_homozygotes	observations	inbreeding_coefficient	heterozygosity_rate	missingness	heterozygosity_z	status
+TEST	TEST01	TEST01	1	1	2	0	0.5	0	0.645497	PASS
+TEST	TEST02	TEST02	1	1	2	0	0.5	0	0.645497	PASS
+TEST	TEST03	TEST03	2	1	2	1	0	0	-1.29099	PASS
+TEST	TEST04	TEST04	2	1	2	1	0	0	-1.29099	PASS
+TEST	TEST05	TEST05	1	1	2	0	0.5	0	0.645497	PASS
+TEST	TEST06	TEST06	1	1	2	0	0.5	0	0.645497	PASS

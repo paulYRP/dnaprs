@@ -62,6 +62,9 @@
   }
 
   function initializeTheme() {
+    document.querySelectorAll("#quarto-header .navbar-logo, #quarto-header .navbar-logo-image, #quarto-header img").forEach(function (logo) {
+      logo.setAttribute("data-dnaprs-logo", "");
+    });
     var button = document.createElement("button");
     button.type = "button";
     button.className = "dnaprs-theme-button";
@@ -97,6 +100,12 @@
     if (viewer.dataset.tableInitialized === "true") return;
     viewer.dataset.tableInitialized = "true";
     var rows = Array.from(viewer.querySelectorAll("tbody tr"));
+    viewer.querySelectorAll("tbody td").forEach(function (cell) {
+      var status = cell.textContent.trim().toUpperCase().replace(/_/g, " ");
+      if (["PASS", "REVIEW", "FAIL", "NOT RUN"].indexOf(status) >= 0) {
+        cell.classList.add("dnaprs-status", "dnaprs-status-" + status.toLowerCase().replace(" ", "-"));
+      }
+    });
     var search = viewer.querySelector("[data-table-search]");
     var size = viewer.querySelector("[data-table-size]");
     var previous = viewer.querySelector("[data-table-previous]");
@@ -151,6 +160,35 @@
     render();
   }
 
+  function initializeLogText(target) {
+    var panel = target.closest("details");
+    if (!panel) return;
+
+    function loadText() {
+      if (!panel.open || target.dataset.logLoaded === "true" || target.dataset.logLoading === "true") return;
+      target.dataset.logLoading = "true";
+      target.textContent = "Loading completed execution record...";
+      fetch(target.dataset.logSource, { cache: "no-store" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return response.text();
+        })
+        .then(function (value) {
+          target.textContent = value || "The completed execution record is empty.";
+          target.dataset.logLoaded = "true";
+        })
+        .catch(function () {
+          target.textContent = "The browser could not load this local text record. Use the download link below, or serve the report directory with a local web server.";
+        })
+        .finally(function () {
+          target.dataset.logLoading = "false";
+        });
+    }
+
+    panel.addEventListener("toggle", loadText);
+    loadText();
+  }
+
   function initializeGallery(gallery) {
     if (gallery.dataset.galleryInitialized === "true") return;
     var data = gallery.querySelector("[data-figure-data]");
@@ -173,9 +211,11 @@
     var image = gallery.querySelector("[data-figure-image]");
     var canvas = gallery.querySelector(".dnaprs-figure-canvas");
     var stage = gallery.querySelector("[data-figure-stage]");
+    var svg = gallery.querySelector("[data-figure-svg]");
     var tiff = gallery.querySelector("[data-figure-tiff]");
     var png = gallery.querySelector("[data-figure-png]");
     var jpeg = gallery.querySelector("[data-figure-jpeg]");
+    var source = gallery.querySelector("[data-figure-source]");
     var card = gallery.querySelector(".dnaprs-figure-card");
     var expand = gallery.querySelector("[data-figure-expand]");
     var zoomOut = gallery.querySelector("[data-figure-zoom-out]");
@@ -238,14 +278,25 @@
       title.textContent = figure.title;
       description.textContent = figure.description;
       inspection.textContent = figure.inspection;
-      image.src = figure.png;
+      image.src = figure.svg || figure.png;
       image.alt = figure.title + ". " + figure.description;
+      svg.href = figure.svg;
       tiff.href = figure.tiff;
       png.href = figure.png;
       jpeg.href = figure.jpeg;
+      svg.download = figure.svg.split("/").pop();
       tiff.download = figure.tiff.split("/").pop();
       png.download = figure.png.split("/").pop();
       jpeg.download = figure.jpeg.split("/").pop();
+      if (figure.source_table) {
+        source.hidden = false;
+        source.href = figure.source_table;
+        source.download = figure.source_table.split("/").pop();
+      } else {
+        source.hidden = true;
+        source.removeAttribute("href");
+        source.removeAttribute("download");
+      }
       count.textContent = index + 1 + " of " + figures.length + " figures";
       previous.disabled = index === 0;
       next.disabled = index === figures.length - 1;
@@ -341,6 +392,7 @@
     initializeTheme();
     document.querySelectorAll("[data-table-viewer]").forEach(initializeTable);
     document.querySelectorAll("[data-figure-gallery]").forEach(initializeGallery);
+    document.querySelectorAll("[data-log-source]").forEach(initializeLogText);
     document.addEventListener("keydown", closeExpandedPanels);
   }
 

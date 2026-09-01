@@ -1,0 +1,13 @@
+name: reference_plan
+description: Resolve required reference roles to validated local assets or pinned downloads.
+keywords: [reference, planning, cache]
+tools:
+  - R:
+      description: Statistical computing environment
+output:
+  - assets:
+      type: file
+      description: Asset acquisition plan.
+  - plan:
+      type: file
+      description: Human-readable reference plan and status.

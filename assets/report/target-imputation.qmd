@@ -1,0 +1,43 @@
+---
+title: "Target Imputation"
+pagetitle: "Target Imputation | dnaprs"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+suppressWarnings(suppressPackageStartupMessages({library(data.table); library(knitr)}))
+```
+
+```{r, include=FALSE}
+source("report-setup.R", local = knitr::knit_global())
+```
+
+## Chromosome results
+
+```{r, results='asis'}
+figureGALLERY("Target Imputation")
+```
+
+```{r}
+tableVIEW(imputationQC, "Typed input, retained output, imputed variant counts, and the applied DR2 threshold by chromosome.")
+```
+
+```{r}
+tableVIEW(imputationDR2, "Imputed variant counts in each Beagle DR2 quality bin by chromosome.")
+```
+
+## Reusable imputed checkpoint
+
+```{r}
+tableVIEW(imputationMANIFEST, "Chromosome-level VCF and index handoff contract for reuse without repeating imputation.")
+```
+
+## Outputs and logs
+
+```{r}
+fileTABLE("^(target_imputation|logs/target_imputation)/", "Imputed target manifests, quality summaries, VCF/PGEN checkpoint records, and Beagle logs.")
+```
+
+<div class="dnaprs-closing-card">
+<p>A passed imputation checkpoint requires a matching reference bundle, successful chromosome-level processing, and retention of typed variants plus newly imputed variants meeting the declared DR2 threshold. It does not establish phenotype prediction.</p>
+</div>

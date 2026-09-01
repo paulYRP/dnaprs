@@ -1,0 +1,30 @@
+name: target_qc
+description: Apply declared sample and variant QC thresholds to a normalised target genotype checkpoint.
+keywords:
+  - genotype
+  - quality control
+  - plink
+tools:
+  - plink2:
+      description: Whole genome association analysis toolset
+      homepage: https://www.cog-genomics.org/plink/2.0/
+input:
+  - meta:
+      type: map
+      description: Target cohort metadata.
+  - target_dir:
+      type: directory
+      description: Normalised PLINK 2 target directory.
+output:
+  - prepared:
+      type: directory
+      description: QC target PGEN checkpoint with chromosome-specific files.
+  - sample_decisions:
+      type: file
+      description: Participant-level retain/filter decisions.
+  - variant_decisions:
+      type: file
+      description: Variant-level retain/filter decisions.
+  - versions:
+      type: file
+      description: Software versions.

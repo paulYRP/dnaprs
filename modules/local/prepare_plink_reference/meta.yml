@@ -1,0 +1,10 @@
+name: prepare_plink_reference
+description: Build a European PLINK LD reference from downloaded chromosome reference sources.
+keywords: [reference, plink, ld, prs]
+tools:
+  - bcftools:
+      description: Utilities for variant calling and manipulating VCF and BCF files
+  - plink2:
+      description: Whole-genome association and genotype-processing toolset
+  - unbref3:
+      description: Convert a downloaded bref3 reference panel to VCF
