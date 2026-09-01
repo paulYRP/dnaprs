@@ -62,9 +62,11 @@
   }
 
   function initializeTheme() {
-    document.querySelectorAll("#quarto-header .navbar-logo, #quarto-header .navbar-logo-image, #quarto-header img").forEach(function (logo) {
-      logo.setAttribute("data-dnaprs-logo", "");
-    });
+    document
+      .querySelectorAll("#quarto-header .navbar-logo, #quarto-header .navbar-logo-image, #quarto-header img")
+      .forEach(function (logo) {
+        logo.setAttribute("data-dnaprs-logo", "");
+      });
     var button = document.createElement("button");
     button.type = "button";
     button.className = "dnaprs-theme-button";
@@ -178,7 +180,8 @@
           target.dataset.logLoaded = "true";
         })
         .catch(function () {
-          target.textContent = "The browser could not load this local text record. Use the download link below, or serve the report directory with a local web server.";
+          target.textContent =
+            "The browser could not load this local text record. Use the download link below, or serve the report directory with a local web server.";
         })
         .finally(function () {
           target.dataset.logLoading = "false";

@@ -7,7 +7,7 @@ target data, and phenotype data are not stored in these images.
 | ---------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `dnaprs-analysis:1.0.0`      | Input validation, GWAS harmonisation, score processing, QC, and phenotype models | R 4.4.1 and the R packages in `analysis/R-packages.tsv`                              |
 | `dnaprs-plink2:2.0.0-a.6.12` | Target conversion and PLINK C+T operations                                       | PLINK 2.0 alpha 6.12                                                                 |
-| `dnaprs-imputation:1.1.0`     | Source-reference preparation and target-genotype imputation                       | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, unzip, and PLINK 2.0 alpha 6.12 |
+| `dnaprs-imputation:1.1.0`    | Source-reference preparation and target-genotype imputation                      | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, unzip, and PLINK 2.0 alpha 6.12 |
 | `zhiliz/sbayesrc:0.2.6`      | SBayesRC preparation, modelling, and scoring                                     | The authors' SBayesRC 0.2.6 environment                                              |
 | `dnaprs-report:1.0.0`        | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv` |
 

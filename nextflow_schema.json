@@ -28,8 +28,15 @@
                                 "properties": {
                                     "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$" },
                                     "path": { "type": "string", "format": "path" },
-                                    "format": { "type": "string", "enum": ["pgen", "bed", "ped", "bgen", "vcf", "genomestudio"] },
-                                    "stage": { "type": "string", "enum": ["raw", "corrected", "qc_completed", "imputed"], "default": "raw" },
+                                    "format": {
+                                        "type": "string",
+                                        "enum": ["pgen", "bed", "ped", "bgen", "vcf", "genomestudio"]
+                                    },
+                                    "stage": {
+                                        "type": "string",
+                                        "enum": ["raw", "corrected", "qc_completed", "imputed"],
+                                        "default": "raw"
+                                    },
                                     "build": { "type": "string", "enum": ["GRCh37"], "default": "GRCh37" },
                                     "role": { "type": "string", "enum": ["target", "validation"], "default": "target" },
                                     "ancestry": { "type": "string", "default": "unspecified" },
@@ -68,7 +75,16 @@
                                     "columns": {
                                         "type": "object",
                                         "additionalProperties": false,
-                                        "required": ["variant", "chromosome", "position", "effect_allele", "other_allele", "effect", "standard_error", "p_value"],
+                                        "required": [
+                                            "variant",
+                                            "chromosome",
+                                            "position",
+                                            "effect_allele",
+                                            "other_allele",
+                                            "effect",
+                                            "standard_error",
+                                            "p_value"
+                                        ],
                                         "properties": {
                                             "variant": { "type": "string" },
                                             "chromosome": { "type": "string" },
@@ -94,9 +110,24 @@
                         }
                     ]
                 },
-                "phenotype": { "type": ["string", "null"], "format": "file-path", "exists": true, "description": "Optional participant-level phenotype CSV." },
-                "outdir": { "type": "string", "format": "directory-path", "default": "dnaprs", "description": "Result directory." },
-                "run_name": { "type": "string", "default": "model1", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$", "description": "Run-specific result folder." }
+                "phenotype": {
+                    "type": ["string", "null"],
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Optional participant-level phenotype CSV."
+                },
+                "outdir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "dnaprs",
+                    "description": "Result directory."
+                },
+                "run_name": {
+                    "type": "string",
+                    "default": "model1",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+                    "description": "Run-specific result folder."
+                }
             }
         },
         "phenotype_options": {
@@ -105,12 +136,31 @@
             "description": "Declare one model on the command line or several models in params.yml.",
             "properties": {
                 "outcome": { "type": ["string", "null"], "description": "Outcome column in the phenotype CSV." },
-                "covariates": { "type": ["string", "null"], "description": "Comma-separated phenotype covariate columns, or none." },
-                "model_type": { "type": ["string", "null"], "enum": ["gaussian", "binomial", "mixed", null], "description": "Statistical model family for the declared outcome." },
-                "participant_id": { "type": ["string", "null"], "description": "Participant-ID column; inferred only when one column matches target IDs unambiguously." },
-                "group_column": { "type": ["string", "null"], "description": "Grouping column required by a mixed model." },
-                "control_value": { "type": ["string", "number", "boolean", "null"], "description": "Phenotype value treated as the control level in a binomial model." },
-                "case_value": { "type": ["string", "number", "boolean", "null"], "description": "Phenotype value treated as the case level in a binomial model." },
+                "covariates": {
+                    "type": ["string", "null"],
+                    "description": "Comma-separated phenotype covariate columns, or none."
+                },
+                "model_type": {
+                    "type": ["string", "null"],
+                    "enum": ["gaussian", "binomial", "mixed", null],
+                    "description": "Statistical model family for the declared outcome."
+                },
+                "participant_id": {
+                    "type": ["string", "null"],
+                    "description": "Participant-ID column; inferred only when one column matches target IDs unambiguously."
+                },
+                "group_column": {
+                    "type": ["string", "null"],
+                    "description": "Grouping column required by a mixed model."
+                },
+                "control_value": {
+                    "type": ["string", "number", "boolean", "null"],
+                    "description": "Phenotype value treated as the control level in a binomial model."
+                },
+                "case_value": {
+                    "type": ["string", "number", "boolean", "null"],
+                    "description": "Phenotype value treated as the case level in a binomial model."
+                },
                 "models": {
                     "type": "array",
                     "description": "One or more advanced phenotype model records supplied in params.yml.",
@@ -121,14 +171,36 @@
                         "properties": {
                             "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$" },
                             "outcome": { "type": "string" },
-                            "covariates": { "type": ["string", "array"], "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" }, "uniqueItems": true }], "default": "none" },
+                            "covariates": {
+                                "type": ["string", "array"],
+                                "oneOf": [
+                                    { "type": "string" },
+                                    { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+                                ],
+                                "default": "none"
+                            },
                             "model_type": { "type": "string", "enum": ["gaussian", "binomial", "mixed"] },
                             "participant_id": { "type": ["string", "null"] },
                             "group_column": { "type": ["string", "null"] },
                             "control_value": { "type": ["string", "number", "boolean", "null"] },
                             "case_value": { "type": ["string", "number", "boolean", "null"] },
-                            "score_ids": { "type": ["string", "array"], "oneOf": [{ "const": "all" }, { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }], "default": "all" },
-                            "expected_direction": { "type": ["string", "null"], "enum": ["positive", "negative", null] },
+                            "score_ids": {
+                                "type": ["string", "array"],
+                                "oneOf": [
+                                    { "const": "all" },
+                                    {
+                                        "type": "array",
+                                        "items": { "type": "string" },
+                                        "minItems": 1,
+                                        "uniqueItems": true
+                                    }
+                                ],
+                                "default": "all"
+                            },
+                            "expected_direction": {
+                                "type": ["string", "null"],
+                                "enum": ["positive", "negative", null]
+                            },
                             "primary": { "type": "boolean", "default": true },
                             "subset": { "type": ["string", "null"] }
                         }
@@ -154,37 +226,144 @@
                             "required": ["root", "assets"],
                             "properties": {
                                 "root": { "type": "string", "format": "directory-path", "exists": true },
-                                "assets": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "string", "format": "path" } }
+                                "assets": {
+                                    "type": "object",
+                                    "minProperties": 1,
+                                    "additionalProperties": { "type": "string", "format": "path" }
+                                }
                             }
                         }
                     ]
                 },
-                "reference_mode": { "type": "string", "enum": ["auto", "local", "download"], "default": "auto", "description": "Resolve references from local files, downloads, or both in automatic mode." },
-                "reference_dir": { "type": "string", "format": "directory-path", "default": "references/dnaprs", "description": "Persistent cache and output directory for verified reference assets." },
-                "reference_bundle": { "type": "string", "default": "grch37-v1", "description": "Pinned reference catalogue bundle identifier." },
-                "reference_only": { "type": "boolean", "description": "Resolve and verify references without running participant analyses." },
-                "beagle_jar": { "type": ["string", "null"], "format": "file-path", "exists": true, "description": "Optional local Beagle JAR overriding the catalogue asset." },
-                "unbref3_jar": { "type": ["string", "null"], "format": "file-path", "exists": true, "description": "Optional local unbref3 JAR overriding the catalogue asset." }
+                "reference_mode": {
+                    "type": "string",
+                    "enum": ["auto", "local", "download"],
+                    "default": "auto",
+                    "description": "Resolve references from local files, downloads, or both in automatic mode."
+                },
+                "reference_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "references/dnaprs",
+                    "description": "Persistent cache and output directory for verified reference assets."
+                },
+                "reference_bundle": {
+                    "type": "string",
+                    "default": "grch37-v1",
+                    "description": "Pinned reference catalogue bundle identifier."
+                },
+                "reference_only": {
+                    "type": "boolean",
+                    "description": "Resolve and verify references without running participant analyses."
+                },
+                "beagle_jar": {
+                    "type": ["string", "null"],
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Optional local Beagle JAR overriding the catalogue asset."
+                },
+                "unbref3_jar": {
+                    "type": ["string", "null"],
+                    "format": "file-path",
+                    "exists": true,
+                    "description": "Optional local unbref3 JAR overriding the catalogue asset."
+                }
             }
         },
         "analysis_options": {
             "title": "PRS analysis options",
             "type": "object",
             "properties": {
-                "methods": { "type": "string", "enum": ["plink_ct", "sbayesrc", "plink_ct,sbayesrc"], "default": "plink_ct,sbayesrc", "description": "Comma-separated PRS methods to run." },
-                "genome": { "type": "string", "enum": ["GRCh37"], "default": "GRCh37", "description": "Genome build required by the current reference bundle." },
-                "seed": { "type": "integer", "minimum": 1, "default": 20260829, "description": "Reproducible random seed used by stochastic analysis steps." },
-                "sample_missingness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.02, "description": "Maximum missing-call fraction allowed per participant." },
-                "imputation_variant_missingness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.1, "description": "Maximum variant missingness before the imputation checkpoint." },
-                "direct_variant_missingness": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.01, "description": "Maximum variant missingness for direct-genotype sensitivity scoring." },
-                "maf_filter": { "type": "number", "minimum": 0, "maximum": 0.5, "default": 0, "description": "Optional minor-allele-frequency threshold for target QC." },
-                "hwe_filter": { "type": "number", "minimum": 0, "maximum": 1, "default": 0, "description": "Optional Hardy-Weinberg exact-test p-value threshold for target QC." },
-                "ancestry_pcs": { "type": "integer", "minimum": 2, "maximum": 20, "default": 10, "description": "Number of reference principal components used for ancestry distance." },
-                "ancestry_percentile": { "type": "number", "exclusiveMinimum": 0.9, "exclusiveMaximum": 1, "default": 0.99, "description": "Empirical European-reference distance percentile for the primary-analysis flag." },
-                "target_imputation": { "type": "boolean", "default": true, "description": "Run chromosome-level Beagle imputation before primary scoring." },
-                "imputation_dr2": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.8, "description": "Minimum Beagle dosage R-squared retained after imputation." },
-                "report_enabled": { "type": "boolean", "default": true, "description": "Render the portable HTML report and downloadable report assets." },
-                "stop_after": { "type": "string", "enum": ["target_qc", "imputation", "prs", "phenotype", "report"], "default": "report", "description": "Last scientific stage to execute." }
+                "methods": {
+                    "type": "string",
+                    "enum": ["plink_ct", "sbayesrc", "plink_ct,sbayesrc"],
+                    "default": "plink_ct,sbayesrc",
+                    "description": "Comma-separated PRS methods to run."
+                },
+                "genome": {
+                    "type": "string",
+                    "enum": ["GRCh37"],
+                    "default": "GRCh37",
+                    "description": "Genome build required by the current reference bundle."
+                },
+                "seed": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 20260829,
+                    "description": "Reproducible random seed used by stochastic analysis steps."
+                },
+                "sample_missingness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.02,
+                    "description": "Maximum missing-call fraction allowed per participant."
+                },
+                "imputation_variant_missingness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.1,
+                    "description": "Maximum variant missingness before the imputation checkpoint."
+                },
+                "direct_variant_missingness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.01,
+                    "description": "Maximum variant missingness for direct-genotype sensitivity scoring."
+                },
+                "maf_filter": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 0.5,
+                    "default": 0,
+                    "description": "Optional minor-allele-frequency threshold for target QC."
+                },
+                "hwe_filter": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0,
+                    "description": "Optional Hardy-Weinberg exact-test p-value threshold for target QC."
+                },
+                "ancestry_pcs": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 20,
+                    "default": 10,
+                    "description": "Number of reference principal components used for ancestry distance."
+                },
+                "ancestry_percentile": {
+                    "type": "number",
+                    "exclusiveMinimum": 0.9,
+                    "exclusiveMaximum": 1,
+                    "default": 0.99,
+                    "description": "Empirical European-reference distance percentile for the primary-analysis flag."
+                },
+                "target_imputation": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Run chromosome-level Beagle imputation before primary scoring."
+                },
+                "imputation_dr2": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.8,
+                    "description": "Minimum Beagle dosage R-squared retained after imputation."
+                },
+                "report_enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Render the portable HTML report and downloadable report assets."
+                },
+                "stop_after": {
+                    "type": "string",
+                    "enum": ["target_qc", "imputation", "prs", "phenotype", "report"],
+                    "default": "report",
+                    "description": "Last scientific stage to execute."
+                }
             }
         },
         "generic_options": {
@@ -192,21 +371,82 @@
             "type": "object",
             "properties": {
                 "version": { "type": "boolean", "hidden": true, "description": "Print the pipeline version and exit." },
-                "publish_dir_mode": { "type": "string", "default": "copy", "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"], "hidden": true, "description": "Nextflow publishDir transfer mode." },
-                "email": { "type": ["string", "null"], "hidden": true, "description": "Email address that receives the completion summary." },
-                "email_on_fail": { "type": ["string", "null"], "hidden": true, "description": "Email address notified only when execution fails." },
-                "plaintext_email": { "type": "boolean", "hidden": true, "description": "Send completion email as plain text." },
-                "monochrome_logs": { "type": "boolean", "hidden": true, "description": "Disable coloured terminal log output." },
-                "validate_params": { "type": "boolean", "default": true, "hidden": true, "description": "Validate supplied parameters against this schema." },
+                "publish_dir_mode": {
+                    "type": "string",
+                    "default": "copy",
+                    "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"],
+                    "hidden": true,
+                    "description": "Nextflow publishDir transfer mode."
+                },
+                "email": {
+                    "type": ["string", "null"],
+                    "hidden": true,
+                    "description": "Email address that receives the completion summary."
+                },
+                "email_on_fail": {
+                    "type": ["string", "null"],
+                    "hidden": true,
+                    "description": "Email address notified only when execution fails."
+                },
+                "plaintext_email": {
+                    "type": "boolean",
+                    "hidden": true,
+                    "description": "Send completion email as plain text."
+                },
+                "monochrome_logs": {
+                    "type": "boolean",
+                    "hidden": true,
+                    "description": "Disable coloured terminal log output."
+                },
+                "validate_params": {
+                    "type": "boolean",
+                    "default": true,
+                    "hidden": true,
+                    "description": "Validate supplied parameters against this schema."
+                },
                 "help": { "type": "boolean", "hidden": true, "description": "Print the concise parameter help text." },
-                "help_full": { "type": "boolean", "hidden": true, "description": "Print the complete parameter help text." },
-                "show_hidden": { "type": "boolean", "hidden": true, "description": "Include hidden generic parameters in help output." },
-                "custom_config_version": { "type": "string", "default": "master", "hidden": true, "description": "Version of the optional nf-core institutional configuration." },
-                "custom_config_base": { "type": "string", "default": "https://raw.githubusercontent.com/nf-core/configs/master", "hidden": true, "description": "Base URL for optional nf-core institutional configurations." },
-                "config_profile_name": { "type": ["string", "null"], "hidden": true, "description": "Display name of an active institutional configuration." },
-                "config_profile_description": { "type": ["string", "null"], "hidden": true, "description": "Description of an active institutional configuration." },
-                "config_profile_contact": { "type": ["string", "null"], "hidden": true, "description": "Support contact for an active institutional configuration." },
-                "config_profile_url": { "type": ["string", "null"], "hidden": true, "description": "Documentation URL for an active institutional configuration." }
+                "help_full": {
+                    "type": "boolean",
+                    "hidden": true,
+                    "description": "Print the complete parameter help text."
+                },
+                "show_hidden": {
+                    "type": "boolean",
+                    "hidden": true,
+                    "description": "Include hidden generic parameters in help output."
+                },
+                "custom_config_version": {
+                    "type": "string",
+                    "default": "master",
+                    "hidden": true,
+                    "description": "Version of the optional nf-core institutional configuration."
+                },
+                "custom_config_base": {
+                    "type": "string",
+                    "default": "https://raw.githubusercontent.com/nf-core/configs/master",
+                    "hidden": true,
+                    "description": "Base URL for optional nf-core institutional configurations."
+                },
+                "config_profile_name": {
+                    "type": ["string", "null"],
+                    "hidden": true,
+                    "description": "Display name of an active institutional configuration."
+                },
+                "config_profile_description": {
+                    "type": ["string", "null"],
+                    "hidden": true,
+                    "description": "Description of an active institutional configuration."
+                },
+                "config_profile_contact": {
+                    "type": ["string", "null"],
+                    "hidden": true,
+                    "description": "Support contact for an active institutional configuration."
+                },
+                "config_profile_url": {
+                    "type": ["string", "null"],
+                    "hidden": true,
+                    "description": "Documentation URL for an active institutional configuration."
+                }
             }
         }
     },
