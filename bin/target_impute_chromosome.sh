@@ -12,6 +12,7 @@ dr2="$8"
 threads="$9"
 memory_mb="${10}"
 genome_build="${11}"
+reference_fasta="${12}"
 output_dir="${cohort}.chr${chromosome}.imputed"
 log_file="${cohort}.chr${chromosome}.target_imputation.log"
 mkdir -p "$output_dir"
@@ -47,6 +48,7 @@ cp "$target_pvar" "${target_prefix}.pvar"
 cp "$target_psam" "${target_prefix}.psam"
 plink2 --pfile "$target_prefix" --export vcf bgz id-paste=iid --threads "$threads" --out "${cohort}.chr${chromosome}.typed" >> "$log_file" 2>&1
 tabix -f -p vcf "${cohort}.chr${chromosome}.typed.vcf.gz"
+bcftools norm --check-ref e --fasta-ref "$reference_fasta" -Ou "${cohort}.chr${chromosome}.typed.vcf.gz" >/dev/null
 input_variants=$(bcftools index --nrecords "${cohort}.chr${chromosome}.typed.vcf.gz")
 
 java -Xmx"${memory_mb}"m -jar "$beagle_jar" "gt=${cohort}.chr${chromosome}.typed.vcf.gz" \
@@ -70,6 +72,7 @@ bcftools query -i 'INFO/IMP=1' -f '%INFO/DR2\n' "${cohort}.chr${chromosome}.beag
 bcftools view -m2 -M2 -v snps -i "INFO/IMP!=1 || INFO/DR2>=${dr2}" -Oz \
     -o "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" "${cohort}.chr${chromosome}.beagle.vcf.gz"
 tabix -f -p vcf "${output_dir}/${cohort}_chr${chromosome}.vcf.gz"
+bcftools norm --check-ref e --fasta-ref "$reference_fasta" -Ou "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" >/dev/null
 retained_variants=$(bcftools index --nrecords "${output_dir}/${cohort}_chr${chromosome}.vcf.gz")
 imputed_variants=$(bcftools query -f '%INFO/IMP\n' "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" | awk '$1==1{n++} END{print n+0}')
 plink2 --vcf "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" dosage=DS --double-id \
@@ -79,5 +82,5 @@ vcf_checksum=$(sha256sum "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" | awk
 index_checksum=$(sha256sum "${output_dir}/${cohort}_chr${chromosome}.vcf.gz.tbi" | awk '{print $1}')
 printf 'cohort\tchromosome\tvcf\tindex\tvcf_sha256\tindex_sha256\tbuild\tdr2_threshold\tstatus\n' > "${cohort}.chr${chromosome}.imputation_manifest.tsv"
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\tPASS\n' "$cohort" "$chromosome" "${cohort}_chr${chromosome}.vcf.gz" "${cohort}_chr${chromosome}.vcf.gz.tbi" "$vcf_checksum" "$index_checksum" "$genome_build" "$dr2" >> "${cohort}.chr${chromosome}.imputation_manifest.tsv"
-printf 'cohort\tchromosome\tinput_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\tstatus\n' > "${cohort}.chr${chromosome}.imputation_qc.tsv"
-printf '%s\t%s\t%s\t%s\t%s\t%s\tPASS\tPASS\tPASS\tPASS\n' "$cohort" "$chromosome" "$input_variants" "$retained_variants" "$imputed_variants" "$dr2" >> "${cohort}.chr${chromosome}.imputation_qc.tsv"
+printf 'cohort\tchromosome\tinput_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus\n' > "${cohort}.chr${chromosome}.imputation_qc.tsv"
+printf '%s\t%s\t%s\t%s\t%s\t%s\tPASS\tPASS\tPASS\tPASS\tPASS\n' "$cohort" "$chromosome" "$input_variants" "$retained_variants" "$imputed_variants" "$dr2" >> "${cohort}.chr${chromosome}.imputation_qc.tsv"

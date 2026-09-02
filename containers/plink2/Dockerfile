@@ -3,6 +3,8 @@ FROM ubuntu:24.04@sha256:33ceb71981b602c1a7443a53469e4dba065f7503eab3078a2d7a57a
 ARG DEBIAN_FRONTEND=noninteractive
 ARG PLINK2_URL=https://s3.amazonaws.com/plink2-assets/alpha6/plink2_linux_avx2_20250420.zip
 ARG PLINK2_SHA256=4032c845da80ecaf55603861bf8a11424b87248146663ca7e11958c3ccff7d1c
+ARG VCS_REF=unknown
+ARG BUILD_DATE=unknown
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl unzip \
@@ -18,6 +20,9 @@ LABEL org.opencontainers.image.title="dnaprs PLINK 2"
 LABEL org.opencontainers.image.description="PLINK 2.0 alpha 6.12 environment for dnaprs"
 LABEL org.opencontainers.image.source="https://github.com/paulYRP/dnaprs"
 LABEL org.opencontainers.image.version="2.0.0-a.6.12"
+LABEL org.opencontainers.image.revision="${VCS_REF}"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.licenses="MIT"
 WORKDIR /work
 ENTRYPOINT []
 CMD ["/bin/bash"]

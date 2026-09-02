@@ -6,6 +6,34 @@ tools:
       description: Whole-genome association and genotype-processing toolset
   - R:
       description: Statistical computing environment
+input:
+  - meta:
+      type: map
+      description: Target-cohort metadata.
+  - target_dir:
+      type: directory
+      description: QC-completed target genotype dataset.
+  - target_qc:
+      type: file
+      description: Target genotype QC summary.
+  - reference:
+      type: map
+      description: Prepared population-reference metadata.
+  - reference_dir:
+      type: directory
+      description: Prepared population-reference genotype dataset.
+  - ancestry_script:
+      type: file
+      description: Shell implementation used for reference PCA projection.
+  - classifier_script:
+      type: file
+      description: R implementation used for ancestry classification.
+  - ancestry_pcs:
+      type: value
+      description: Number of principal components.
+  - ancestry_percentile:
+      type: value
+      description: Reference-distance classification percentile.
 output:
   - target:
       type: file
@@ -16,3 +44,10 @@ output:
   - summary:
       type: file
       description: Reference matching and target classification summary.
+  - logs:
+      type: tuple
+      description: PLINK ancestry-projection log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

@@ -12,6 +12,7 @@ include { RESOLVE_INPUTS          } from './modules/local/resolve_inputs/main'
 include { REFERENCE_PLAN          } from './modules/local/reference_plan/main'
 include { REFERENCE_ASSET         } from './modules/local/reference_asset/main'
 include { ASSEMBLE_REFERENCES     } from './modules/local/assemble_references/main'
+include { COLLECT_VERSIONS as COLLECT_REFERENCE_VERSIONS } from './modules/local/collect_versions/main'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_dnaprs_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_dnaprs_pipeline'
 
@@ -42,6 +43,7 @@ workflow NFCORE_DNAPRS {
     reference_base
     input_checks
     input_versions
+    run_plan
 
     main:
     resolved_phenotype_file = phenotype_file ?: file("${projectDir}/assets/empty_phenotype.tsv")
@@ -53,8 +55,10 @@ workflow NFCORE_DNAPRS {
         validate: file("${projectDir}/bin/validate_manifests.R"),
         genotype_eda: file("${projectDir}/bin/genotype_eda.sh"),
         harmonise: file("${projectDir}/bin/harmonise_gwas.R"),
+        align_plink_gwas: file("${projectDir}/bin/align_plink_gwas.R"),
         prepare_target: file("${projectDir}/bin/prepare_target.sh"),
         target_adapter: file("${projectDir}/bin/target_adapter.pl"),
+        marker_resolver: file("${projectDir}/bin/resolve_target_markers.R"),
         target_qc: file("${projectDir}/bin/target_qc.sh"),
         participant_decisions: file("${projectDir}/bin/participant_decisions.R"),
         reference_ancestry: file("${projectDir}/bin/reference_ancestry.sh"),
@@ -65,10 +69,12 @@ workflow NFCORE_DNAPRS {
         prepare_sbayesrc_reference: file("${projectDir}/bin/prepare_sbayesrc_reference.sh"),
         ct_weights: file("${projectDir}/bin/build_ct_weights.R"),
         parse_plink: file("${projectDir}/bin/parse_plink_score.R"),
+        audit_scoring: file("${projectDir}/bin/audit_scoring_variants.R"),
         compare_direct_score: file("${projectDir}/bin/compare_direct_score.R"),
         sbayesrc: file("${projectDir}/bin/run_sbayesrc.R"),
         combine: file("${projectDir}/bin/combine_scores.R"),
         combine_phenotype: file("${projectDir}/bin/combine_phenotype.R"),
+        collect_versions: file("${projectDir}/bin/collect_versions.R"),
         association: file("${projectDir}/bin/phenotype_association.R"),
         generation_qc: file("${projectDir}/bin/summarise_generation_qc.R"),
     ]
@@ -102,6 +108,7 @@ workflow NFCORE_DNAPRS {
         report_source,
         input_checks,
         input_versions,
+        run_plan,
     )
 
     emit:
@@ -111,9 +118,43 @@ workflow NFCORE_DNAPRS {
 workflow {
     main:
     run_outdir = file("${params.outdir}/${params.run_name}")
+    run_outdir_file = run_outdir.toFile()
+    if (run_outdir_file.exists() && !run_outdir_file.isDirectory()) {
+        error "Run output path exists but is not a directory: ${run_outdir}"
+    }
+    // Nextflow creates these configured provenance files before workflow code starts.
+    // They belong to the current launch and must not make a new output directory look
+    // stale. Every other existing file remains protected by the collision guard.
+    bootstrap_provenance = [
+        'reports/provenance/execution_report.html',
+        'reports/provenance/execution_timeline.html',
+        'reports/provenance/execution_trace.txt',
+        'reports/provenance/pipeline_dag.html',
+    ] as Set
+    launch_started_ms = workflow.start.toInstant().toEpochMilli()
+    existing_run_files = []
+    if (run_outdir_file.isDirectory()) {
+        run_outdir_file.eachFileRecurse(groovy.io.FileType.FILES) { existing_file ->
+            def relative_path = run_outdir_file.toPath()
+                .relativize(existing_file.toPath())
+                .toString()
+                .replace('\\', '/')
+            def current_bootstrap = bootstrap_provenance.contains(relative_path) &&
+                existing_file.lastModified() >= launch_started_ms
+            if (!current_bootstrap) existing_run_files << relative_path
+        }
+    }
+    if (existing_run_files && !workflow.resume && !params.overwrite) {
+        error "Run output directory contains existing results: ${run_outdir}. Use -resume for the same run or set --overwrite true after reviewing its contents."
+    }
+    selected_methods = params.methods.tokenize(',').collect { it.trim() }.findAll { it }.unique()
+    if (!selected_methods || selected_methods.any { !['plink_ct', 'sbayesrc'].contains(it) }) {
+        error "--methods must contain one or more of: plink_ct,sbayesrc"
+    }
     empty_input = file("${projectDir}/assets/empty_input")
     target_source = params.reference_only ? empty_input : (params.input instanceof CharSequence ? file(params.input, checkIfExists: true) : empty_input)
-    gwas_source = params.reference_only ? empty_input : (params.gwas instanceof CharSequence ? file(params.gwas, checkIfExists: true) : empty_input)
+    run_prs_requested = !params.reference_only && ['prs', 'phenotype', 'report'].contains(params.stop_after)
+    gwas_source = run_prs_requested ? (params.gwas instanceof CharSequence ? file(params.gwas, checkIfExists: true) : empty_input) : empty_input
     reference_source = params.references instanceof CharSequence && params.references ? file(params.references, checkIfExists: true) : empty_input
     phenotype_file_input = params.phenotype ? file(params.phenotype, checkIfExists: true) : null
 
@@ -146,8 +187,9 @@ workflow {
         reference_spec,
         models_spec,
         params.genome,
-        params.methods.tokenize(','),
+        selected_methods,
         params.target_imputation,
+        params.stop_after,
         params.reference_only,
         params.reference_mode,
         params.reference_bundle,
@@ -174,8 +216,7 @@ workflow {
         REFERENCE_PLAN(
             RESOLVE_INPUTS.out.references,
             file("${projectDir}/assets/reference_catalogue.tsv"),
-            params.methods.tokenize(','),
-            params.target_imputation,
+            RESOLVE_INPUTS.out.run_plan,
             params.reference_mode,
             file("${projectDir}/bin/plan_references.R"),
         )
@@ -185,7 +226,7 @@ workflow {
                 def cached = row.asset_id == 'cache_complete' ? empty_input :
                     file("${params.reference_dir}/${params.reference_bundle}/${row.relative_path}", checkIfExists: false)
                 def cached_input = row.asset_id != 'cache_complete' && java.nio.file.Files.exists(cached) ? cached : empty_input
-                tuple(row, cached_input)
+                tuple(row, cached_input, cached.toString())
             }
         REFERENCE_ASSET(
             reference_assets,
@@ -212,9 +253,15 @@ workflow {
     }
 
     if (params.reference_only) {
+        COLLECT_REFERENCE_VERSIONS(
+            resolved_input_versions.collect(),
+            file("${projectDir}/bin/collect_versions.R"),
+        )
         pipeline_results = resolved_references.map { result_file -> tuple('data/inputs', result_file) }
             .mix(RESOLVE_INPUTS.out.settings.map { result_file -> tuple('data/inputs', result_file) })
+            .mix(RESOLVE_INPUTS.out.run_plan.map { result_file -> tuple('data/inputs', result_file) })
             .mix(resolved_input_checks.map { result_file -> tuple('logs/references', result_file) })
+            .mix(COLLECT_REFERENCE_VERSIONS.out.versions.map { result_file -> tuple('data/pipeline_info', result_file) })
     } else {
         NFCORE_DNAPRS(
             params.run_name,
@@ -224,7 +271,7 @@ workflow {
             phenotype_file_input,
             RESOLVE_INPUTS.out.models,
             params.phenotype ? true : false,
-            params.methods.tokenize(','),
+            selected_methods,
             params.genome,
             params.seed,
             params.report_enabled,
@@ -242,6 +289,7 @@ workflow {
             launchDir,
             resolved_input_checks,
             resolved_input_versions,
+            RESOLVE_INPUTS.out.run_plan,
         )
         pipeline_results = NFCORE_DNAPRS.out
     }

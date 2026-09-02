@@ -1,3 +1,20 @@
 name: collect_versions
 description: Combine process-level version records into one collision-free run manifest.
 keywords: [versions, provenance]
+tools:
+  - r:
+      description: R statistical computing environment
+  - yaml:
+      description: YAML parsing and serialization for R
+input:
+  - version_files:
+      type: file
+      description: Process-level YAML software-version records.
+  - collect_script:
+      type: file
+      description: R implementation used to validate and order version records.
+output:
+  - versions:
+      type: file
+      description: Deterministically combined software-version manifest.
+authors: ["@paulYRP"]

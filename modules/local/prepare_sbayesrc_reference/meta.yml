@@ -4,3 +4,33 @@ keywords: [reference, sbayesrc, ld, annotation, prs]
 tools:
   - unzip:
       description: Extract ZIP archives
+input:
+  - ld_source:
+      type: map
+      description: SBayesRC LD-reference metadata.
+  - ld_files:
+      type: file
+      description: Verified SBayesRC LD-reference archive.
+  - annotation_source:
+      type: map
+      description: SBayesRC annotation-reference metadata.
+  - annotation_files:
+      type: file
+      description: Verified SBayesRC annotation archive.
+  - prepare_script:
+      type: file
+      description: Reference extraction and validation implementation.
+output:
+  - ld:
+      type: tuple
+      description: Prepared SBayesRC LD-reference directory.
+  - annotation:
+      type: tuple
+      description: Prepared SBayesRC annotation file.
+  - summary:
+      type: file
+      description: Reference preparation and validation summary.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

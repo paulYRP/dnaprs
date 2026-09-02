@@ -4,6 +4,28 @@ keywords: [input, discovery, yaml, validation]
 tools:
   - R:
       description: Statistical computing environment
+input:
+  - input_spec:
+      type: value
+      description: Base64-encoded target input declaration.
+  - gwas_spec:
+      type: value
+      description: Base64-encoded GWAS input declaration.
+  - reference_spec:
+      type: value
+      description: Base64-encoded reference declaration.
+  - models_spec:
+      type: value
+      description: Base64-encoded phenotype model declaration.
+  - settings:
+      type: value
+      description: Genome, methods, stages, phenotype columns, and reference mode values.
+  - sources:
+      type: file
+      description: Staged target, GWAS, and reference source paths or empty placeholders.
+  - resolver_script:
+      type: file
+      description: Input resolver implementation.
 output:
   - targets:
       type: file
@@ -17,3 +39,17 @@ output:
   - models:
       type: file
       description: Internally generated phenotype-model records.
+  - run_plan:
+      type: file
+      description: Stage decisions and required reference roles.
+  - settings:
+      type: file
+      description: Normalised reference settings.
+  - checks:
+      type: file
+      description: Input discovery and normalisation checks.
+  - versions:
+      type: file
+      description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

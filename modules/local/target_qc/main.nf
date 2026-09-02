@@ -1,7 +1,6 @@
 process TARGET_QC {
     tag "${meta.cohort}"
     label 'process_high'
-    label 'process_plink'
 
     container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
 
@@ -36,15 +35,15 @@ process TARGET_QC {
         '${target_hwe}' \
         '${task.cpus}'
 
-    printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.imputation_ready_target.tsv
-    printf '%s\t%s\tpgen\t%s\t\t\t%s\t%s\tDS\tqc_completed\t\t\n' \
+    printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\\n' > ${meta.cohort}.imputation_ready_target.tsv
+    printf '%s\t%s\tpgen\t%s\t\t\t%s\t%s\tDS\tqc_completed\t\t\\n' \
         '${meta.cohort}' '${meta.role}' \
         'data/target/prepared/${meta.cohort}/imputation_ready/${meta.cohort}.pgen' \
         '${meta.build}' '${meta.ancestry}' \
         >> ${meta.cohort}.imputation_ready_target.tsv
 
-    printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.direct_ready_target.tsv
-    printf '%s\t%s\tpgen\t%s\t\t\t%s\t%s\tDS\tqc_completed\t\t\n' \
+    printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\\n' > ${meta.cohort}.direct_ready_target.tsv
+    printf '%s\t%s\tpgen\t%s\t\t\t%s\t%s\tDS\tqc_completed\t\t\\n' \
         '${meta.cohort}' '${meta.role}' \
         'data/target/prepared/${meta.cohort}/direct_ready/${meta.cohort}.pgen' \
         '${meta.build}' '${meta.ancestry}' \

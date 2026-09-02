@@ -1,99 +1,142 @@
 %%metro title: dnaprs
+%%metro logo: docs/images/nf-core-dnaprs_logo_light.png
+%%metro style: dark
 %%metro file: target_in | TARGET
 %%metro file: gwas_in | GWAS
 %%metro file: reference_in | REF
 %%metro file: phenotype_in | PHENO
 %%metro file: report_out | HTML
-%%metro line: shared | Shared workflow | #68737D
-%%metro line: plink_ct | PLINK C+T | #3B6FB6
-%%metro line: sbayesrc | SBayesRC | #0A8F78
-%%metro line: phenotype | Phenotype models | #D97706
+%%metro line: shared | Target preparation & QC | #0570B0
+%%metro line: references | Reference acquisition & verification | #2DB572
+%%metro line: plink_ct | PLINK C+T primary | #F5C542
+%%metro line: plink_direct | PLINK direct sensitivity | #FF8C00
+%%metro line: phenotype | Phenotype models | #E63946
+%%metro line: sbayesrc | SBayesRC | #7B2D3B
 %%metro legend: bl
 
 graph LR
-    subgraph inputs [Raw inputs and references]
+    subgraph inputs [Raw inputs and validation]
+        %%metro exit: right | shared,references,plink_ct,sbayesrc
         target_in[ ]
+        target_discover[Discover]
+        target_validate[Validate]
         gwas_in[ ]
+        gwas_columns[Columns]
+        gwas_validate[Validate]
         reference_in[ ]
-        phenotype_in[ ]
-        input_checks[Input checks]
+        reference_resolve[Local / auto]
+        reference_verify[SHA-256]
 
-        target_in -->|shared| input_checks
-        gwas_in -->|shared| input_checks
-        reference_in -->|shared| input_checks
+        target_in -->|shared| target_discover
+        target_discover -->|shared| target_validate
+        gwas_in -->|plink_ct,sbayesrc| gwas_columns
+        gwas_columns -->|plink_ct,sbayesrc| gwas_validate
+        reference_in -->|references| reference_resolve
+        reference_resolve -->|references| reference_verify
     end
 
     subgraph preparation [Target and GWAS preparation]
-        raw_eda[Raw target EDA]
-        target_prep[Marker preparation]
-        target_qc[Two QC checkpoints]
-        ancestry[Reference ancestry]
-        target_impute[Beagle by chromosome]
-        imputation_merge[Checked chromosome merge]
-        participant_decisions[Participant decisions]
-        score_target[Scoring target]
-        gwas_qc[GWAS QC]
-        plink_reference_prep[LD and PCA reference]
-        sbayes_reference_prep[SBayesRC references]
+        %%metro entry: left | shared,references,plink_ct,sbayesrc
+        %%metro exit: right | shared,references,plink_ct,sbayesrc
+        raw_eda[Raw EDA]
+        target_prep[Markers]
+        target_qc[QC checks]
+        ancestry[PCA]
+        eligible[Eligible]
+        target_impute[Beagle]
+        imputation_merge[Post-QC]
+        score_target[Target]
+        gwas_qc[GWAS ready]
+        reference_bundle[Bundle]
+        reference_pca[PCA / LD]
+        reference_beagle[Beagle]
+        reference_sbayes[SBayesRC]
+        references_ready[Ready]
 
-        input_checks -->|shared| raw_eda
+        target_validate -->|shared| raw_eda
         raw_eda -->|shared| target_prep
         target_prep -->|shared| target_qc
-        input_checks -->|plink_ct| plink_reference_prep
         target_qc -->|shared| ancestry
-        plink_reference_prep -->|shared| ancestry
+        ancestry -->|shared| eligible
+        eligible -->|shared| score_target
         target_qc -->|shared| target_impute
         target_impute -->|shared| imputation_merge
-        ancestry -->|shared| participant_decisions
-        target_qc -->|shared| participant_decisions
-        participant_decisions -->|shared| score_target
         imputation_merge -->|shared| score_target
-        input_checks -->|shared| gwas_qc
-        input_checks -->|sbayesrc| sbayes_reference_prep
+
+        gwas_validate -->|plink_ct,sbayesrc| gwas_qc
+
+        reference_verify -->|references| reference_bundle
+        reference_bundle -->|references| reference_pca
+        reference_pca -->|references| reference_beagle
+        reference_beagle -->|references| reference_sbayes
+        reference_sbayes -->|references| references_ready
     end
 
     subgraph scoring [PRS generation]
+        %%metro entry: left | shared,references,plink_ct,plink_direct,sbayesrc
+        %%metro exit: bottom | plink_ct,plink_direct,sbayesrc
         reference_freq[LD frequency]
+        align[Align]
         clump[Clump]
-        ct_weights[C+T weights]
-        plink_score[PLINK score]
-        direct_score[Direct sensitivity score]
-        sensitivity[Typed and imputed agreement]
+        ct_weights[Weights]
+        direct_score[Direct]
+        plink_score[Score]
+        sensitivity[Agreement]
         tidy[Tidy]
-        impute[Summary impute]
+        impute[Summary imputation]
         model[Joint model]
-        sbayes_score[SBayesRC score]
+        sbayes_score[Participant score]
+        sbayes_audit[Audit]
 
-        plink_reference_prep -->|plink_ct| reference_freq
-        gwas_qc -->|plink_ct| clump
-        reference_freq -->|plink_ct| clump
+        references_ready -->|plink_ct| reference_freq
+        reference_freq -->|plink_ct| align
+        gwas_qc -->|plink_ct| align
+        align -->|plink_ct| clump
         clump -->|plink_ct| ct_weights
+        ct_weights -->|plink_direct| direct_score
+        target_qc -->|plink_direct| direct_score
+        direct_score -->|plink_direct| sensitivity
+
         ct_weights -->|plink_ct| plink_score
         score_target -->|plink_ct| plink_score
-        ct_weights -->|plink_ct| direct_score
-        target_qc -->|plink_ct| direct_score
         plink_score -->|plink_ct| sensitivity
-        direct_score -->|plink_ct| sensitivity
 
         gwas_qc -->|sbayesrc| tidy
-        sbayes_reference_prep -->|sbayesrc| tidy
+        references_ready -->|sbayesrc| tidy
         tidy -->|sbayesrc| impute
         impute -->|sbayesrc| model
-        sbayes_reference_prep -->|sbayesrc| model
+        references_ready -->|sbayesrc| model
         model -->|sbayesrc| sbayes_score
         score_target -->|sbayesrc| sbayes_score
+        sbayes_score -->|sbayesrc| sbayes_audit
     end
 
-    subgraph results [Results and report]
+    subgraph associations [Score integration and phenotype models]
+        %%metro entry: top | plink_ct,plink_direct,sbayesrc
+        %%metro exit: right | shared,phenotype
+        phenotype_in[ ]
         combine[Combine scores]
-        associations[Phenotype models]
+        join[Join]
+        fit[Fit models]
+        diagnostics[Diagnostics]
+
+        sensitivity -->|plink_ct,plink_direct| combine
+        sbayes_audit -->|sbayesrc| combine
+        phenotype_in -->|phenotype| join
+        combine -->|phenotype| join
+        join -->|phenotype| fit
+        fit -->|phenotype| diagnostics
+    end
+
+    subgraph reporting [Quality control, outputs and reporting]
+        generation_qc[Generation QC]
+        versions[Versions]
+        build_report[Build website]
         report_out[ ]
 
-        plink_score -->|plink_ct| combine
-        sensitivity -->|plink_ct| report_out
-        sbayes_score -->|sbayesrc| combine
-        combine -->|shared| report_out
-        combine -->|phenotype| associations
-        phenotype_in -->|phenotype| associations
-        associations -->|phenotype| report_out
+        combine -->|shared| generation_qc
+        diagnostics -->|phenotype| generation_qc
+        generation_qc -->|shared| versions
+        versions -->|shared| build_report
+        build_report -->|shared| report_out
     end

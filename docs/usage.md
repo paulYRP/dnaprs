@@ -164,10 +164,11 @@ Nextflow executor in the installed environment or an external Nextflow configura
 Nextflow submits independent cohorts, traits, methods, references, and model-score pairs
 as capacity allows.
 
-For QUT acceptance testing, use the sibling workspace files described in
-`test/test.md`: `pipeline.pbs` requests a small Nextflow-driver job, loads Java 21,
-checks the Singularity-compatible Apptainer command, and invokes this pipeline directly
-with `test/params.yml`. There is no Makefile or Aqua-specific pipeline configuration.
+Keep site-specific module commands, queue/account settings, and scheduler launchers
+outside the pipeline repository. A scheduler launcher should request a small Nextflow
+driver job; the selected executor then submits the independent pipeline tasks with the
+portable process resources defined here. There is no Makefile or site-specific
+pipeline configuration.
 
 ## Resume
 

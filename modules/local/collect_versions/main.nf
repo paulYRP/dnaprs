@@ -6,21 +6,14 @@ process COLLECT_VERSIONS {
 
     input:
     path version_files, stageAs: 'versions/versions????.yml'
+    path collect_script
 
     output:
     path 'software_versions.yml', emit: versions
 
     script:
     """
-    awk '
-        /^[^[:space:]].*:\$/ {
-            if (seen[\$0]++) {
-                print "Duplicate software-version key: " \$0 > "/dev/stderr"
-                exit 1
-            }
-        }
-        { print }
-    ' versions/*.yml > software_versions.yml
+    Rscript ${collect_script} --input-dir versions --output software_versions.yml
     """
 
     stub:

@@ -15,7 +15,10 @@ if ("primary_analysis" %in% names(score)) {
 }
 phenotype <- data.table::fread(option[["phenotype"]])
 modelSPEC <- data.table::fread(option[["models"]])
-for (column in setdiff(c("control_value", "case_value", "subset"), names(modelSPEC))) {
+if (is.null(option[["model-id"]]) || !nzchar(option[["model-id"]])) stop("--model-id is required.", call. = FALSE)
+modelSPEC <- modelSPEC[model_id == option[["model-id"]]]
+if (nrow(modelSPEC) != 1L) stop("--model-id must select exactly one resolved phenotype model.", call. = FALSE)
+for (column in setdiff(c("control_value", "case_value"), names(modelSPEC))) {
   modelSPEC[[column]] <- ""
 }
 
@@ -73,11 +76,15 @@ emptyRESULT <- data.table::data.table(
   std_error = numeric(), ci_low = numeric(), ci_high = numeric(), p_value = numeric(),
   null_fit = numeric(), full_fit = numeric(), incremental_fit = numeric(), fit_metric = character(),
   permutation_scheme = character(), permutations = integer(), empirical_p = numeric(),
-  expected_direction = character(), direction_match = character(), status = character()
+  expected_direction = character(), direction_match = character(), input_rows = integer(),
+  complete_cases = integer(), excluded_missing = integer(), convergence = character(),
+  singular = character(), separation = character(), diagnostics = character(), status = character()
 )
 emptyMODEL <- data.table::data.table(
   model_id = character(), cohort = character(), method = character(), formula = character(),
-  null_formula = character(), estimator = character(), expected_direction = character(), primary = logical()
+  null_formula = character(), estimator = character(), expected_direction = character(), primary = logical(),
+  convergence = character(), singular = character(), separation = character(), diagnostics = character(),
+  status = character()
 )
 emptyPLOT <- data.table::data.table(
   model_id = character(), outcome = character(), cohort = character(), role = character(),
@@ -175,6 +182,7 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       }
       needed <- unique(c(specification$outcome, ".PRS_Z", covariate, specification$group_id))
       needed <- needed[!is.na(needed) & needed != ""]
+      inputROWS <- nrow(analysis)
       analysis <- analysis[stats::complete.cases(analysis[, ..needed])]
       parameterN <- length(covariate) + 2L
       resultN <- resultN + 1L
@@ -188,6 +196,10 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
           full_fit = NA_real_, incremental_fit = NA_real_, fit_metric = NA_character_,
           permutation_scheme = "NOT_RUN", permutations = 0L, empirical_p = NA_real_,
           expected_direction = specification$expected_direction, direction_match = "NOT_ESTIMATED",
+          input_rows = inputROWS, complete_cases = nrow(analysis),
+          excluded_missing = inputROWS - nrow(analysis), convergence = "NOT_ESTIMATED",
+          singular = "NOT_ESTIMATED", separation = "NOT_ESTIMATED",
+          diagnostics = "Too few complete cases for the declared model.",
           status = "INSUFFICIENT_COMPLETE_CASES"
         )
         next
@@ -202,6 +214,26 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       }
       formulaNULL <- stats::as.formula(paste(quoteNAME(specification$outcome), "~", rhsNULL))
       formulaFULL <- stats::as.formula(paste(quoteNAME(specification$outcome), "~", rhsFULL))
+      if (grouped && data.table::uniqueN(analysis[[specification$group_id]]) < 2L) {
+        resultLIST[[resultN]] <- data.table::data.table(
+          model_id = specification$model_id, cohort = cohortVALUE, role = unique(genetic$role),
+          trait_id = unique(genetic$trait_id), prs_name = specification$prs_name, method = methodVALUE,
+          family = specification$family, n = nrow(analysis), beta = NA_real_, std_error = NA_real_,
+          ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_, null_fit = NA_real_,
+          full_fit = NA_real_, incremental_fit = NA_real_, fit_metric = NA_character_,
+          permutation_scheme = "NOT_RUN", permutations = 0L, empirical_p = NA_real_,
+          expected_direction = specification$expected_direction, direction_match = "NOT_ESTIMATED",
+          input_rows = inputROWS, complete_cases = nrow(analysis),
+          excluded_missing = inputROWS - nrow(analysis), convergence = "NOT_ESTIMATED",
+          singular = "NOT_ESTIMATED", separation = "NOT_ESTIMATED",
+          diagnostics = "A grouped model requires at least two observed groups.",
+          status = "INSUFFICIENT_GROUPS"
+        )
+        next
+      }
+
+      fitWARNINGS <- character()
+      withCallingHandlers({
       if (grouped) {
         if (!requireNamespace("lme4", quietly = TRUE)) stop("lme4 is required for declared grouped models.", call. = FALSE)
         if (familyVALUE == "gaussian") {
@@ -247,6 +279,53 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         estimator <- "glm2::glm2"
         fitMETRIC <- "Delta pseudo-R-squared"
       }
+      }, warning = function(condition) {
+        fitWARNINGS <<- unique(c(fitWARNINGS, conditionMessage(condition)))
+        invokeRestart("muffleWarning")
+      })
+
+      convergenceSTATUS <- "PASS"
+      singularSTATUS <- "NOT_APPLICABLE"
+      separationSTATUS <- "NOT_APPLICABLE"
+      diagnosticMESSAGE <- fitWARNINGS
+      if (grouped) {
+        convergenceMESSAGE <- unlist(fullFIT@optinfo$conv$lme4$messages, use.names = FALSE)
+        convergenceMESSAGE <- convergenceMESSAGE[!is.na(convergenceMESSAGE) & nzchar(convergenceMESSAGE)]
+        if (length(convergenceMESSAGE) > 0L) {
+          convergenceSTATUS <- "REVIEW"
+          diagnosticMESSAGE <- c(diagnosticMESSAGE, paste(convergenceMESSAGE, collapse = "; "))
+        }
+        singularSTATUS <- if (lme4::isSingular(fullFIT, tol = 1e-4)) "REVIEW" else "PASS"
+        if (singularSTATUS == "REVIEW") diagnosticMESSAGE <- c(diagnosticMESSAGE, "The fitted mixed model is singular.")
+      } else if (familyVALUE == "gaussian") {
+        singularSTATUS <- if (fullFIT$rank < ncol(stats::model.matrix(fullFIT))) "REVIEW" else "PASS"
+        if (singularSTATUS == "REVIEW") diagnosticMESSAGE <- c(diagnosticMESSAGE, "The fixed-effects design is rank deficient.")
+      } else if (!isTRUE(fullFIT$converged)) {
+        convergenceSTATUS <- "REVIEW"
+        diagnosticMESSAGE <- c(diagnosticMESSAGE, "The generalised model did not converge.")
+      }
+      if (familyVALUE == "binomial") {
+        fittedPROBABILITY <- as.numeric(stats::fitted(fullFIT))
+        coefficientVALUE <- if (grouped) lme4::fixef(fullFIT) else stats::coef(fullFIT)
+        separationSTATUS <- if (
+          any(abs(coefficientVALUE) > 10, na.rm = TRUE) ||
+            any(fittedPROBABILITY < 1e-8 | fittedPROBABILITY > 1 - 1e-8, na.rm = TRUE)
+        ) "REVIEW" else "PASS"
+        if (separationSTATUS == "REVIEW") {
+          diagnosticMESSAGE <- c(diagnosticMESSAGE, "Extreme coefficients or fitted probabilities indicate possible separation.")
+        }
+      }
+      finiteESTIMATE <- all(is.finite(c(beta, standardERROR, pVALUE, nullVALUE, fullVALUE, incremental)))
+      resultSTATUS <- if (!finiteESTIMATE) {
+        diagnosticMESSAGE <- c(diagnosticMESSAGE, "One or more reported model estimates are non-finite.")
+        "NON_FINITE"
+      } else if (any(c(convergenceSTATUS, singularSTATUS, separationSTATUS) == "REVIEW") || length(fitWARNINGS) > 0L) {
+        "REVIEW_DIAGNOSTICS"
+      } else {
+        "ESTIMATED"
+      }
+      diagnosticMESSAGE <- paste(unique(diagnosticMESSAGE[nzchar(diagnosticMESSAGE)]), collapse = " | ")
+      if (!nzchar(diagnosticMESSAGE)) diagnosticMESSAGE <- "No model-fit warnings were detected."
 
       permutationSCHEME <- "NOT_RUN"
       permutationN <- 0L
@@ -350,14 +429,19 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         incremental_fit = incremental, fit_metric = fitMETRIC,
         permutation_scheme = permutationSCHEME, permutations = permutationN,
         empirical_p = empiricalP, expected_direction = expectedDIRECTION,
-        direction_match = directionMATCH, status = "ESTIMATED"
+        direction_match = directionMATCH, input_rows = inputROWS,
+        complete_cases = nrow(analysis), excluded_missing = inputROWS - nrow(analysis),
+        convergence = convergenceSTATUS, singular = singularSTATUS,
+        separation = separationSTATUS, diagnostics = diagnosticMESSAGE, status = resultSTATUS
       )
       fittedLIST[[length(fittedLIST) + 1L]] <- data.table::data.table(
         model_id = specification$model_id, cohort = cohortVALUE, method = methodVALUE,
         formula = paste(deparse(formulaFULL), collapse = ""),
         null_formula = paste(deparse(formulaNULL), collapse = ""), estimator,
         expected_direction = specification$expected_direction,
-        primary = as.logical(specification$primary)
+        primary = as.logical(specification$primary), convergence = convergenceSTATUS,
+        singular = singularSTATUS, separation = separationSTATUS,
+        diagnostics = diagnosticMESSAGE, status = resultSTATUS
       )
 
       adjustedOUTCOME <- rep(NA_real_, nrow(analysis))

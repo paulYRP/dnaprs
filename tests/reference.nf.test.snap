@@ -1,0 +1,12 @@
+{
+    "reference-only auto mode plans and publishes a verified bundle contract": {
+        "content": [
+            "software_versions.yml:md5,496f4b9caa4ac8586cb25c7f6204df4a"
+        ],
+        "timestamp": "2026-09-01T20:59:34.343627582",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

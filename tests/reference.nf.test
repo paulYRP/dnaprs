@@ -1,0 +1,37 @@
+nextflow_pipeline {
+
+    name "Validate automatic reference planning without downloading in graph tests"
+    script "../main.nf"
+    options "-stub-run"
+    tag "pipeline"
+    tag "reference"
+
+    test("reference-only auto mode plans and publishes a verified bundle contract") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "references"
+                references = null
+                reference_mode = "auto"
+                reference_dir = "$outputDir/reference_cache"
+                reference_only = true
+                phenotype = null
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/references"
+            assert workflow.success
+            assertAll(
+                { assert path("$runDir/data/inputs/references.tsv").exists() },
+                { assert path("$runDir/data/inputs/reference_settings.yml").exists() },
+                { assert path("$runDir/data/inputs/run_plan.tsv").text.contains("reference_only\ttrue") },
+                { assert path("$runDir/logs/references/reference_plan.tsv").exists() },
+                { assert path("$runDir/logs/references/reference_receipt.tsv").exists() },
+                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() },
+                { assert path("$runDir/data/inputs/published_files.json").exists() }
+            )
+        }
+    }
+}

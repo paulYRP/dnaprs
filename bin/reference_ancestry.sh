@@ -28,14 +28,25 @@ awk 'BEGIN{FS=OFS="\t"}
 matched_variants=$(awk 'NF{n++} END{print n+0}' "${cohort}.ancestry_matched_variants.txt")
 [[ "$matched_variants" -ge 2 ]] || { echo "Fewer than two exact target/reference variants are available for ancestry PCA." >&2; exit 3; }
 
-plink2 --pfile "$reference_prefix" --extract "${cohort}.ancestry_matched_variants.txt" \
-    --maf 0.05 --indep-pairwise 200kb 0.2 --threads "$threads" \
-    --out "${cohort}.ancestry_prune" >> "$log_file" 2>&1
+if [[ "$matched_variants" -lt 100 ]]; then
+    # Very small validation cohorts cannot support stable LD pruning. Retain all
+    # exact common variants and make the decision visible in the log.
+    cp "${cohort}.ancestry_matched_variants.txt" "${cohort}.ancestry_prune.prune.in"
+    printf 'LD pruning was not applied because fewer than 100 exact variants were available.\n' >> "$log_file"
+else
+    plink2 --pfile "$reference_prefix" --extract "${cohort}.ancestry_matched_variants.txt" \
+        --maf 0.05 --indep-pairwise 200kb 0.2 --threads "$threads" \
+        --out "${cohort}.ancestry_prune" >> "$log_file" 2>&1
+fi
 pruned_variants=$(awk 'NF{n++} END{print n+0}' "${cohort}.ancestry_prune.prune.in")
 [[ "$pruned_variants" -ge 2 ]] || { echo "Fewer than two LD-pruned variants remain for ancestry PCA." >&2; exit 3; }
 
 plink2 --pfile "$reference_prefix" --extract "${cohort}.ancestry_prune.prune.in" \
-    --freq counts --pca allele-wts "$pcs" vcols=chrom,ref,alt \
+    --freq counts --threads "$threads" \
+    --out "${cohort}.reference_pca" >> "$log_file" 2>&1
+plink2 --pfile "$reference_prefix" --extract "${cohort}.ancestry_prune.prune.in" \
+    --read-freq "${cohort}.reference_pca.acount" \
+    --pca allele-wts "$pcs" vcols=chrom,ref,alt \
     --threads "$threads" --out "${cohort}.reference_pca" >> "$log_file" 2>&1
 score_end=$((5 + pcs))
 for dataset in reference target; do

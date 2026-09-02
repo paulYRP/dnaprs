@@ -18,6 +18,9 @@ input:
   - parser_script:
       type: file
       description: dnaprs PLINK-score parser.
+  - audit_script:
+      type: file
+      description: Requested, compatible, and used scoring-variant audit implementation.
 output:
   - scores:
       type: tuple
@@ -25,6 +28,11 @@ output:
   - logs:
       type: tuple
       description: PLINK scoring log carried forward unchanged.
+  - compatibility:
+      type: tuple
+      description: Variant-level compatibility audit and score coverage summary.
   - versions:
       type: file
       description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

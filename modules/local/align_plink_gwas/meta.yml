@@ -1,0 +1,42 @@
+name: align_plink_gwas
+description: Align harmonised GWAS identifiers and alleles to the PLINK LD reference.
+keywords: [gwas, harmonisation, plink, prs]
+tools:
+  - r:
+      description: R statistical computing environment
+  - data.table:
+      description: High-performance tabular data processing in R
+input:
+  - meta:
+      type: map
+      description: GWAS metadata including trait_id and prs_name.
+  - cojo:
+      type: file
+      description: Harmonised GWAS in COJO format.
+  - clump_input:
+      type: file
+      description: Initial PLINK clumping table.
+  - harmonisation_qc:
+      type: file
+      description: Common GWAS harmonisation QC summary.
+  - reference:
+      type: map
+      description: Prepared PLINK reference metadata.
+  - reference_files:
+      type: directory
+      description: Prepared PLINK LD reference directory.
+  - align_script:
+      type: file
+      description: R implementation of coordinate and allele alignment.
+output:
+  - aligned:
+      type: tuple
+      description: Reference-aligned COJO and clumping tables with common QC.
+  - qc:
+      type: tuple
+      description: Counts of aligned, absent, ambiguous, duplicate, and complemented variants.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors:
+  - "@paulYRP"

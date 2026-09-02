@@ -127,6 +127,12 @@
                     "default": "model1",
                     "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
                     "description": "Run-specific result folder."
+                },
+                "overwrite": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Allow a non-resume run to replace files in an existing non-empty run folder. Existing directories are never deleted automatically.",
+                    "fa_icon": "fas fa-triangle-exclamation"
                 }
             }
         },
@@ -201,8 +207,7 @@
                                 "type": ["string", "null"],
                                 "enum": ["positive", "negative", null]
                             },
-                            "primary": { "type": "boolean", "default": true },
-                            "subset": { "type": ["string", "null"] }
+                            "primary": { "type": "boolean", "default": true }
                         }
                     }
                 },

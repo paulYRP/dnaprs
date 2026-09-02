@@ -4,3 +4,30 @@ keywords: [plink, clumping, prs]
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+input:
+  - meta:
+      type: map
+      description: GWAS trait metadata.
+  - cojo:
+      type: file
+      description: Reference-aligned GWAS summary statistics.
+  - clump_input:
+      type: file
+      description: Reference-aligned PLINK clumping input.
+  - harmonisation_qc:
+      type: file
+      description: Upstream GWAS harmonisation audit.
+  - reference:
+      type: map
+      description: PLINK LD-reference metadata.
+  - reference_files:
+      type: directory
+      description: Prepared PLINK LD-reference dataset.
+output:
+  - clumped:
+      type: tuple
+      description: Clumping results with aligned GWAS, audit, and task log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

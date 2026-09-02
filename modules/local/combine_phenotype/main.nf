@@ -1,7 +1,6 @@
 process COMBINE_PHENOTYPE {
     tag 'phenotype results'
-    label 'process_low'
-    label 'process_r'
+    label 'process_single'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 

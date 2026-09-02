@@ -4,3 +4,36 @@ keywords: [sbayesrc, gwas, ld]
 tools:
   - sbayesrc:
       description: Bayesian multiple regression using summary statistics
+input:
+  - meta:
+      type: map
+      description: GWAS trait metadata.
+  - cojo:
+      type: file
+      description: Harmonised GWAS in COJO format.
+  - clump_input:
+      type: file
+      description: Harmonised GWAS clumping table.
+  - harmonisation_qc:
+      type: file
+      description: Common GWAS harmonisation audit.
+  - ld_reference:
+      type: map
+      description: SBayesRC LD-reference metadata.
+  - ld_reference_files:
+      type: directory
+      description: Prepared SBayesRC LD reference.
+  - sbayesrc_script:
+      type: file
+      description: SBayesRC wrapper implementation.
+output:
+  - tidy:
+      type: tuple
+      description: LD-aligned summary statistics and chained QC.
+  - logs:
+      type: tuple
+      description: SBayesRC tidy-stage log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

@@ -4,3 +4,16 @@ keywords: [plink, scoring, prs]
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+input:
+  - score_job:
+      type: tuple
+      description: Target, participant, GWAS, weight, and reference-frequency records for one score.
+output:
+  - raw:
+      type: tuple
+      description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target PVAR.
+  - versions:
+      type: file
+      description: PLINK version in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

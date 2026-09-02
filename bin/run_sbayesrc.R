@@ -109,6 +109,9 @@ if (action == "tidy") {
   }
   usedN <- unique(alleleCOUNT) / 2
   weightN <- nrow(data.table::fread(option[["input"]], select = 1L))
+  if (!is.finite(usedN) || usedN <= 0L || weightN <= 0L || usedN > weightN) {
+    stop("SBayesRC scoring returned an invalid requested/used variant count.", call. = FALSE)
+  }
   result <- data.table::data.table(
     cohort = option[["cohort"]],
     role = option[["role"]],
@@ -126,7 +129,9 @@ if (action == "tidy") {
     data.table::data.table(
       cohort = option[["cohort"]], role = option[["role"]], trait_id = traitID,
       prs_name = option[["prs-name"]], method = "sbayesrc", participants = nrow(result),
-      model_weights = weightN, finite_scores = sum(is.finite(result$raw_prs)), status = "PASS"
+      requested_variants = weightN, used_variants = usedN, used_fraction = usedN / weightN,
+      review_required = usedN < weightN, finite_scores = sum(is.finite(result$raw_prs)),
+      status = if (usedN < weightN) "REVIEW" else "PASS"
     ),
     paste0(option[["cohort"]], ".", traitID, ".sbayesrc.score_qc.tsv"),
     sep = "\t"

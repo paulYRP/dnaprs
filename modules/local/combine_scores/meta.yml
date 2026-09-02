@@ -4,3 +4,30 @@ keywords: [prs, standardisation, concordance]
 tools:
   - r:
       description: R statistical computing environment
+input:
+  - score_files:
+      type: file
+      description: Participant score tables produced by enabled PRS methods.
+  - participant_decisions:
+      type: file
+      description: Cohort participant inclusion decisions.
+  - combine_script:
+      type: file
+      description: R implementation used to combine and standardise scores.
+output:
+  - scores_long:
+      type: file
+      description: Long-format participant PRS table.
+  - scores_wide:
+      type: file
+      description: Wide-format participant PRS table.
+  - score_qc:
+      type: file
+      description: Score completeness and coverage audit.
+  - concordance:
+      type: file
+      description: Cross-method score concordance table.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

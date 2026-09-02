@@ -4,3 +4,36 @@ keywords: [sbayesrc, summary-statistics, imputation]
 tools:
   - sbayesrc:
       description: Bayesian multiple regression using summary statistics
+input:
+  - meta:
+      type: map
+      description: GWAS trait metadata.
+  - tidy:
+      type: file
+      description: SBayesRC-aligned summary statistics.
+  - tidy_qc:
+      type: file
+      description: SBayesRC tidy-stage QC.
+  - harmonisation_qc:
+      type: file
+      description: Upstream GWAS harmonisation audit.
+  - ld_reference:
+      type: map
+      description: SBayesRC LD-reference metadata.
+  - ld_reference_files:
+      type: directory
+      description: Prepared SBayesRC LD reference.
+  - sbayesrc_script:
+      type: file
+      description: SBayesRC wrapper implementation.
+output:
+  - imputed:
+      type: tuple
+      description: Imputed summary statistics and chained QC files.
+  - logs:
+      type: tuple
+      description: SBayesRC imputation log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

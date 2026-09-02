@@ -275,6 +275,17 @@ target <- readTABLE(option[["target-manifest"]])
 gwas <- readTABLE(option[["gwas-manifest"]])
 reference <- readTABLE(option[["reference-manifest"]])
 phenotypeMODEL <- readTABLE(option[["phenotype-models"]])
+runPLAN <- readTABLE(option[["run-plan"]])
+if (!all(c("setting", "value") %in% names(runPLAN)) || anyDuplicated(runPLAN$setting)) {
+  stop("run_plan.tsv must contain unique setting and value columns.", call. = FALSE)
+}
+planVALUE <- stats::setNames(as.list(runPLAN$value), runPLAN$setting)
+runPRS <- identical(tolower(planVALUE[["run_prs"]]), "true")
+runPHENOTYPE <- identical(tolower(planVALUE[["run_phenotype"]]), "true")
+requiredREFERENCE <- unique(trimws(strsplit(planVALUE[["required_reference_roles"]], ",", fixed = TRUE)[[1L]]))
+if (length(requiredREFERENCE) == 0L || any(!nzchar(requiredREFERENCE))) {
+  stop("run_plan.tsv has no valid required_reference_roles.", call. = FALSE)
+}
 method <- strsplit(option[["methods"]], ",", fixed = TRUE)[[1L]]
 launchDIR <- pipelinePATH(option[["launch-dir"]], getwd())
 launchNATIVE <- resolvePATH(launchDIR, getwd())
@@ -363,7 +374,8 @@ if (anyDuplicated(target$cohort)) {
   stop("Target cohort values must be unique.", call. = FALSE)
 }
 
-# Validate the GWAS contract and each explicitly mapped source column.
+# Validate the GWAS contract and each explicitly mapped source column only when PRS
+# generation is part of the requested graph.
 gwasOPTIONAL <- c(
   "source_format", "freq_col", "case_freq_col", "control_freq_col",
   "case_n_col", "control_n_col", "n_col", "info_col", "info_min", "maf_min"
@@ -378,33 +390,37 @@ gwasREQUIRED <- c(
   "se_col", "p_col", "freq_col", "n_col"
 )
 requireCOLUMN(gwas, gwasREQUIRED, "GWAS manifest")
-for (column in setdiff(gwasREQUIRED, c("freq_col", "n_col"))) {
-  requireVALUE(gwas, column, "GWAS manifest")
-}
-if (anyDuplicated(gwas$trait_id) || anyDuplicated(gwas$prs_name)) {
-  stop("GWAS trait_id and prs_name values must each be unique.", call. = FALSE)
-}
-if (any(gwas$build != genomeBUILD)) {
-  stop("Every GWAS row must use the selected genome build.", call. = FALSE)
-}
-gwas$path <- pipelinePATH(gwas$path, launchDIR)
-gwasPATHNATIVE <- resolvePATH(gwas$path, launchNATIVE)
-checkPATH(gwasPATHNATIVE, "GWAS input")
-for (row in seq_len(nrow(gwas))) {
-  declaredCOLUMN <- unlist(gwas[row, c(
-    "snp_col", "chr_col", "bp_col", "effect_allele_col", "other_allele_col", "beta_col", "se_col", "p_col"
-  )], use.names = FALSE)
-  optionalCOLUMN <- unlist(gwas[row, c(
-    "freq_col", "case_freq_col", "control_freq_col", "case_n_col", "control_n_col",
-    "n_col", "info_col"
-  )], use.names = FALSE)
-  optionalCOLUMN <- optionalCOLUMN[!is.na(optionalCOLUMN) & trimws(optionalCOLUMN) != ""]
-  missingCOLUMN <- setdiff(c(declaredCOLUMN, optionalCOLUMN), readHEADER(gwasPATHNATIVE[row], declaredCOLUMN))
-  if (length(missingCOLUMN) > 0L) {
-    stop(
-      sprintf("GWAS '%s' is missing declared column(s): %s", gwas$trait_id[row], paste(missingCOLUMN, collapse = ", ")),
-      call. = FALSE
-    )
+gwasPATHNATIVE <- character()
+if (runPRS) {
+  if (nrow(gwas) == 0L) stop("The requested PRS stage requires at least one GWAS input.", call. = FALSE)
+  for (column in setdiff(gwasREQUIRED, c("freq_col", "n_col"))) {
+    requireVALUE(gwas, column, "GWAS manifest")
+  }
+  if (anyDuplicated(gwas$trait_id) || anyDuplicated(gwas$prs_name)) {
+    stop("GWAS trait_id and prs_name values must each be unique.", call. = FALSE)
+  }
+  if (any(gwas$build != genomeBUILD)) {
+    stop("Every GWAS row must use the selected genome build.", call. = FALSE)
+  }
+  gwas$path <- pipelinePATH(gwas$path, launchDIR)
+  gwasPATHNATIVE <- resolvePATH(gwas$path, launchNATIVE)
+  checkPATH(gwasPATHNATIVE, "GWAS input")
+  for (row in seq_len(nrow(gwas))) {
+    declaredCOLUMN <- unlist(gwas[row, c(
+      "snp_col", "chr_col", "bp_col", "effect_allele_col", "other_allele_col", "beta_col", "se_col", "p_col"
+    )], use.names = FALSE)
+    optionalCOLUMN <- unlist(gwas[row, c(
+      "freq_col", "case_freq_col", "control_freq_col", "case_n_col", "control_n_col",
+      "n_col", "info_col"
+    )], use.names = FALSE)
+    optionalCOLUMN <- optionalCOLUMN[!is.na(optionalCOLUMN) & trimws(optionalCOLUMN) != ""]
+    missingCOLUMN <- setdiff(c(declaredCOLUMN, optionalCOLUMN), readHEADER(gwasPATHNATIVE[row], declaredCOLUMN))
+    if (length(missingCOLUMN) > 0L) {
+      stop(
+        sprintf("GWAS '%s' is missing declared column(s): %s", gwas$trait_id[row], paste(missingCOLUMN, collapse = ", ")),
+        call. = FALSE
+      )
+    }
   }
 }
 
@@ -490,6 +506,7 @@ referenceCOMPANIONNATIVE[companionPRESENT] <- resolvePATH(
 )
 referenceFILELIST <- vector("list", nrow(reference))
 verifiedREFERENCE <- logical(nrow(reference))
+observedREFERENCE <- character(nrow(reference))
 for (row in seq_len(nrow(reference))) {
   checkPATH(expandPATTERN(referencePATHNATIVE[row]), sprintf("Reference '%s'", reference$reference_id[row]))
   if (companionPRESENT[row]) {
@@ -506,7 +523,7 @@ for (row in seq_len(nrow(reference))) {
     reference_fasta = any(grepl("\\.(fa|fasta|fna)(\\.gz)?$", fileNAME, ignore.case = TRUE)) &&
       any(grepl("\\.fai$", fileNAME, ignore.case = TRUE)),
     genetic_map = reference$source_format[row] == "zip" || any(grepl("\\.map(\\.gz)?$", fileNAME, ignore.case = TRUE)),
-    imputation_panel = any(grepl("\\.(bref3|vcf\\.gz|bcf)$", fileNAME, ignore.case = TRUE)),
+    imputation_panel = any(grepl("\\.(bref3|vcf|vcf\\.gz|bcf)$", fileNAME, ignore.case = TRUE)),
     population_panel = length(referenceFILELIST[[row]]) >= 1L,
     related_samples = length(referenceFILELIST[[row]]) >= 1L,
     sbayesrc_ld_source = any(grepl("\\.zip$", fileNAME, ignore.case = TRUE)),
@@ -521,6 +538,8 @@ for (row in seq_len(nrow(reference))) {
       call. = FALSE
     )
   }
+  digestBASE <- if (dir.exists(referencePATHNATIVE[row])) referencePATHNATIVE[row] else dirname(referencePATHNATIVE[row])
+  observedREFERENCE[row] <- resourceDIGEST(referenceFILELIST[[row]], digestBASE)
   suppliedCHECKSUM <- !is.na(reference$checksum[row]) &&
     nzchar(trimws(reference$checksum[row])) &&
     toupper(trimws(reference$checksum[row])) != "NA"
@@ -529,21 +548,25 @@ for (row in seq_len(nrow(reference))) {
     if (!grepl("^[0-9a-f]{64}$", declaredCHECKSUM)) {
       stop(sprintf("Reference '%s' checksum must be a 64-character SHA-256 value.", reference$reference_id[row]), call. = FALSE)
     }
-    digestBASE <- if (dir.exists(referencePATHNATIVE[row])) referencePATHNATIVE[row] else dirname(referencePATHNATIVE[row])
-    observedCHECKSUM <- resourceDIGEST(referenceFILELIST[[row]], digestBASE)
-    if (!identical(declaredCHECKSUM, observedCHECKSUM)) {
+    if (!identical(declaredCHECKSUM, observedREFERENCE[row])) {
       stop(sprintf("Reference '%s' failed its declared SHA-256 check.", reference$reference_id[row]), call. = FALSE)
     }
     reference$checksum[row] <- declaredCHECKSUM
     verifiedREFERENCE[row] <- TRUE
   }
 }
-requiredREFERENCE <- c(
-  "dbsnp", "reference_fasta", "imputation_panel", "population_panel",
-  "related_samples", "unbref3_jar"
+writeTABLE(
+  data.frame(
+    reference_id = reference$reference_id,
+    reference_type = reference$reference_type,
+    declared_sha256 = ifelse(verifiedREFERENCE, reference$checksum, ""),
+    observed_sha256 = observedREFERENCE,
+    status = ifelse(verifiedREFERENCE, "AUTHENTICATED", "OBSERVED_NOT_AUTHENTICATED"),
+    stringsAsFactors = FALSE
+  ),
+  "reference_integrity.tsv"
 )
-if ("sbayesrc" %in% method) {
-  requiredREFERENCE <- c(requiredREFERENCE, "sbayesrc_ld_source", "annotation_source")
+if (runPRS && "sbayesrc" %in% method) {
   directFREQUENCY <- !is.na(gwas$freq_col) & trimws(gwas$freq_col) != ""
   weightedFREQUENCY <- apply(
     gwas[, c("case_freq_col", "control_freq_col", "case_n_col", "control_n_col"), drop = FALSE],
@@ -558,9 +581,6 @@ if ("sbayesrc" %in% method) {
     )
   }
 }
-if (tolower(option[["target-imputation"]]) == "true") {
-  requiredREFERENCE <- c(requiredREFERENCE, "imputation_panel", "genetic_map", "beagle_jar")
-}
 missingREFERENCE <- setdiff(unique(requiredREFERENCE), reference$reference_type)
 if (length(missingREFERENCE) > 0L) {
   stop(sprintf("Selected methods require reference type(s): %s", paste(missingREFERENCE, collapse = ", ")), call. = FALSE)
@@ -572,7 +592,8 @@ modelREQUIRED <- c(
   "group_id", "expected_direction", "primary"
 )
 if (nrow(phenotypeMODEL) > 0L) {
-  for (column in setdiff(c("control_value", "case_value", "subset"), names(phenotypeMODEL))) {
+  if (!runPHENOTYPE) stop("Phenotype models were resolved for a run that does not request phenotype analysis.", call. = FALSE)
+  for (column in setdiff(c("control_value", "case_value"), names(phenotypeMODEL))) {
     phenotypeMODEL[[column]] <- ""
   }
   requireCOLUMN(phenotypeMODEL, modelREQUIRED, "Phenotype-model manifest")
@@ -700,6 +721,7 @@ writeTABLE(target, "targets.tsv")
 writeTABLE(gwas, "gwas.tsv")
 writeTABLE(reference, "references.tsv")
 writeTABLE(phenotypeMODEL, "models.tsv")
+writeTABLE(runPLAN, "run_plan.tsv")
 
 yamlVALUE <- c(
   sprintf("run_name: '%s'", option[["run-name"]]),
@@ -712,7 +734,8 @@ yamlVALUE <- c(
   sprintf("launch_directory: '%s'", launchDIR),
   sprintf("reference_bundle_id: '%s'", unique(reference$bundle_id)),
   sprintf("reference_bundle_version: '%s'", unique(reference$bundle_version)),
-  sprintf("reference_base: '%s'", referenceBASE)
+  sprintf("reference_base: '%s'", referenceBASE),
+  sprintf("stop_after: '%s'", planVALUE[["stop_after"]])
 )
 writeLines(yamlVALUE, "run_settings.yml")
 
@@ -754,10 +777,10 @@ inputCHECK <- data.frame(
     nrow(target), nrow(gwas), nrow(reference),
     "source",
     paste0(unique(reference$bundle_id), ":", unique(reference$bundle_version)),
-    sprintf("%d supplied and verified; %d not supplied", sum(verifiedREFERENCE), sum(!verifiedREFERENCE)),
+    sprintf("%d authenticated; %d observed but not authenticated", sum(verifiedREFERENCE), sum(!verifiedREFERENCE)),
     nrow(phenotypeMODEL), genomeBUILD, paste(method, collapse = ",")
   ),
-  status = "PASS",
+  status = c("PASS", "PASS", "PASS", "PASS", "PASS", if (all(verifiedREFERENCE)) "PASS" else "REVIEW", "PASS", "PASS", "PASS"),
   stringsAsFactors = FALSE
 )
 writeTABLE(inputCHECK, "input_checks.tsv")

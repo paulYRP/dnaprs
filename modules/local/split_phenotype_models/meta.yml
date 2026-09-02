@@ -1,7 +1,0 @@
-name: split_phenotype_models
-description: Emit one independent task input for each declared phenotype model.
-keywords: [phenotype, scatter]
-output:
-  - models:
-      type: file
-      description: One generated internal phenotype-model record per file.

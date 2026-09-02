@@ -1,7 +1,6 @@
 process RENDER_REPORT {
     tag 'dnaprs HTML report'
-    label 'process_report'
-    label 'process_r'
+    label 'process_low'
 
     container 'ghcr.io/paulyrp/dnaprs-report:1.0.0'
 

@@ -12,8 +12,9 @@ input_stage="${8:-qc_completed}"
 assay_manifest="${9:-}"
 marker_map="${10:-}"
 adapter_script="${11:-}"
-dbsnp_source="${12:-}"
-reference_fasta="${13:-}"
+marker_resolver="${12:-}"
+dbsnp_source="${13:-}"
+reference_fasta="${14:-}"
 
 mkdir -p "$cohort"
 prefixes=()
@@ -112,93 +113,75 @@ else
 fi
 
 if [[ "$input_stage" == "raw" ]]; then
-    dbsnp_marker_map=""
-    if [[ -n "$dbsnp_source" ]]; then
-        if [[ -d "$dbsnp_source" ]]; then
-            dbsnp_vcf=$(find "$dbsnp_source" -maxdepth 1 -type f -name 'GCF_*.gz' ! -name '*.md5' -print -quit)
-            assembly_report=$(find "$dbsnp_source" -maxdepth 1 -type f -name 'assembly_report.txt' -print -quit)
-        else
-            dbsnp_vcf="$dbsnp_source"
-            assembly_report=""
-        fi
-        [[ -n "$dbsnp_vcf" && -s "$dbsnp_vcf" ]] || { echo "No dbSNP VCF was found in $dbsnp_source." >&2; exit 4; }
-        [[ -n "$assembly_report" && -s "$assembly_report" ]] || { echo "dbSNP assembly_report.txt is required." >&2; exit 4; }
-        [[ -s "${dbsnp_vcf}.tbi" || -s "${dbsnp_vcf}.csi" ]] || { echo "The dbSNP VCF requires a tabix/CSI index." >&2; exit 4; }
-
-        awk -F '\t' 'BEGIN { OFS="\t" }
-            !/^#/ && $2 == "assembled-molecule" && $3 ~ /^([1-9]|1[0-9]|2[0-2])$/ { print $3, $7 }
-        ' "$assembly_report" > chromosome_refseq.tsv
-        awk -F '\t' 'BEGIN { OFS="\t" }
-            NR == FNR { accession[$1]=$2; next }
-            /^##/ || /^#CHROM/ { next }
-            {
-                chromosome=$1; sub(/^chr/, "", chromosome)
-                if (chromosome in accession && $2 ~ /^[0-9]+$/) print accession[chromosome], $2, $2
-            }
-        ' chromosome_refseq.tsv "$cohort/${cohort}.pvar" | sort -k1,1 -k2,2n -u > dbsnp_regions.tsv
-
-        dbsnp_marker_map="${cohort}.dbsnp_marker_map.tsv"
-        printf 'source_id\tnew_id\tchr\tpos\tref\talt\n' > "$dbsnp_marker_map"
-        if [[ -s dbsnp_regions.tsv ]]; then
-            bcftools view -R dbsnp_regions.tsv -Ou "$dbsnp_vcf" |
-                bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > dbsnp_records.tsv
-            awk -F '\t' 'BEGIN { OFS="\t" }
-                function complement(value, result, offset, base) {
-                    result=""
-                    for (offset=1; offset<=length(value); offset++) {
-                        base=substr(value,offset,1)
-                        result=result (base=="A"?"T":base=="T"?"A":base=="C"?"G":base=="G"?"C":base)
-                    }
-                    return result
-                }
-                FILENAME == ARGV[1] { chromosome[$2]=$1; next }
-                FILENAME == ARGV[2] {
-                    key=chromosome[$1] ":" $2
-                    if (!(key in db_id) && $3 ~ /^rs[0-9]+$/ && $4 ~ /^[ACGT]+$/ && $5 ~ /^[ACGT]+$/) {
-                        db_id[key]=$3; db_ref[key]=toupper($4); db_alt[key]=toupper($5)
-                    }
-                    next
-                }
-                /^##/ || /^#CHROM/ { next }
-                {
-                    chr=$1; sub(/^chr/, "", chr); key=chr ":" $2
-                    source_ref=toupper($4); source_alt=toupper($5)
-                    if (!(key in db_id) || source_ref !~ /^[ACGT]+$/ || source_alt !~ /^[ACGT]+$/) next
-                    direct=(source_ref==db_ref[key] && source_alt==db_alt[key]) || (source_ref==db_alt[key] && source_alt==db_ref[key])
-                    flipped=(complement(source_ref)==db_ref[key] && complement(source_alt)==db_alt[key]) ||
-                        (complement(source_ref)==db_alt[key] && complement(source_alt)==db_ref[key])
-                    if (direct) print $3,db_id[key],chr,$2,source_ref,source_alt
-                    else if (flipped) print $3,db_id[key],chr,$2,complement(source_ref),complement(source_alt)
-                }
-            ' chromosome_refseq.tsv dbsnp_records.tsv "$cohort/${cohort}.pvar" >> "$dbsnp_marker_map"
-        fi
+    [[ -n "$dbsnp_source" && -n "$reference_fasta" && -n "$marker_resolver" ]] || {
+        echo "Raw input requires dbSNP, GRCh37 FASTA, and the marker-resolution script." >&2
+        exit 4
+    }
+    if [[ -d "$dbsnp_source" ]]; then
+        dbsnp_vcf=$(find "$dbsnp_source" -maxdepth 1 -type f \
+            \( -name '*.vcf.gz' -o -name '*.vcf.bgz' -o -name '*.bcf' -o -name '*.vcf' \) \
+            ! -name '*.md5' -print -quit)
+        assembly_report=$(find "$dbsnp_source" -maxdepth 1 -type f -name 'assembly_report.txt' -print -quit)
+    else
+        dbsnp_vcf="$dbsnp_source"
+        assembly_report=""
+    fi
+    [[ -n "$dbsnp_vcf" && -s "$dbsnp_vcf" ]] || { echo "No dbSNP VCF was found in $dbsnp_source." >&2; exit 4; }
+    [[ -n "$assembly_report" && -s "$assembly_report" ]] || { echo "dbSNP assembly_report.txt is required." >&2; exit 4; }
+    if [[ ! -s "${dbsnp_vcf}.tbi" && ! -s "${dbsnp_vcf}.csi" ]]; then
+        echo "dbSNP has no usable index; creating a task-local bgzip copy." >&2
+        bcftools view -Oz -o dbsnp.indexed.vcf.gz "$dbsnp_vcf"
+        tabix -f -p vcf dbsnp.indexed.vcf.gz
+        dbsnp_vcf="dbsnp.indexed.vcf.gz"
     fi
 
-    combined_marker_map="$marker_map"
-    if [[ -n "$dbsnp_marker_map" ]]; then
-        combined_marker_map="${cohort}.combined_marker_map.tsv"
-        if [[ -n "$marker_map" ]]; then
-            awk 'NR == 1 || FNR > 1' "$marker_map" "$dbsnp_marker_map" > "$combined_marker_map"
-        else
-            cp "$dbsnp_marker_map" "$combined_marker_map"
-        fi
-    fi
+    # First apply assay-manifest recovery and any explicit user marker map while
+    # retaining one row per original probe. dbSNP candidate selection follows below.
     perl "$adapter_script" annotate-pvar \
-        "$cohort/${cohort}.pvar" "$assay_manifest" "$combined_marker_map" \
-        "$cohort/${cohort}.annotated.pvar" "$cohort.marker_decisions.tsv"
+        "$cohort/${cohort}.pvar" "$assay_manifest" "$marker_map" \
+        "$cohort/${cohort}.annotated.pvar" "$cohort.initial_marker_decisions.tsv"
     mv "$cohort/${cohort}.annotated.pvar" "$cohort/${cohort}.pvar"
 
-    reference_prefix="$cohort/${cohort}"
-    if [[ -n "$reference_fasta" ]]; then
-        plink2 --pfile "$reference_prefix" --ref-from-fa force --fa "$reference_fasta" --make-pgen \
-            --threads "$threads" --out "$cohort/${cohort}_referenced"
-        reference_prefix="$cohort/${cohort}_referenced"
+    awk -F '\t' 'BEGIN { OFS="\t" }
+        !/^#/ && $2 == "assembled-molecule" && $3 ~ /^([1-9]|1[0-9]|2[0-2])$/ { print $3, $7 }
+    ' "$assembly_report" > chromosome_refseq.tsv
+    awk -F '\t' 'BEGIN { OFS="\t" }
+        NR == FNR { accession[$1]=$2; next }
+        /^##/ || /^#CHROM/ { next }
+        {
+            chromosome=$1; sub(/^chr/, "", chromosome)
+            if (chromosome in accession && $2 ~ /^[0-9]+$/) print accession[chromosome], $2, $2
+        }
+    ' chromosome_refseq.tsv "$cohort/${cohort}.pvar" | sort -k1,1 -k2,2n -u > dbsnp_regions.tsv
+    : > dbsnp_records.tsv
+    if [[ -s dbsnp_regions.tsv ]]; then
+        bcftools view -R dbsnp_regions.tsv -Ou "$dbsnp_vcf" |
+            bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > dbsnp_records.tsv
     fi
-    plink2 --pfile "$reference_prefix" --rm-dup exclude-mismatch list --make-pgen \
-        --threads "$threads" --out "$cohort/${cohort}_deduplicated"
-    mv "$cohort/${cohort}_deduplicated.pgen" "$cohort/${cohort}.pgen"
-    mv "$cohort/${cohort}_deduplicated.pvar" "$cohort/${cohort}.pvar"
-    mv "$cohort/${cohort}_deduplicated.psam" "$cohort/${cohort}.psam"
+
+    plink2 --pfile "$cohort/${cohort}" --export A-transpose \
+        --threads "$threads" --out "$cohort/${cohort}.marker_calls"
+    Rscript "$marker_resolver" \
+        --pvar "$cohort/${cohort}.pvar" \
+        --calls "$cohort/${cohort}.marker_calls.traw" \
+        --dbsnp-records dbsnp_records.tsv \
+        --chromosome-map chromosome_refseq.tsv \
+        --initial-decisions "$cohort.initial_marker_decisions.tsv" \
+        --output-decisions "$cohort.marker_decisions.tsv" \
+        --keep "$cohort.retained_markers.txt" \
+        --rename "$cohort.rename_markers.tsv"
+
+    plink2 --pfile "$cohort/${cohort}" \
+        --extract "$cohort.retained_markers.txt" \
+        --update-name "$cohort.rename_markers.tsv" \
+        --make-pgen --threads "$threads" --out "$cohort/${cohort}_resolved"
+    plink2 --pfile "$cohort/${cohort}_resolved" --ref-from-fa force --fa "$reference_fasta" \
+        --make-pgen --threads "$threads" --out "$cohort/${cohort}_referenced"
+    mv "$cohort/${cohort}_referenced.pgen" "$cohort/${cohort}.pgen"
+    mv "$cohort/${cohort}_referenced.pvar" "$cohort/${cohort}.pvar"
+    mv "$cohort/${cohort}_referenced.psam" "$cohort/${cohort}.psam"
+    duplicate_count=$(awk '!/^#/ {count[$3]++} END {n=0; for (id in count) if (count[id] > 1) n++; print n}' "$cohort/${cohort}.pvar")
+    [[ "$duplicate_count" == "0" ]] || { echo "Resolved target still contains duplicate marker IDs." >&2; exit 5; }
 else
     awk -v stage="$input_stage" 'BEGIN{FS=OFS="\t"; print "source_id","final_id","source_chr","source_pos","final_chr","final_pos","source_ref","source_alt","final_ref","final_alt","decision","reason"}
         /^##/ || /^#CHROM/ {next}

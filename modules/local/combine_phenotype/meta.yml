@@ -4,6 +4,28 @@ keywords: [phenotype, prs, gather]
 tools:
   - R:
       description: Statistical computing environment
+input:
+  - associations:
+      type: file
+      description: Per-model phenotype association estimates.
+  - fitted_models:
+      type: file
+      description: Per-model fitted-model specifications.
+  - plot_data:
+      type: file
+      description: Per-model report plot data.
+  - permutations:
+      type: file
+      description: Per-model permutation results.
+  - influence:
+      type: file
+      description: Per-model influence diagnostics.
+  - phenotype_prs:
+      type: file
+      description: Per-model participant phenotype and PRS tables.
+  - combine_script:
+      type: file
+      description: R implementation used to gather model outputs.
 output:
   - associations:
       type: file
@@ -11,3 +33,19 @@ output:
   - fitted_models:
       type: file
       description: Combined fitted-model specifications.
+  - plot_data:
+      type: file
+      description: Combined report plot data.
+  - permutations:
+      type: file
+      description: Combined permutation results.
+  - influence:
+      type: file
+      description: Combined influence diagnostics.
+  - phenotype_prs:
+      type: file
+      description: Combined participant phenotype and PRS data.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

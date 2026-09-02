@@ -1,12 +1,11 @@
 process ASSEMBLE_TARGET_IMPUTATION {
     tag "${meta.cohort}"
     label 'process_medium'
-    label 'process_plink'
 
     container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'
 
     input:
-    tuple val(meta), path(chromosome_dirs), path(chromosome_manifests), path(chromosome_qc), path(chromosome_dr2), path(chromosome_logs)
+    tuple val(meta), val(chromosomes), path(chromosome_dirs), path(chromosome_manifests), path(chromosome_qc), path(chromosome_dr2), path(chromosome_logs)
     path assembly_script
 
     output:
@@ -20,7 +19,7 @@ process ASSEMBLE_TARGET_IMPUTATION {
 
     script:
     """
-    bash ${assembly_script} '${meta.cohort}' '${meta.role}' '${meta.build}' '${meta.ancestry}' '${task.cpus}'
+    bash ${assembly_script} '${meta.cohort}' '${meta.role}' '${meta.build}' '${meta.ancestry}' '${task.cpus}' '${chromosomes.join(',')}'
     cat > versions.yml <<-VERSIONS
     "${task.process}:${meta.cohort}":
         plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')

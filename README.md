@@ -26,7 +26,7 @@ reference PCA axes. It can impute with Beagle, generate PLINK C+T and/or SBayesR
 scores, apply participant eligibility consistently, and fit one or many declared
 phenotype models. Source files are read-only.
 
-![dnaprs workflow](docs/images/dnaprs-workflow.svg)
+![dnaprs workflow metro map showing raw inputs, target QC, reference handling, PLINK C+T, SBayesRC, phenotype models, and reporting](docs/images/dnaprs-workflow.svg)
 
 The workflow publishes one run under `dnaprs/model1/` by default:
 
@@ -79,8 +79,8 @@ genetic report still complete.
 ## References
 
 `--reference_mode auto` is the default. The pipeline downloads only the required assets
-from a pinned catalogue, verifies size and checksum (or the documented pinned ETag when
-the source provides no digest), and reuses each valid asset from
+from a pinned catalogue, requires and verifies SHA-256 plus size for every asset, and
+reuses each valid asset from
 `references/dnaprs/grch37-v1/`. Beagle and unbref3 are handled in the same way.
 
 To use an existing reference collection:
@@ -108,8 +108,8 @@ task memory to capable tools. Nextflow handles cohort, chromosome-imputation, tr
 method, reference, and model tasks concurrently, then validates deterministic gathers.
 Scheduler, queue, project, and filesystem settings remain
 outside the pipeline, so the same workflow runs locally or through PBS Pro, Slurm, SGE,
-LSF, and other Nextflow executors. The workspace-level `test/` directory contains the
-minimal QUT PBS/Singularity acceptance launcher.
+LSF, and other Nextflow executors. Site-specific launchers and module commands belong
+outside the portable pipeline repository.
 
 SBayesRC is a high-memory, long-running method. Use `--methods plink_ct` for a smaller
 run; selecting fewer methods changes the scientific work requested, not the executor.
@@ -123,16 +123,22 @@ When imputation is enabled, the PLINK page also reports typed-versus-imputed sco
 coverage and agreement between the primary imputed score and direct-genotype sensitivity
 score; sensitivity scores are not added to phenotype models.
 
-Run the pipeline-level stub regression test with:
+Run the minimal real-tool pipeline test with Docker:
 
 ```bash
-nf-test test tests/default.nf.test --ci
+nf-test test tests/default.nf.test --profile +docker --ci
 ```
 
-Run the R and report smoke suite from PowerShell with:
+Run the full graph test explicitly in stub mode:
 
-```powershell
-.\tests\smoke.ps1
+```bash
+nf-test test tests/stub.nf.test --profile +test_full --ci
+```
+
+Run the focused early-stage and automatic-reference graph checks:
+
+```bash
+nf-test test tests/stages.nf.test tests/reference.nf.test --profile +docker --ci
 ```
 
 These are software-contract tests, not biological or clinical validation. Phenotype

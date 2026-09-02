@@ -8,3 +8,51 @@ tools:
       description: Whole-genome association and genotype-processing toolset
   - unbref3:
       description: Convert a downloaded bref3 reference panel to VCF
+input:
+  - panel:
+      type: map
+      description: Genotype-panel reference metadata.
+  - panel_files:
+      type: file
+      description: Downloaded or user-provided genotype-panel assets.
+  - population:
+      type: map
+      description: Population-label reference metadata.
+  - population_files:
+      type: file
+      description: Population-label assets.
+  - related:
+      type: map
+      description: Related-sample exclusion reference metadata.
+  - related_files:
+      type: file
+      description: Related-sample exclusion assets.
+  - unbref3:
+      type: map
+      description: unbref3 package metadata.
+  - unbref3_files:
+      type: file
+      description: Verified unbref3 package assets.
+  - prepare_script:
+      type: file
+      description: Reference preparation implementation.
+  - genome_build:
+      type: value
+      description: Target genome build.
+output:
+  - reference:
+      type: tuple
+      description: Prepared PLINK LD reference.
+  - summary:
+      type: tuple
+      description: Preparation summary and marker counts.
+  - source_qc:
+      type: tuple
+      description: Source-reference validation audit.
+  - logs:
+      type: tuple
+      description: Reference-preparation log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

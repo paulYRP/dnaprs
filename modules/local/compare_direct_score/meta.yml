@@ -5,13 +5,32 @@ tools:
   - R:
       description: Statistical computing environment
 input:
+  - target:
+      type: map
+      description: Target-cohort metadata.
+  - gwas:
+      type: map
+      description: GWAS trait metadata.
   - primary_score:
       type: file
       description: Participant score table from the imputed target.
   - direct_score:
       type: file
       description: Participant score table from the direct-genotype target.
+  - primary_used:
+      type: file
+      description: Variants used for the imputed-target score.
+  - direct_used:
+      type: file
+      description: Variants used for the direct-target score.
+  - comparison_script:
+      type: file
+      description: R implementation used for the sensitivity comparison.
 output:
   - comparison:
-      type: file
+      type: tuple
       description: Participant-level and summary sensitivity results.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

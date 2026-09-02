@@ -4,3 +4,30 @@ keywords: [plink, weights, prs]
 tools:
   - r:
       description: R statistical computing environment
+input:
+  - meta:
+      type: map
+      description: GWAS trait metadata.
+  - cojo:
+      type: file
+      description: Reference-aligned GWAS summary statistics.
+  - clumps:
+      type: file
+      description: PLINK clumping results.
+  - harmonisation_qc:
+      type: file
+      description: Upstream GWAS harmonisation audit.
+  - clump_log:
+      type: file
+      description: PLINK clumping log.
+  - weight_script:
+      type: file
+      description: R implementation used to create score weights.
+output:
+  - weights:
+      type: tuple
+      description: Allele-explicit score weights, QC, and upstream audit files.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

@@ -15,17 +15,14 @@ writeTSV <- function(value, path) utils::write.table(
 
 catalogue <- readTSV(option[["catalogue"]])
 provided <- readTSV(option[["provided"]])
-method <- trimws(strsplit(option[["methods"]], ",", fixed = TRUE)[[1L]])
-targetIMPUTATION <- tolower(option[["target-imputation"]]) == "true"
+runPLAN <- readTSV(option[["run-plan"]])
 mode <- tolower(option[["mode"]])
 
-required <- c(
-  "dbsnp", "reference_fasta", "imputation_panel", "population_panel",
-  "related_samples", "unbref3_jar"
-)
-if ("sbayesrc" %in% method) required <- c(required, "sbayesrc_ld_source", "annotation_source")
-if (targetIMPUTATION) required <- c(required, "genetic_map", "imputation_panel", "beagle_jar")
-required <- unique(required)
+roleVALUE <- runPLAN$value[runPLAN$setting == "required_reference_roles"]
+if (length(roleVALUE) != 1L || !nzchar(roleVALUE)) {
+  stop("run_plan.tsv must contain one non-empty required_reference_roles value.", call. = FALSE)
+}
+required <- unique(trimws(strsplit(roleVALUE, ",", fixed = TRUE)[[1L]]))
 
 catalogueROLE <- unique(catalogue$reference_type)
 missingCATALOGUE <- setdiff(required, catalogueROLE)
@@ -36,6 +33,19 @@ if (length(missingCATALOGUE) > 0L) {
 providedROLE <- if (mode == "download" || nrow(provided) == 0L) character() else unique(provided$reference_type)
 downloadROLE <- setdiff(required, providedROLE)
 planned <- catalogue[catalogue$reference_type %in% downloadROLE, , drop = FALSE]
+invalidDIGEST <- nrow(planned) > 0L & (
+  tolower(trimws(planned$checksum_algorithm)) != "sha256" |
+    !grepl("^[0-9a-fA-F]{64}$", trimws(planned$checksum))
+)
+if (any(invalidDIGEST)) {
+  stop(
+    sprintf(
+      "Automatic reference assets require a declared SHA-256 digest; invalid asset(s): %s",
+      paste(planned$asset_id[invalidDIGEST], collapse = ", ")
+    ),
+    call. = FALSE
+  )
+}
 if (nrow(planned) == 0L) {
   planned <- catalogue[1L, , drop = FALSE]
   for (column in names(planned)) planned[[column]] <- ""

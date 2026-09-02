@@ -18,6 +18,15 @@ input:
   - reference_files:
       type: directory
       description: Read-only per-chromosome imputation panel and optional genetic maps.
+  - reference_fasta:
+      type: file
+      description: Reference FASTA used for allele normalization and validation.
+  - impute_script:
+      type: file
+      description: Chromosome imputation implementation.
+  - imputation_dr2:
+      type: value
+      description: Minimum imputation dosage quality retained.
 output:
   - chromosomes:
       type: directory
@@ -28,3 +37,8 @@ output:
   - qc:
       type: file
       description: Typed, retained, and imputed variant counts.
+  - versions:
+      type: file
+      description: Beagle, bcftools, and PLINK versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

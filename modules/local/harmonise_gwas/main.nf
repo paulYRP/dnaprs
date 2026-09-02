@@ -1,7 +1,6 @@
 process HARMONISE_GWAS {
     tag "${meta.trait_id}"
     label 'process_medium'
-    label 'process_r'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 

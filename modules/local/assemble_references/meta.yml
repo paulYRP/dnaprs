@@ -4,6 +4,19 @@ keywords: [reference, cache, provenance]
 tools:
   - R:
       description: Statistical computing environment
+input:
+  - assets:
+      type: file
+      description: Planned asset metadata and verified downloaded files.
+  - provided_references:
+      type: file
+      description: User-provided reference records to retain in the bundle.
+  - settings:
+      type: value
+      description: Reference bundle name, genome build, and cache root.
+  - assemble_script:
+      type: file
+      description: Reference bundle assembly implementation.
 output:
   - references:
       type: file
@@ -14,3 +27,8 @@ output:
   - receipt:
       type: file
       description: Reference source, checksum, size, and cache receipt.
+  - versions:
+      type: file
+      description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

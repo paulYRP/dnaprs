@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -53,14 +54,49 @@ jobs:
           version: ${{ env.NFT_VER }}
           install-pdiff: true
 
-      - name: Run complete stub workflow test
+      - name: Authenticate to the project container registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the current imputation image
+        run: |
+          docker build --pull \
+            --file containers/imputation/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
+            containers/imputation
+
+      - name: Run minimal real-tool workflow test
         run: |
           mkdir -p nf-test-results
           nf-test test tests/default.nf.test \
+            --profile +docker \
             --ci \
             --verbose \
             --log nf-test-results/nf-test.log \
             --junitxml nf-test-results/junit.xml
+
+      - name: Run complete stub graph test
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          nf-test test tests/stub.nf.test \
+            --profile +test_full \
+            --ci \
+            --verbose \
+            --log nf-test-results/stub.log \
+            --junitxml nf-test-results/stub.junit.xml
+
+      - name: Run focused stage and reference tests
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          nf-test test tests/stages.nf.test tests/reference.nf.test \
+            --profile +docker \
+            --ci \
+            --verbose \
+            --log nf-test-results/focused.log \
+            --junitxml nf-test-results/focused.junit.xml
 
       - name: Upload test records
         if: always()

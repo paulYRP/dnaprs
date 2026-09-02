@@ -27,6 +27,15 @@ input:
   - phenotype_models:
       type: file
       description: Phenotype-model manifest or the pipeline empty placeholder.
+  - run_plan:
+      type: file
+      description: Validated stage and reference-role plan.
+  - run_settings:
+      type: value
+      description: Run name, methods, build, seed, report, imputation, and launch paths.
+  - validator_script:
+      type: file
+      description: Manifest validator implementation.
 output:
   - validated_manifests:
       type: file
@@ -40,6 +49,14 @@ output:
   - input_checks:
       type: file
       description: Essential input validation results.
+  - reference_integrity:
+      type: file
+      description: Declared and observed reference digests with authentication status.
+  - run_plan:
+      type: file
+      description: Validated copy of the stage plan.
   - versions:
       type: file
       description: Software versions used by this process.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

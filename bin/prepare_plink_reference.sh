@@ -50,7 +50,7 @@ grep -Fvx -f related.samples.txt reference.samples.all.txt > unrelated.samples.t
 
 mapfile -t panel_files < <(
     if [[ -d "$panel" ]]; then
-        find "$panel" -maxdepth 2 -type f \( -name 'chr*.bref3' -o -name 'chr*.vcf.gz' -o -name 'chr*.bcf' \) -print
+        find "$panel" -maxdepth 2 -type f \( -name 'chr*.bref3' -o -name 'chr*.vcf.gz' -o -name 'chr*.vcf' -o -name 'chr*.bcf' \) -print
     else
         printf '%s\n' "$panel"
     fi | sort -V

@@ -7,13 +7,15 @@ target data, and phenotype data are not stored in these images.
 | ---------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `dnaprs-analysis:1.0.0`      | Input validation, GWAS harmonisation, score processing, QC, and phenotype models | R 4.4.1 and the R packages in `analysis/R-packages.tsv`                              |
 | `dnaprs-plink2:2.0.0-a.6.12` | Target conversion and PLINK C+T operations                                       | PLINK 2.0 alpha 6.12                                                                 |
-| `dnaprs-imputation:1.1.0`    | Source-reference preparation and target-genotype imputation                      | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, unzip, and PLINK 2.0 alpha 6.12 |
+| `dnaprs-imputation:1.1.0`    | Target marker resolution, reference preparation, QC, and imputation               | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, PLINK 2.0 alpha 6.12, R 4.4.1, and data.table 1.18.0 |
 | `zhiliz/sbayesrc:0.2.6`      | SBayesRC preparation, modelling, and scoring                                     | The authors' SBayesRC 0.2.6 environment                                              |
 | `dnaprs-report:1.0.0`        | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv` |
 
 The SBayesRC image is pinned to the authors' published image digest in each SBayesRC
-module. The four dnaprs images are built from the Dockerfiles in this directory and
-published to GitHub Container Registry only for a matching stable release.
+module. The four dnaprs images are built from digest-pinned base images. Downloaded
+installers are SHA-256 checked, and R dependencies resolve against the dated
+`2026-08-01` Posit Package Manager CRAN snapshot. They are published to GitHub
+Container Registry only for a matching stable release.
 
 ## Local build
 
@@ -31,7 +33,6 @@ docker build \
   .
 
 docker build \
-  --build-arg ANALYSIS_IMAGE=ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
   --file containers/report/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 \
   .
@@ -52,7 +53,7 @@ docker run --rm --entrypoint Rscript docker.io/zhiliz/sbayesrc:0.2.6 \
   -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
 docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.0 quarto --version
 docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
-  bash -c "bcftools --version | head -n 1; java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2; java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2"
+  bash -c "bcftools --version | head -n 1; java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2; java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2; Rscript -e \"stopifnot(as.character(packageVersion('data.table')) == '1.18.0')\""
 ```
 
 `.github/workflows/containers.yml` repeats these builds and checks. Images are pushed

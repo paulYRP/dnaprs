@@ -1,7 +1,6 @@
 process ASSEMBLE_REFERENCES {
     tag "${reference_bundle}"
     label 'process_low'
-    label 'process_r'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 
@@ -37,7 +36,7 @@ process ASSEMBLE_REFERENCES {
     """
     mkdir -p reference_bundle
     cp ${provided_references} references.tsv
-    printf 'asset_id\treference_type\tsource_url\tchecksum_algorithm\texpected_checksum\texpected_size\tcache_path\tstatus\n' > reference_receipt.tsv
+    printf 'asset_id\treference_type\tsource_url\tchecksum_algorithm\texpected_checksum\tobserved_checksum\texpected_size\tcache_path\tstatus\n' > reference_receipt.tsv
     printf '"${task.process}":\n  R: stub\n' > versions.yml
     """
 }

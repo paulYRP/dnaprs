@@ -1,8 +1,6 @@
 process SBAYESRC_SCORE {
     tag "${target.cohort}:${gwas.trait_id}"
     label 'process_high'
-    label 'process_plink'
-    label 'process_r'
 
     container 'docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb'
 
@@ -40,7 +38,7 @@ process SBAYESRC_SCORE {
     stub:
     """
     printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tFID\tIID\traw_prs\tallele_count\tused_variants\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\tTEST01\tTEST01\t0.15\t2\tNA\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\tTEST02\tTEST02\t0.25\t2\tNA\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score.tsv
-    printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tparticipants\tmodel_weights\tfinite_scores\tstatus\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\t2\t1\t2\tPASS\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score_qc.tsv
+    printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tparticipants\trequested_variants\tused_variants\tused_fraction\treview_required\tfinite_scores\tstatus\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\t2\t1\t1\t1\tFALSE\t2\tPASS\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score_qc.tsv
     printf 'SBayesRC score stub\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score.log
     printf '"${task.process}:${target.cohort}:${gwas.trait_id}":\n  SBayesRC: stub\n  plink2: stub\n  R: stub\n' > versions.yml
     """

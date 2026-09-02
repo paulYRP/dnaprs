@@ -4,13 +4,8 @@ process REFERENCE_ASSET {
 
     container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'
 
-    publishDir "${params.reference_dir}/${params.reference_bundle}",
-        mode: 'copy',
-        overwrite: false,
-        saveAs: { filename -> filename == row.asset_id ? (row.relative_path ?: null) : null }
-
     input:
-    tuple val(row), path(cached)
+    tuple val(row), path(cached), val(cache_target)
     path embedded_fasta_index
     path asset_script
 
@@ -22,7 +17,7 @@ process REFERENCE_ASSET {
     """
     bash ${asset_script} \
         '${row.asset_id}' '${row.url}' '${row.checksum_algorithm}' '${row.checksum}' \
-        '${row.size}' '${row.etag}' '${cached}' '${embedded_fasta_index}' '${row.asset_id}'
+        '${row.size}' '${row.etag}' '${cached}' '${cache_target}' '${embedded_fasta_index}' '${row.asset_id}'
     printf '"${task.process}:${row.asset_id}":\n  curl: %s\n' "\$(curl --version | head -n 1 | awk '{print \$2}')" > ${row.asset_id}.versions.yml
     """
 

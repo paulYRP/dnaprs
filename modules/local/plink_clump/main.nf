@@ -1,7 +1,6 @@
 process PLINK_CLUMP {
     tag "${meta.trait_id}"
     label 'process_high'
-    label 'process_plink'
 
     container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
 

@@ -6,3 +6,54 @@ tools:
       description: Bayesian multiple regression using summary statistics
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+input:
+  - target:
+      type: map
+      description: Target-cohort metadata.
+  - target_dir:
+      type: directory
+      description: Score-ready target genotype dataset.
+  - target_qc:
+      type: file
+      description: Target genotype QC summary.
+  - participant_decisions:
+      type: file
+      description: Participant inclusion decisions.
+  - participant_keep:
+      type: file
+      description: PLINK keep file for score-eligible participants.
+  - gwas:
+      type: map
+      description: GWAS trait metadata.
+  - weight:
+      type: file
+      description: SBayesRC posterior score weights.
+  - parameter:
+      type: file
+      description: SBayesRC model parameters.
+  - model_qc:
+      type: file
+      description: SBayesRC model QC.
+  - impute_qc:
+      type: file
+      description: SBayesRC imputation QC.
+  - tidy_qc:
+      type: file
+      description: SBayesRC tidy-stage QC.
+  - harmonisation_qc:
+      type: file
+      description: Common GWAS harmonisation audit.
+  - sbayesrc_script:
+      type: file
+      description: SBayesRC wrapper implementation.
+output:
+  - scores:
+      type: tuple
+      description: Participant scores and score-coverage QC.
+  - logs:
+      type: tuple
+      description: SBayesRC scoring log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

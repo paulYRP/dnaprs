@@ -10,6 +10,7 @@ include { PREPARE_PLINK_REFERENCE } from '../modules/local/prepare_plink_referen
 include { PREPARE_SBAYESRC_REFERENCE } from '../modules/local/prepare_sbayesrc_reference/main'
 include { GENOTYPE_EDA_PLINK as GENOTYPE_EDA } from '../modules/local/genotype_eda/main'
 include { PLINK_REFERENCE_FREQ } from '../modules/local/plink_reference_freq/main'
+include { ALIGN_PLINK_GWAS } from '../modules/local/align_plink_gwas/main'
 include { PLINK_CLUMP } from '../modules/local/plink_clump/main'
 include { BUILD_CT_WEIGHTS } from '../modules/local/build_ct_weights/main'
 include { PLINK_SCORE } from '../modules/local/plink_score/main'
@@ -24,7 +25,6 @@ include { SBAYESRC_SCORE } from '../modules/local/sbayesrc_score/main'
 include { COMBINE_SCORES } from '../modules/local/combine_scores/main'
 include { SUMMARISE_GENERATION_QC } from '../modules/local/summarise_generation_qc/main'
 include { PHENOTYPE_ASSOCIATION } from '../modules/local/phenotype_association/main'
-include { SPLIT_PHENOTYPE_MODELS } from '../modules/local/split_phenotype_models/main'
 include { COMBINE_PHENOTYPE } from '../modules/local/combine_phenotype/main'
 include { RENDER_REPORT } from '../modules/local/render_report/main'
 include { PUBLIC_FIGURES } from '../modules/local/public_figures/main'
@@ -35,20 +35,6 @@ include { COLLECT_VERSIONS } from '../modules/local/collect_versions/main'
 // in meta.source_genotype for provenance; meta.genotype names the staged task-local input.
 def targetBaseName(value) {
     value.toString().replace('\\', '/').tokenize('/').last()
-}
-
-// Read one field from the single-record internal phenotype-model file. Only this small
-// generated record is inspected by the driver; participant and score tables remain
-// process inputs and are never loaded into workflow memory.
-def modelField(modelFile, field) {
-    def lines = java.nio.file.Files.readAllLines(modelFile)
-    def header = lines.size() > 0 ? lines[0].split('\t', -1) : null
-    def record = lines.size() > 1 ? lines[1].split('\t', -1) : null
-    def index = header?.findIndexOf { it == field }
-    if (index == null || index < 0 || record == null || index >= record.size()) {
-        error "Generated phenotype model '${modelFile}' has no '${field}' value."
-    }
-    record[index]
 }
 
 def addTargetInput(sourceFiles, value) {
@@ -200,8 +186,11 @@ workflow DNAPRS {
     report_source
     input_checks
     input_versions
+    run_plan
 
     main:
+    run_prs = ['prs', 'phenotype', 'report'].contains(stop_after)
+    run_phenotype = phenotype_enabled && ['phenotype', 'report'].contains(stop_after)
     VALIDATE_MANIFESTS(
         run_name,
         target_manifest,
@@ -216,6 +205,7 @@ workflow DNAPRS {
         target_imputation,
         launch_dir,
         reference_base,
+        run_plan,
         script_files.validate,
     )
 
@@ -231,12 +221,16 @@ workflow DNAPRS {
 
     dbsnp_source = reference_inputs
         .filter { row, _files -> row.reference_type == 'dbsnp' }
+        .ifEmpty { tuple([reference_id: 'NOT_REQUIRED', path: ''], file("${projectDir}/assets/empty_input")) }
         .first()
     reference_fasta_source = reference_inputs
         .filter { row, _files -> row.reference_type == 'reference_fasta' }
+        .ifEmpty { tuple([reference_id: 'NOT_REQUIRED', path: ''], file("${projectDir}/assets/empty_input")) }
         .first()
 
-    HARMONISE_GWAS(gwas_rows, script_files.harmonise)
+    if (run_prs) {
+        HARMONISE_GWAS(gwas_rows, script_files.harmonise)
+    }
     // Describe the untouched user input before marker renaming, allele correction,
     // duplicate handling, or technical filtering. The EDA process performs only a
     // task-local format import and never edits the source files.
@@ -247,6 +241,7 @@ workflow DNAPRS {
         reference_fasta_source,
         script_files.prepare_target,
         script_files.target_adapter,
+        script_files.marker_resolver,
     )
     TARGET_QC(
         PREPARE_TARGET.out.prepared,
@@ -297,8 +292,8 @@ workflow DNAPRS {
     )
     participant_decision_inputs = TARGET_QC.out.sample_decisions
         .map { meta, decisions -> tuple(meta.cohort, meta, decisions) }
-        .join(GENOTYPE_EDA.out.tables.map { meta, tables -> tuple(meta.cohort, tables) })
-        .join(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple(meta.cohort, ancestry) })
+        .join(GENOTYPE_EDA.out.tables.map { meta, tables -> tuple(meta.cohort, tables) }, failOnDuplicate: true, failOnMismatch: true)
+        .join(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple(meta.cohort, ancestry) }, failOnDuplicate: true, failOnMismatch: true)
         .map { _cohort, meta, decisions, tables, ancestry -> tuple(meta, decisions, tables, ancestry) }
     PARTICIPANT_DECISIONS(participant_decision_inputs, script_files.participant_decisions)
 
@@ -320,17 +315,17 @@ workflow DNAPRS {
 
     score_files = channel.empty()
     score_job_records = channel.empty()
-    generation_qc_files = HARMONISE_GWAS.out.harmonised.map { _meta, _cojo, _clump_input, harmonisation_qc -> harmonisation_qc }
+    generation_qc_files = channel.empty()
     result_files = VALIDATE_MANIFESTS.out.target_manifest.map { result_file -> tuple('inputs', result_file) }
         .mix(VALIDATE_MANIFESTS.out.gwas_manifest.map { result_file -> tuple('inputs', result_file) })
         .mix(VALIDATE_MANIFESTS.out.reference_manifest.map { result_file -> tuple('inputs', result_file) })
         .mix(VALIDATE_MANIFESTS.out.phenotype_models.map { result_file -> tuple('inputs', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.run_plan.map { result_file -> tuple('inputs', result_file) })
         .mix(VALIDATE_MANIFESTS.out.run_settings.map { result_file -> tuple('inputs', result_file) })
         .mix(VALIDATE_MANIFESTS.out.input_checksums.map { result_file -> tuple('inputs', result_file) })
         .mix(VALIDATE_MANIFESTS.out.input_checks.map { result_file -> tuple('inputs/checks', result_file) })
+        .mix(VALIDATE_MANIFESTS.out.reference_integrity.map { result_file -> tuple('inputs/checks', result_file) })
         .mix(input_checks.map { result_file -> tuple('inputs', result_file) })
-        .mix(HARMONISE_GWAS.out.harmonised.map { meta, cojo, _clump_input, _harmonisation_qc -> tuple("gwas/${meta.trait_id}", cojo) })
-        .mix(HARMONISE_GWAS.out.harmonised.map { meta, _cojo, _clump_input, harmonisation_qc -> tuple("qc/gwas/${meta.trait_id}", harmonisation_qc) })
         .mix(GENOTYPE_EDA.out.tables.flatMap { meta, tables -> tables.collect { result_file -> tuple("genotype_eda/${meta.cohort}", result_file) } })
         .mix(GENOTYPE_EDA.out.logs.map { meta, stage_log -> tuple("logs/genotype_eda/${meta.cohort}", stage_log) })
         .mix(PREPARE_TARGET.out.prep.map { meta, prep_qc -> tuple("target_prep/${meta.cohort}", prep_qc) })
@@ -360,7 +355,6 @@ workflow DNAPRS {
         })
     version_files = VALIDATE_MANIFESTS.out.versions
         .mix(input_versions)
-        .mix(HARMONISE_GWAS.out.versions)
         .mix(GENOTYPE_EDA.out.versions)
         .mix(PREPARE_TARGET.out.versions)
         .mix(TARGET_QC.out.versions)
@@ -368,7 +362,9 @@ workflow DNAPRS {
         .mix(PREPARE_PLINK_REFERENCE.out.versions)
         .mix(REFERENCE_ANCESTRY.out.versions)
 
-    score_target_files = TARGET_QC.out.direct_ready
+    score_target_files = TARGET_QC.out.direct_ready.map { meta, target_dir, target_qc ->
+        tuple(meta + [scoring_stage: 'direct'], target_dir, target_qc)
+    }
     if (target_imputation && stop_after != 'target_qc') {
         imputation_panel = reference_inputs
             .filter { row, _files -> row.reference_type == 'imputation_panel' }
@@ -400,14 +396,26 @@ workflow DNAPRS {
             .combine(imputation_panel)
             .combine(genetic_map)
             .combine(beagle_jar)
+            .combine(reference_fasta_source)
         TARGET_IMPUTE_CHROMOSOME(target_impute_input, script_files.target_impute_chromosome, imputation_dr2)
         target_impute_gather = TARGET_IMPUTE_CHROMOSOME.out.chromosomes
             .groupTuple(sort: 'deep')
             .map { group_key, chromosomes, chromosome_dirs, chromosome_manifests, chromosome_qc, chromosome_dr2, chromosome_logs ->
-                tuple(group_key.getGroupTarget(), chromosome_dirs, chromosome_manifests, chromosome_qc, chromosome_dr2, chromosome_logs)
+                def order = (0..<chromosomes.size()).toList().sort { index -> chromosomes[index] as int }
+                tuple(
+                    group_key.getGroupTarget(),
+                    order.collect { chromosomes[it] },
+                    order.collect { chromosome_dirs[it] },
+                    order.collect { chromosome_manifests[it] },
+                    order.collect { chromosome_qc[it] },
+                    order.collect { chromosome_dr2[it] },
+                    order.collect { chromosome_logs[it] },
+                )
             }
         ASSEMBLE_TARGET_IMPUTATION(target_impute_gather, script_files.assemble_target_imputation)
-        score_target_files = ASSEMBLE_TARGET_IMPUTATION.out.prepared
+        score_target_files = ASSEMBLE_TARGET_IMPUTATION.out.prepared.map { meta, target_dir, target_qc ->
+            tuple(meta + [scoring_stage: 'imputed'], target_dir, target_qc)
+        }
         result_files = result_files
             .mix(ASSEMBLE_TARGET_IMPUTATION.out.manifest.map { meta, manifest -> tuple("target_imputation/${meta.cohort}", manifest) })
             .mix(ASSEMBLE_TARGET_IMPUTATION.out.qc.map { meta, qc -> tuple("target_imputation/${meta.cohort}", qc) })
@@ -426,51 +434,64 @@ workflow DNAPRS {
         .map { meta, decisions, keep -> tuple(meta.cohort, decisions, keep) }
     score_targets = score_target_files
         .map { meta, target_dir, target_qc -> tuple(meta.cohort, meta, target_dir, target_qc) }
-        .join(participant_decision_rows)
+        .join(participant_decision_rows, failOnDuplicate: true, failOnMismatch: true)
         .map { _cohort, meta, target_dir, target_qc, decisions, keep ->
             tuple(meta, target_dir, target_qc, decisions, keep)
         }
     direct_score_targets = TARGET_QC.out.direct_ready
-        .map { meta, target_dir, target_qc -> tuple(meta.cohort, meta + [score_method: 'plink_ct_direct'], target_dir, target_qc) }
-        .join(participant_decision_rows)
+        .map { meta, target_dir, target_qc -> tuple(meta.cohort, meta + [score_method: 'plink_ct_direct', scoring_stage: 'direct'], target_dir, target_qc) }
+        .join(participant_decision_rows, failOnDuplicate: true, failOnMismatch: true)
         .map { _cohort, meta, target_dir, target_qc, decisions, keep ->
             tuple(meta, target_dir, target_qc, decisions, keep)
         }
 
-    run_prs = ['prs', 'phenotype', 'report'].contains(stop_after)
-    run_phenotype = phenotype_enabled && ['phenotype', 'report'].contains(stop_after)
+    if (run_prs) {
+        generation_qc_files = generation_qc_files.mix(
+            HARMONISE_GWAS.out.harmonised.map { _meta, _cojo, _clump_input, harmonisation_qc -> harmonisation_qc }
+        )
+        result_files = result_files
+            .mix(HARMONISE_GWAS.out.harmonised.map { meta, cojo, _clump_input, _harmonisation_qc -> tuple("gwas/${meta.trait_id}", cojo) })
+            .mix(HARMONISE_GWAS.out.harmonised.map { meta, _cojo, _clump_input, harmonisation_qc -> tuple("qc/gwas/${meta.trait_id}", harmonisation_qc) })
+        version_files = version_files.mix(HARMONISE_GWAS.out.versions)
+    }
 
     if (run_prs && methods.contains('plink_ct')) {
         PLINK_REFERENCE_FREQ(plink_reference)
 
-        clump_input = HARMONISE_GWAS.out.harmonised.combine(plink_reference)
-        PLINK_CLUMP(clump_input)
+        plink_alignment_input = HARMONISE_GWAS.out.harmonised.combine(plink_reference)
+        ALIGN_PLINK_GWAS(plink_alignment_input, script_files.align_plink_gwas)
+        PLINK_CLUMP(ALIGN_PLINK_GWAS.out.aligned.combine(plink_reference))
         BUILD_CT_WEIGHTS(PLINK_CLUMP.out.clumped, script_files.ct_weights)
 
         plink_score_input = score_targets
             .combine(BUILD_CT_WEIGHTS.out.weights)
             .combine(PLINK_REFERENCE_FREQ.out.frequency)
         PLINK_SCORE(plink_score_input)
-        PARSE_PLINK_SCORE(PLINK_SCORE.out.raw, script_files.parse_plink)
+        PARSE_PLINK_SCORE(PLINK_SCORE.out.raw, script_files.parse_plink, script_files.audit_scoring)
         score_files = score_files.mix(PARSE_PLINK_SCORE.out.scores.map { _target, _gwas, score, _score_qc -> score })
         score_job_records = score_job_records.mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, _score, _score_qc ->
             [cohort: target.cohort, trait_id: gwas.trait_id, prs_name: gwas.prs_name, method: 'plink_ct']
         })
         generation_qc_files = generation_qc_files.mix(
+            ALIGN_PLINK_GWAS.out.qc.map { _meta, alignment_qc -> alignment_qc },
             BUILD_CT_WEIGHTS.out.weights.map { _meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> weight_qc }
         )
 
         result_files = result_files
             .mix(PLINK_REFERENCE_FREQ.out.frequency.map { _reference, frequency, _reference_log -> tuple('reference/plink_ct', frequency) })
             .mix(PLINK_REFERENCE_FREQ.out.frequency.map { _reference, _frequency, reference_log -> tuple('logs/plink_ct/reference', reference_log) })
+            .mix(ALIGN_PLINK_GWAS.out.qc.map { meta, alignment_qc -> tuple("qc/plink_ct/${meta.trait_id}", alignment_qc) })
             .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, weight, _weight_qc, _harmonisation_qc, _clump_log -> tuple("plink_ct/${meta.trait_id}", weight) })
             .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> tuple("qc/plink_ct/${meta.trait_id}", weight_qc) })
             .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, _weight, _weight_qc, _harmonisation_qc, clump_log -> tuple("qc/plink_ct/${meta.trait_id}", clump_log) })
             .mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, score, _score_qc -> tuple("scores/${target.cohort}/${gwas.trait_id}", score) })
             .mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
+            .mix(PARSE_PLINK_SCORE.out.compatibility.map { target, gwas, audit, _coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", audit) })
+            .mix(PARSE_PLINK_SCORE.out.compatibility.map { target, gwas, _audit, coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", coverage) })
             .mix(PARSE_PLINK_SCORE.out.logs.map { target, gwas, score_log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}", score_log) })
         version_files = version_files
             .mix(PLINK_REFERENCE_FREQ.out.versions)
+            .mix(ALIGN_PLINK_GWAS.out.versions)
             .mix(PLINK_CLUMP.out.versions)
             .mix(BUILD_CT_WEIGHTS.out.versions)
             .mix(PLINK_SCORE.out.versions)
@@ -481,20 +502,20 @@ workflow DNAPRS {
                 .combine(BUILD_CT_WEIGHTS.out.weights)
                 .combine(PLINK_REFERENCE_FREQ.out.frequency)
             PLINK_DIRECT_SCORE(plink_direct_input)
-            PARSE_PLINK_DIRECT_SCORE(PLINK_DIRECT_SCORE.out.raw, script_files.parse_plink)
+            PARSE_PLINK_DIRECT_SCORE(PLINK_DIRECT_SCORE.out.raw, script_files.parse_plink, script_files.audit_scoring)
 
             primary_sensitivity = PARSE_PLINK_SCORE.out.scores
                 .map { target, gwas, score, _qc -> tuple("${target.cohort}\t${gwas.trait_id}", target, gwas, score) }
             direct_sensitivity = PARSE_PLINK_DIRECT_SCORE.out.scores
                 .map { _target, gwas, score, _qc -> tuple("${_target.cohort}\t${gwas.trait_id}", score) }
             primary_used = PLINK_SCORE.out.raw
-                .map { target, gwas, _score, used, _log -> tuple("${target.cohort}\t${gwas.trait_id}", used) }
+                .map { target, gwas, _score, used, _log, _weight, _pvar -> tuple("${target.cohort}\t${gwas.trait_id}", used) }
             direct_used = PLINK_DIRECT_SCORE.out.raw
-                .map { target, gwas, _score, used, _log -> tuple("${target.cohort}\t${gwas.trait_id}", used) }
+                .map { target, gwas, _score, used, _log, _weight, _pvar -> tuple("${target.cohort}\t${gwas.trait_id}", used) }
             sensitivity_input = primary_sensitivity
-                .join(primary_used)
-                .join(direct_sensitivity)
-                .join(direct_used)
+                .join(primary_used, failOnDuplicate: true, failOnMismatch: true)
+                .join(direct_sensitivity, failOnDuplicate: true, failOnMismatch: true)
+                .join(direct_used, failOnDuplicate: true, failOnMismatch: true)
                 .map { _key, target, gwas, primary_score, primary_variants, direct_score, direct_variants ->
                     tuple(target, gwas, primary_score, primary_variants, direct_score, direct_variants)
                 }
@@ -503,7 +524,9 @@ workflow DNAPRS {
             result_files = result_files
                 .mix(PARSE_PLINK_DIRECT_SCORE.out.scores.map { target, gwas, score, _qc -> tuple("scores/${target.cohort}/${gwas.trait_id}/sensitivity", score) })
                 .mix(PARSE_PLINK_DIRECT_SCORE.out.scores.map { target, gwas, _score, qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", qc) })
-                .mix(PLINK_DIRECT_SCORE.out.raw.map { target, gwas, _score, _used, log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}/sensitivity", log) })
+                .mix(PARSE_PLINK_DIRECT_SCORE.out.compatibility.map { target, gwas, audit, _coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", audit) })
+                .mix(PARSE_PLINK_DIRECT_SCORE.out.compatibility.map { target, gwas, _audit, coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", coverage) })
+                .mix(PLINK_DIRECT_SCORE.out.raw.map { target, gwas, _score, _used, log, _weight, _pvar -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}/sensitivity", log) })
                 .mix(COMPARE_DIRECT_SCORE.out.comparison.map { target, gwas, comparison, _qc -> tuple("scores/${target.cohort}/${gwas.trait_id}/sensitivity", comparison) })
                 .mix(COMPARE_DIRECT_SCORE.out.comparison.map { target, gwas, _comparison, qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", qc) })
             version_files = version_files
@@ -609,15 +632,20 @@ workflow DNAPRS {
             .mix(SUMMARISE_GENERATION_QC.out.versions)
 
         if (run_phenotype) {
-            SPLIT_PHENOTYPE_MODELS(phenotype_models)
-            phenotype_model_jobs = SPLIT_PHENOTYPE_MODELS.out.models.flatten().map { model_file ->
-                tuple([model_id: modelField(model_file, 'model_id'), prs_name: modelField(model_file, 'prs_name')], model_file)
-            }
-            phenotype_jobs = score_job_records
+            phenotype_model_records = phenotype_models
+                .splitCsv(header: true, sep: '\t')
+                .map { model -> tuple('resolved_models', model.prs_name, model.model_id) }
+            phenotype_model_file = phenotype_models
+                .map { models -> tuple('resolved_models', models) }
+            phenotype_model_jobs = phenotype_model_records
+                .combine(phenotype_model_file, by: 0)
+                .map { _key, prs_name, model_id, models -> tuple(prs_name, model_id, models) }
+            score_model_jobs = score_job_records
                 .combine(COMBINE_SCORES.out.scores_long)
-                .combine(phenotype_model_jobs)
-                .filter { score_job, _scores, model_job, _model_file -> score_job.prs_name == model_job.prs_name }
-                .map { score_job, scores, _model_job, model_file -> tuple(score_job, scores, model_file) }
+                .map { score_job, scores -> tuple(score_job.prs_name, score_job, scores) }
+            phenotype_jobs = score_model_jobs
+                .combine(phenotype_model_jobs, by: 0)
+                .map { _prs_name, score_job, scores, model_id, models -> tuple(score_job, scores, models, model_id) }
             PHENOTYPE_ASSOCIATION(
                 phenotype_jobs,
                 phenotype_file,
@@ -646,7 +674,7 @@ workflow DNAPRS {
         }
     }
 
-    COLLECT_VERSIONS(version_files.collect())
+    COLLECT_VERSIONS(version_files.collect(), script_files.collect_versions)
     result_files = result_files.mix(COLLECT_VERSIONS.out.versions.map { result_file -> tuple('pipeline_info', result_file) })
 
     if (report_enabled && stop_after == 'report') {

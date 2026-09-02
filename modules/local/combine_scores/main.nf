@@ -1,7 +1,6 @@
 process COMBINE_SCORES {
     tag 'all scores'
-    label 'process_medium'
-    label 'process_r'
+    label 'process_single'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 

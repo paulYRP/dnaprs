@@ -4,7 +4,27 @@ keywords: [genotype, quality-control, ancestry, relatedness]
 tools:
   - R:
       description: Statistical computing environment
+input:
+  - meta:
+      type: map
+      description: Target-cohort metadata.
+  - sample_decisions:
+      type: file
+      description: Technical sample-QC decisions.
+  - eda_tables:
+      type: file
+      description: Genotype EDA tables including relatedness results.
+  - target_ancestry:
+      type: file
+      description: Target ancestry classification table.
+  - decision_script:
+      type: file
+      description: R implementation used to integrate participant decisions.
 output:
   - decisions:
-      type: file
+      type: tuple
       description: Participant decisions and score-eligible PLINK keep file.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

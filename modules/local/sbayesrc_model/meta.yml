@@ -4,3 +4,48 @@ keywords: [sbayesrc, bayesian, prs]
 tools:
   - sbayesrc:
       description: Bayesian multiple regression using summary statistics
+input:
+  - meta:
+      type: map
+      description: GWAS trait metadata.
+  - imputed:
+      type: file
+      description: Imputed GWAS summary statistics.
+  - impute_qc:
+      type: file
+      description: Imputation-stage QC.
+  - tidy_qc:
+      type: file
+      description: Tidy-stage QC.
+  - harmonisation_qc:
+      type: file
+      description: Common GWAS harmonisation audit.
+  - ld_reference:
+      type: map
+      description: SBayesRC LD-reference metadata.
+  - ld_reference_files:
+      type: directory
+      description: Prepared SBayesRC LD reference.
+  - annotation_reference:
+      type: map
+      description: SBayesRC annotation-reference metadata.
+  - annotation_reference_files:
+      type: file
+      description: Prepared SBayesRC annotation reference.
+  - sbayesrc_script:
+      type: file
+      description: SBayesRC wrapper implementation.
+  - seed:
+      type: value
+      description: Reproducible model seed.
+output:
+  - model:
+      type: tuple
+      description: Posterior weights, parameters, model QC, and chained QC files.
+  - logs:
+      type: tuple
+      description: SBayesRC model log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

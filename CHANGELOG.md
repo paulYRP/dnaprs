@@ -21,7 +21,7 @@ All notable changes to dnaprs are recorded here.
 - Added concurrent trait, chromosome, scoring-method, and phenotype-model tasks with
   portable process labels for executor-specific CPU and memory allocation.
 - Added combined raw and within-cohort standardised score tables.
-- Added optional Gaussian, binomial, ordinal, and mixed-model phenotype associations
+- Added optional Gaussian, binomial, and mixed-model phenotype associations
   driven directly by CSV columns and YAML model records.
 - Added typed-versus-imputed PLINK sensitivity and scoring-variant coverage checks.
 - Added a tabbed Quarto report containing genotype, GWAS, QC, imputation, ancestry,

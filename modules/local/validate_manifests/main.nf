@@ -1,7 +1,6 @@
 process VALIDATE_MANIFESTS {
     tag "$run_name"
-    label 'process_low'
-    label 'process_r'
+    label 'process_single'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 
@@ -19,6 +18,7 @@ process VALIDATE_MANIFESTS {
     val target_imputation
     val launch_dir
     val reference_base
+    path run_plan, stageAs: 'input_run_plan.tsv'
     path validator_script
 
     output:
@@ -26,9 +26,11 @@ process VALIDATE_MANIFESTS {
     path 'gwas.tsv', emit: gwas_manifest
     path 'references.tsv', emit: reference_manifest
     path 'models.tsv', emit: phenotype_models
+    path 'run_plan.tsv', emit: run_plan
     path 'run_settings.yml', emit: run_settings
     path 'input_checksums.tsv', emit: input_checksums
     path 'input_checks.tsv', emit: input_checks
+    path 'reference_integrity.tsv', emit: reference_integrity
     path 'versions.yml', emit: versions
 
     script:
@@ -47,7 +49,8 @@ process VALIDATE_MANIFESTS {
         --report-enabled '${report_enabled}' \
         --target-imputation '${target_imputation}' \
         --launch-dir '${launch_dir}' \
-        --reference-base '${reference_base}'
+        --reference-base '${reference_base}' \
+        --run-plan '${run_plan}'
 
     cat > versions.yml <<-VERSIONS
     "${task.process}:${run_name}":
@@ -88,9 +91,11 @@ process VALIDATE_MANIFESTS {
         { print }
     ' ${reference_manifest} > references.tsv
     cp ${phenotype_models} models.tsv
+    cp ${run_plan} run_plan.tsv
     printf "run_name: '${run_name}'\ngenome_build: '${genome_build}'\nmethods:\n" > run_settings.yml
     printf 'path\talgorithm\tchecksum\nmanifest\tSHA-256\tstub\n' > input_checksums.tsv
     printf 'check\tvalue\tstatus\ntarget_cohorts\t1\tPASS\ngwas_traits\t1\tPASS\nreference_resources\t1\tPASS\n' > input_checks.tsv
+    printf 'reference_id\treference_type\tdeclared_sha256\tobserved_sha256\tstatus\nTEST\tdbsnp\tstub\tstub\tAUTHENTICATED\n' > reference_integrity.tsv
     printf '"${task.process}:${run_name}":\n  R: stub\n' > versions.yml
     """
 }

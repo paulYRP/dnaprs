@@ -10,3 +10,33 @@ tools:
       description: SHA-256 calculation for the report file dictionary
   - jsonlite:
       description: Figure-gallery data embedded in each report page
+input:
+  - report_files:
+      type: file
+      description: Pipeline result, QC, log, and provenance files used by the report.
+  - output_manifest:
+      type: file
+      description: Stable manifest of published pipeline outputs.
+  - report_source:
+      type: directory
+      description: Quarto report source directory.
+output:
+  - pages:
+      type: file
+      description: Rendered report HTML pages.
+  - libraries:
+      type: directory
+      description: Local JavaScript and CSS dependencies.
+  - assets:
+      type: directory
+      description: Report logos and static assets.
+  - downloads:
+      type: directory
+      description: Optional downloadable result tables.
+  - figures:
+      type: directory
+      description: Optional report figure bundle.
+  - provenance:
+      type: file
+      description: Embedded Nextflow execution and software provenance.
+authors: ["@paulYRP"]

@@ -4,7 +4,22 @@ keywords: [reference, download, checksum, cache]
 tools:
   - curl:
       description: Command-line data transfer tool
+input:
+  - asset:
+      type: tuple
+      description: Catalogue row, existing cache candidate, and final cache path.
+  - embedded_fasta_index:
+      type: file
+      description: Bundled FASTA index used only for the matching catalogue asset.
+  - asset_script:
+      type: file
+      description: Atomic download, checksum, and cache implementation.
 output:
   - asset:
+      type: tuple
+      description: Catalogue metadata and verified reference asset.
+  - versions:
       type: file
-      description: Verified reference asset.
+      description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

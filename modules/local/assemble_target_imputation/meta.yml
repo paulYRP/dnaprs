@@ -4,6 +4,13 @@ keywords: [genotype, imputation, scatter-gather]
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+input:
+  - chromosomes:
+      type: tuple
+      description: Target metadata, expected chromosome IDs, and all chromosome products.
+  - assembly_script:
+      type: file
+      description: Deterministic chromosome validation and gather implementation.
 output:
   - prepared:
       type: directory
@@ -11,3 +18,20 @@ output:
   - manifest:
       type: file
       description: Ordered chromosome-level imputation handoff manifest.
+  - qc:
+      type: file
+      description: Combined imputation checks and counts.
+  - dr2:
+      type: file
+      description: Combined dosage-quality distribution.
+  - checkpoint:
+      type: tuple
+      description: Reusable imputed PGEN checkpoint and handoff manifest.
+  - logs:
+      type: tuple
+      description: Combined chromosome imputation log.
+  - versions:
+      type: file
+      description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

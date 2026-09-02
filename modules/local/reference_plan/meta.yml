@@ -4,6 +4,22 @@ keywords: [reference, planning, cache]
 tools:
   - R:
       description: Statistical computing environment
+input:
+  - provided_references:
+      type: file
+      description: Normalised user-provided reference records.
+  - catalogue:
+      type: file
+      description: Pinned automatic-reference catalogue.
+  - run_plan:
+      type: file
+      description: Stage-specific required reference roles.
+  - reference_mode:
+      type: value
+      description: Local, automatic, or download reference mode.
+  - plan_script:
+      type: file
+      description: Reference planning implementation.
 output:
   - assets:
       type: file
@@ -11,3 +27,8 @@ output:
   - plan:
       type: file
       description: Human-readable reference plan and status.
+  - versions:
+      type: file
+      description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

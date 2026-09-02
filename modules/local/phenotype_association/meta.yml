@@ -8,3 +8,40 @@ tools:
       description: Reliable fitting of generalised linear models
   - lme4:
       description: Linear and generalised linear mixed-effects models
+input:
+  - model_job:
+      type: tuple
+      description: Score metadata, combined scores, resolved model table, and selected model ID.
+  - phenotype_file:
+      type: file
+      description: User phenotype CSV or delimited phenotype table.
+  - association_script:
+      type: file
+      description: Phenotype association and diagnostic implementation.
+  - seed:
+      type: value
+      description: Fixed random seed for reproducible permutation procedures.
+output:
+  - associations:
+      type: file
+      description: Effect estimates, fit metrics, inclusion counts, diagnostics, and status.
+  - fitted_models:
+      type: file
+      description: Prespecified model formulas and fitted-model diagnostics.
+  - plot_data:
+      type: file
+      description: Participant-level values used by phenotype figures.
+  - permutations:
+      type: file
+      description: Deterministic permutation results.
+  - influence:
+      type: file
+      description: Participant influence and case-deletion diagnostics.
+  - phenotype_prs:
+      type: file
+      description: Phenotype rows joined to the selected standardized PRS values.
+  - versions:
+      type: file
+      description: R and model-package versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

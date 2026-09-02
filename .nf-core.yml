@@ -4,9 +4,6 @@ nf_core_version: 4.1.0
 
 lint:
   files_unchanged:
-    # Uses the current centralized nf-core/actions workflow instead of the
-    # vendored implementation shipped by the pinned nf-core/tools 4.1.0 template.
-    - .github/workflows/pr-comment.yml
     - LICENSE
     - .github/ISSUE_TEMPLATE/bug_report.yml
     - .github/ISSUE_TEMPLATE/config.yml
@@ -18,6 +15,8 @@ lint:
     - assets/email_template.txt
     - docs/README.md
     - .github/workflows/nf-test.yml
+    # Results remain ordinary checks/artifacts; no token-privileged PR comment is posted.
+    - .github/workflows/linting.yml
   multiqc_config: false
   files_exist:
     - conf/igenomes.config
@@ -26,6 +25,8 @@ lint:
     - .github/workflows/awstest.yml
     - .github/workflows/awsfulltest.yml
     - .github/workflows/branch.yml
+    # The optional centralized PR-comment workflow was deliberately removed.
+    - .github/workflows/pr-comment.yml
   template_strings:
     - containers/README.md
 

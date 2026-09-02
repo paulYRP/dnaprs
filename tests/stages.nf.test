@@ -1,0 +1,41 @@
+nextflow_pipeline {
+
+    name "Validate an early stage-aware stop with real tools"
+    script "../main.nf"
+    tag "pipeline"
+    tag "stage"
+
+    test("raw VCF stops after target QC without PRS or phenotype work") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "target_qc"
+                stop_after = "target_qc"
+                phenotype = null
+                outcome = null
+                covariates = null
+                model_type = null
+                participant_id = null
+                target_imputation = false
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/target_qc"
+            def plan = path("$runDir/data/inputs/run_plan.tsv")
+            assert workflow.success
+            assertAll(
+                { assert plan.exists() },
+                { assert plan.text.contains("run_prs\tfalse") },
+                { assert plan.text.contains("run_phenotype\tfalse") },
+                { assert path("$runDir/data/target_qc/TEST/TEST.target_qc.tsv").exists() },
+                { assert path("$runDir/data/target_qc/TEST/TEST.participant_decisions.tsv").exists() },
+                { assert !path("$runDir/data/gwas").exists() },
+                { assert !path("$runDir/data/scores").exists() },
+                { assert !path("$runDir/data/phenotype").exists() },
+                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() }
+            )
+        }
+    }
+}

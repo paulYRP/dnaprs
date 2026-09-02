@@ -1,7 +1,6 @@
 process PREPARE_PLINK_REFERENCE {
     tag "${panel.reference_id}"
     label 'process_high'
-    label 'process_plink'
 
     container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'
 

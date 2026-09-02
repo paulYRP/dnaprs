@@ -6,11 +6,21 @@ role="$2"
 build="$3"
 ancestry="$4"
 threads="$5"
+expected_csv="$6"
 output_dir="${cohort}.imputed"
 mkdir -p "$output_dir"
 
 mapfile -t chromosome_dirs < <(find . -maxdepth 1 -type d -name "${cohort}.chr*.imputed" -printf '%f\n' | sort -V)
 [[ "${#chromosome_dirs[@]}" -gt 0 ]] || { echo "No completed chromosome-imputation bundles were supplied." >&2; exit 2; }
+IFS=',' read -r -a expected_chromosomes <<< "$expected_csv"
+mapfile -t observed_chromosomes < <(printf '%s\n' "${chromosome_dirs[@]}" | sed -E "s/^${cohort}[.]chr([0-9]+)[.]imputed$/\\1/" | sort -n)
+[[ "${#observed_chromosomes[@]}" -eq "${#expected_chromosomes[@]}" ]] || { echo "The number of chromosome bundles differs from the expected scatter set." >&2; exit 2; }
+for index in "${!expected_chromosomes[@]}"; do
+    [[ "${observed_chromosomes[$index]}" == "${expected_chromosomes[$index]}" ]] || {
+        echo "Chromosome bundle set differs from the expected scatter set (${expected_csv})." >&2
+        exit 2
+    }
+done
 
 first_psam=""
 prefixes=()
@@ -43,6 +53,8 @@ combine_tables() {
 combine_tables "${cohort}.chr*.imputation_manifest.tsv" "${cohort}.imputation_manifest.tsv"
 combine_tables "${cohort}.chr*.imputation_qc.tsv" "${cohort}.imputation_qc.tsv"
 combine_tables "${cohort}.chr*.imputation_dr2.tsv" "${cohort}.imputation_dr2.tsv"
+manifest_csv=$(awk 'NR>1 {print $2}' "${cohort}.imputation_manifest.tsv" | paste -sd, -)
+[[ "$manifest_csv" == "$expected_csv" ]] || { echo "Combined imputation manifest is missing or duplicates an expected chromosome." >&2; exit 4; }
 
 for log in ${cohort}.chr*.target_imputation.log; do
     printf '\n===== %s =====\n' "$log" >> "${cohort}.target_imputation.log"

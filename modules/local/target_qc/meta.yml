@@ -15,16 +15,47 @@ input:
   - target_dir:
       type: directory
       description: Normalised PLINK 2 target directory.
-output:
-  - prepared:
-      type: directory
-      description: QC target PGEN checkpoint with chromosome-specific files.
-  - sample_decisions:
+  - prep_qc:
       type: file
+      description: Target-preparation and marker-resolution audit.
+  - qc_script:
+      type: file
+      description: Target QC implementation.
+  - imputation_geno:
+      type: value
+      description: Missingness threshold for the imputation-ready target.
+  - direct_geno:
+      type: value
+      description: Missingness threshold for the direct-score sensitivity target.
+  - target_mind:
+      type: value
+      description: Participant missingness threshold.
+  - target_maf:
+      type: value
+      description: Target minor-allele-frequency threshold.
+  - target_hwe:
+      type: value
+      description: Hardy-Weinberg equilibrium threshold.
+output:
+  - imputation_ready:
+      type: tuple
+      description: Imputation-ready target dataset and QC summary.
+  - direct_ready:
+      type: tuple
+      description: Direct-score sensitivity dataset and QC summary.
+  - sample_decisions:
+      type: tuple
       description: Participant-level retain/filter decisions.
   - variant_decisions:
-      type: file
+      type: tuple
       description: Variant-level retain/filter decisions.
+  - imputation_checkpoint:
+      type: tuple
+      description: Imputation-ready target checkpoint record.
+  - direct_checkpoint:
+      type: tuple
+      description: Direct-score target checkpoint record.
   - versions:
       type: file
-      description: Software versions.
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

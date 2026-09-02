@@ -1,15 +1,13 @@
 process REFERENCE_PLAN {
     tag "${reference_mode}"
     label 'process_single'
-    label 'process_r'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 
     input:
     path provided_references
     path catalogue
-    val methods
-    val target_imputation
+    path run_plan
     val reference_mode
     path plan_script
 
@@ -19,13 +17,11 @@ process REFERENCE_PLAN {
     path 'versions.yml', emit: versions
 
     script:
-    method_arg = methods.join(',')
     """
     Rscript ${plan_script} \
         --provided '${provided_references}' \
         --catalogue '${catalogue}' \
-        --methods '${method_arg}' \
-        --target-imputation '${target_imputation}' \
+        --run-plan '${run_plan}' \
         --mode '${reference_mode}'
     printf '"${task.process}":\n  R: %s\n' "\$(Rscript -e 'cat(as.character(getRversion()))')" > versions.yml
     """

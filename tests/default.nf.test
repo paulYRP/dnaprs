@@ -1,10 +1,11 @@
 nextflow_pipeline {
 
-    name "Run the complete dnaprs graph in stub mode"
+    name "Run the minimal dnaprs analysis with real tools"
     script "../main.nf"
     tag "pipeline"
+    tag "real"
 
-    test("complete PLINK and SBayesRC workflow") {
+    test("raw VCF through PLINK C+T, Gaussian phenotype model, and report") {
 
         when {
             params {
@@ -13,47 +14,45 @@ nextflow_pipeline {
         }
 
         then {
-            def run_dir = "$outputDir/test_full"
+            def runDir = "$outputDir/test"
+            def plan = path("$runDir/data/inputs/run_plan.tsv")
+            def prep = path("$runDir/data/target_prep/TEST/TEST.target_prep_summary.tsv")
+            def coverage = path("$runDir/data/qc/scores/TEST/MDD/TEST.MDD.plink_ct.variant_coverage.tsv")
+            def association = path("$runDir/data/phenotype/phenotype_associations.tsv")
+            def report = path("$runDir/reports/index.html")
+            def logsPage = path("$runDir/reports/logs.html")
+
             assert workflow.success
             assertAll(
-                { assert path("$run_dir/data/inputs/targets.tsv").exists() },
-                { assert path("$run_dir/data/genotype_eda/TEST/TEST.genotype_eda_summary.tsv").exists() },
-                { assert path("$run_dir/data/genotype_eda/TEST/TEST.genotype_eda_checks.tsv").exists() },
-                { assert path("$run_dir/data/genotype_eda/TEST/TEST.marker_density.tsv").exists() },
-                { assert path("$run_dir/data/target_prep/TEST/TEST.target_prep_summary.tsv").exists() },
-                { assert path("$run_dir/data/target_qc/TEST/TEST.target_qc.tsv").exists() },
-                { assert path("$run_dir/data/target_qc/TEST/TEST.participant_decisions.tsv").exists() },
-                { assert path("$run_dir/data/target_qc/TEST/ancestry/TEST.target_ancestry.tsv").exists() },
-                { assert path("$run_dir/data/target_qc/TEST/ancestry/TEST.ancestry_summary.tsv").exists() },
-                { assert path("$run_dir/data/target_imputation/TEST/TEST.imputation_qc.tsv").exists() },
-                { assert path("$run_dir/data/target_imputation/TEST/TEST.imputation_manifest.tsv").exists() },
-                { assert path("$run_dir/data/target_imputation/TEST/TEST.imputation_dr2.tsv").exists() },
-                { assert path("$run_dir/data/checkpoints/corrected/TEST/TEST.pgen").exists() },
-                { assert path("$run_dir/data/checkpoints/corrected/TEST.corrected_target_manifest.tsv").exists() },
-                { assert path("$run_dir/data/target/prepared/TEST/imputation_ready/TEST.imputation_ready/TEST.pgen").exists() },
-                { assert path("$run_dir/data/target/prepared/TEST/direct_ready/TEST.direct_ready/TEST.pgen").exists() },
-                { assert path("$run_dir/data/checkpoints/imputed/TEST.imputed/TEST.pgen").exists() },
-                { assert path("$run_dir/data/reference/plink_ct/TEST_IMPUTATION.plink_ld.summary.tsv").exists() },
-                { assert path("$run_dir/data/reference/plink_ct/TEST_IMPUTATION.plink_ld.source_qc.tsv").exists() },
-                { assert path("$run_dir/data/reference/sbayesrc/prepared_sbayesrc.summary.tsv").exists() },
-                { assert path("$run_dir/data/gwas/MDD/MDD.cojo.ma").exists() },
-                { assert path("$run_dir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
-                { assert path("$run_dir/data/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },
-                { assert path("$run_dir/data/scores/combined/prs_scores_long.tsv").exists() },
-                { assert path("$run_dir/data/scores/TEST/MDD/sensitivity/TEST.MDD.plink_ct.sensitivity.tsv").exists() },
-                { assert path("$run_dir/data/qc/scores/TEST/MDD/sensitivity/TEST.MDD.plink_ct.sensitivity_qc.tsv").exists() },
-                { assert path("$run_dir/data/phenotype/phenotype_associations.tsv").exists() },
-                { assert path("$run_dir/data/phenotype/phenotype_permutations.tsv").exists() },
-                { assert path("$run_dir/data/phenotype/phenotype_influence.tsv").exists() },
-                { assert path("$run_dir/data/phenotype/phenoPRS.csv").exists() },
-                { assert path("$run_dir/data/qc/generation/variant_flow.tsv").exists() },
-                { assert path("$run_dir/reports/index.html").exists() },
-                { assert path("$run_dir/figures").exists() },
-                { assert path("$run_dir/data/inputs/published_files.json").exists() },
-                { assert path(run_dir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] },
-                { assert snapshot(
-                    removeNextflowVersion("$run_dir/data/pipeline_info/software_versions.yml")
-                ).match() }
+                { assert plan.exists() },
+                { assert plan.text.contains("run_prs\ttrue") },
+                { assert prep.exists() },
+                { assert prep.text.contains("TEST\traw") },
+                { assert path("$runDir/data/inputs/checks/reference_integrity.tsv").exists() },
+                { assert path("$runDir/data/target_prep/TEST/TEST.marker_decisions.tsv").exists() },
+                { assert path("$runDir/data/target_qc/TEST/TEST.participant_decisions.tsv").exists() },
+                { assert path("$runDir/data/gwas/MDD/MDD.cojo.ma").exists() },
+                { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
+                { assert path("$runDir/data/scores/combined/prs_scores_long.tsv").exists() },
+                { assert coverage.exists() },
+                { assert coverage.text.contains("PASS") },
+                { assert association.exists() },
+                { assert association.text.contains("gaussian") },
+                { assert report.exists() },
+                { assert report.text.contains('aria-label="Open the dnaprs GitHub repository"') },
+                { assert !report.text.contains('target="_blank"') },
+                { assert !report.text.contains("figure-tabs") },
+                { assert logsPage.exists() },
+                { assert logsPage.text.contains("<details") },
+                { assert logsPage.text.contains("Task trace") },
+                { assert logsPage.text.contains("Report software") },
+                { assert !logsPage.text.contains('target="_blank"') },
+                { assert path("$runDir/reports/provenance/execution_report.html").exists() },
+                { assert path("$runDir/reports/provenance/execution_timeline.html").exists() },
+                { assert path("$runDir/reports/provenance/pipeline_dag.html").exists() },
+                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() },
+                { assert path("$runDir/data/inputs/published_files.json").exists() },
+                { assert path(runDir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] }
             )
         }
     }

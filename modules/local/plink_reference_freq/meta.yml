@@ -4,3 +4,18 @@ keywords: [plink, allele-frequency, reference]
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+input:
+  - reference:
+      type: map
+      description: PLINK LD-reference metadata.
+  - reference_files:
+      type: directory
+      description: Prepared PLINK LD-reference dataset.
+output:
+  - frequency:
+      type: tuple
+      description: Fixed reference allele counts and PLINK log.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

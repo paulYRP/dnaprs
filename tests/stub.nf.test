@@ -1,0 +1,39 @@
+nextflow_pipeline {
+
+    name "Validate the complete dnaprs graph with process stubs"
+    script "../main.nf"
+    options "-stub-run"
+    tag "pipeline"
+    tag "stub"
+
+    test("complete PLINK, SBayesRC, imputation, phenotype, and report graph") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "stub"
+                methods = "plink_ct,sbayesrc"
+                target_imputation = true
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/stub"
+            assert workflow.success
+            assertAll(
+                { assert path("$runDir/data/inputs/run_plan.tsv").exists() },
+                { assert path("$runDir/data/inputs/checks/reference_integrity.tsv").exists() },
+                { assert path("$runDir/data/target_imputation/TEST/TEST.imputation_manifest.tsv").exists() },
+                { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
+                { assert path("$runDir/data/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },
+                { assert path("$runDir/data/scores/combined/prs_scores_long.tsv").exists() },
+                { assert path("$runDir/data/phenotype/phenotype_associations.tsv").exists() },
+                { assert path("$runDir/reports/index.html").exists() },
+                { assert path("$runDir/figures").exists() },
+                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() },
+                { assert path("$runDir/data/inputs/published_files.json").exists() },
+                { assert path(runDir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] }
+            )
+        }
+    }
+}

@@ -1,12 +1,11 @@
 process PHENOTYPE_ASSOCIATION {
-    tag "${score_job.cohort}:${score_job.trait_id}:${score_job.method}:${phenotype_model.baseName}"
-    label 'process_medium'
-    label 'process_r'
+    tag "${score_job.cohort}:${score_job.trait_id}:${score_job.method}:${model_id}"
+    label 'process_single'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
 
     input:
-    tuple val(score_job), path(scores_long), path(phenotype_model)
+    tuple val(score_job), path(scores_long), path(phenotype_models), val(model_id)
     path phenotype_file
     path association_script
     val seed
@@ -21,13 +20,13 @@ process PHENOTYPE_ASSOCIATION {
     path '*.versions.yml', emit: versions
 
     script:
-    model_id = phenotype_model.baseName
     job_id = "${model_id}__${score_job.cohort}__${score_job.trait_id}__${score_job.method}"
     """
     Rscript ${association_script} \
         --scores '${scores_long}' \
         --phenotype '${phenotype_file}' \
-        --models '${phenotype_model}' \
+        --models '${phenotype_models}' \
+        --model-id '${model_id}' \
         --cohort '${score_job.cohort}' \
         --trait-id '${score_job.trait_id}' \
         --method '${score_job.method}' \
@@ -49,11 +48,10 @@ process PHENOTYPE_ASSOCIATION {
     """
 
     stub:
-    model_id = phenotype_model.baseName
     job_id = "${model_id}__${score_job.cohort}__${score_job.trait_id}__${score_job.method}"
     """
-    printf 'model_id\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\tn\tbeta\tstd_error\tci_low\tci_high\tp_value\tnull_fit\tfull_fit\tincremental_fit\tfit_metric\tpermutation_scheme\tpermutations\tempirical_p\texpected_direction\tdirection_match\tstatus\n' > ${job_id}.phenotype_associations.tsv
-    printf 'model_id\tcohort\tmethod\tformula\tnull_formula\testimator\texpected_direction\tprimary\n' > ${job_id}.phenotype_models_fitted.tsv
+    printf 'model_id\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\tn\tbeta\tstd_error\tci_low\tci_high\tp_value\tnull_fit\tfull_fit\tincremental_fit\tfit_metric\tpermutation_scheme\tpermutations\tempirical_p\texpected_direction\tdirection_match\tinput_rows\tcomplete_cases\texcluded_missing\tconvergence\tsingular\tseparation\tdiagnostics\tstatus\n' > ${job_id}.phenotype_associations.tsv
+    printf 'model_id\tcohort\tmethod\tformula\tnull_formula\testimator\texpected_direction\tprimary\tconvergence\tsingular\tseparation\tdiagnostics\tstatus\n' > ${job_id}.phenotype_models_fitted.tsv
     printf 'model_id\toutcome\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\testimator\tIID\tobserved\tfitted_null\tfitted_full\tresidual_full\tadjusted_outcome\tadjusted_prs\n' > ${job_id}.phenotype_plot_data.tsv
     printf 'model_id\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\testimator\tpermutation_id\tpermuted_beta\tobserved_beta\tpermutation_scheme\tstatus\treason\n' > ${job_id}.phenotype_permutations.tsv
     printf 'model_id\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\testimator\tIID\tfull_beta\tbeta_without\tbeta_change\tstatus\treason\n' > ${job_id}.phenotype_influence.tsv

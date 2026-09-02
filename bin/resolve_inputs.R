@@ -33,6 +33,23 @@ modelSPEC <- decodeJSON(option[["models-spec"]])
 genomeBUILD <- option[["genome-build"]]
 method <- strsplit(option[["methods"]], ",", fixed = TRUE)[[1L]]
 method <- unique(trimws(method[nzchar(trimws(method))]))
+allowedMETHOD <- c("plink_ct", "sbayesrc")
+if (length(method) == 0L || any(!method %in% allowedMETHOD)) {
+  stop(sprintf("Methods must contain one or more of: %s.", paste(allowedMETHOD, collapse = ", ")), call. = FALSE)
+}
+stopAFTER <- tolower(trimws(option[["stop-after"]]))
+allowedSTAGE <- c("target_qc", "imputation", "prs", "phenotype", "report")
+if (!stopAFTER %in% allowedSTAGE) {
+  stop(sprintf("stop_after must be one of: %s.", paste(allowedSTAGE, collapse = ", ")), call. = FALSE)
+}
+referenceONLY <- tolower(option[["reference-only"]]) == "true"
+targetIMPUTATION <- tolower(option[["target-imputation"]]) == "true"
+runPRS <- !referenceONLY && stopAFTER %in% c("prs", "phenotype", "report")
+runPHENOTYPE <- runPRS && stopAFTER %in% c("phenotype", "report") && nzchar(option[["phenotype"]])
+runIMPUTATION <- !referenceONLY && targetIMPUTATION && stopAFTER != "target_qc"
+if (stopAFTER == "imputation" && !targetIMPUTATION) {
+  stop("stop_after=imputation requires target_imputation=true.", call. = FALSE)
+}
 
 normaliseSLASH <- function(value) gsub("\\\\", "/", as.character(value))
 
@@ -56,7 +73,7 @@ safeID <- function(value, fallback = "dataset") {
   value <- gsub("[^A-Za-z0-9]+", "_", value)
   value <- gsub("^_+|_+$", "", value)
   if (!nzchar(value)) value <- fallback
-  tolower(value)
+  value
 }
 
 withoutEXTENSION <- function(value) {
@@ -389,7 +406,7 @@ oneREFERENCE <- function(values, role) {
   values[[1L]]
 }
 
-discoverREFERENCES <- function(stagedROOT, originalROOT, mode) {
+discoverREFERENCES <- function(stagedROOT, originalROOT, mode, required) {
   if (!dir.exists(stagedROOT)) {
     if (mode == "local") stop("reference_mode=local requires an existing --references directory.", call. = FALSE)
     return(data.frame())
@@ -430,13 +447,6 @@ discoverREFERENCES <- function(stagedROOT, originalROOT, mode) {
   )
   if (nzchar(option[["beagle-jar"]])) candidate$beagle_jar <- option[["beagle-jar"]]
   if (nzchar(option[["unbref3-jar"]])) candidate$unbref3_jar <- option[["unbref3-jar"]]
-  required <- c(
-    "dbsnp", "reference_fasta", "imputation_panel", "population_panel",
-    "related_samples", "unbref3_jar"
-  )
-  if ("sbayesrc" %in% method) required <- c(required, "sbayesrc_ld_source", "annotation_source")
-  if (tolower(option[["target-imputation"]]) == "true") required <- c(required, "genetic_map", "imputation_panel", "beagle_jar")
-  required <- unique(required)
   missing <- required[!nzchar(unlist(candidate[required], use.names = FALSE))]
   if (length(missing) > 0L) {
     if (mode == "local") {
@@ -529,7 +539,7 @@ buildMODELS <- function(specification, gwas) {
       model_id = character(), outcome = character(), prs_name = character(), family = character(),
       covariates = character(), participant_id = character(), group_id = character(),
       expected_direction = character(), primary = logical(), control_value = character(),
-      case_value = character(), subset = character(), stringsAsFactors = FALSE
+      case_value = character(), stringsAsFactors = FALSE
     ))
   }
   if (!nzchar(phenotype)) stop("Phenotype models require --phenotype.", call. = FALSE)
@@ -579,7 +589,6 @@ buildMODELS <- function(specification, gwas) {
         primary = as.logical(recordVALUE(record, "primary", TRUE)),
         control_value = asTEXT(recordVALUE(record, "control_value", option[["control-value"]])),
         case_value = asTEXT(recordVALUE(record, "case_value", option[["case-value"]])),
-        subset = recordVALUE(record, "subset"),
         stringsAsFactors = FALSE
       )
     }
@@ -587,46 +596,61 @@ buildMODELS <- function(specification, gwas) {
   do.call(rbind, rows)
 }
 
-referenceONLY <- tolower(option[["reference-only"]]) == "true"
+emptyTARGET <- function() data.frame(
+  cohort = character(), original_id = character(), role = character(), source_format = character(),
+  genotype = character(), sample = character(), keep = character(), build = character(),
+  ancestry = character(), dosage = character(), input_stage = character(),
+  assay_manifest = character(), marker_map = character(), stringsAsFactors = FALSE
+)
+
+emptyGWAS <- function() data.frame(
+  trait_id = character(), original_id = character(), prs_name = character(), path = character(),
+  build = character(), ancestry = character(), effect_type = character(), sample_size = character(),
+  snp_col = character(), chr_col = character(), bp_col = character(), effect_allele_col = character(),
+  other_allele_col = character(), beta_col = character(), se_col = character(), p_col = character(),
+  freq_col = character(), case_freq_col = character(), control_freq_col = character(),
+  case_n_col = character(), control_n_col = character(), n_col = character(), info_col = character(),
+  info_min = character(), source_format = character(), maf_min = character(), stringsAsFactors = FALSE
+)
+
 if (referenceONLY) {
-  target <- data.frame(
-    cohort = character(), original_id = character(), role = character(), source_format = character(),
-    genotype = character(), sample = character(), keep = character(), build = character(),
-    ancestry = character(), dosage = character(), input_stage = character(),
-    assay_manifest = character(), marker_map = character(), stringsAsFactors = FALSE
-  )
-  gwas <- data.frame(
-    trait_id = character(), original_id = character(), prs_name = character(), path = character(),
-    build = character(), ancestry = character(), effect_type = character(), sample_size = character(),
-    snp_col = character(), chr_col = character(), bp_col = character(), effect_allele_col = character(),
-    other_allele_col = character(), beta_col = character(), se_col = character(), p_col = character(),
-    freq_col = character(), case_freq_col = character(), control_freq_col = character(),
-    case_n_col = character(), control_n_col = character(), n_col = character(), info_col = character(),
-    source_format = character(), maf_min = character(), stringsAsFactors = FALSE
-  )
+  target <- emptyTARGET()
+  gwas <- emptyGWAS()
 } else {
   target <- if (is.character(inputSPEC) && length(inputSPEC) == 1L) {
     discoverTARGET(option[["target-staged"]], inputSPEC)
   } else {
     explicitTARGET(inputSPEC)
   }
-  gwas <- if (is.character(gwasSPEC) && length(gwasSPEC) == 1L) {
-    discoverGWAS(option[["gwas-staged"]], gwasSPEC)
-  } else {
-    explicitGWAS(gwasSPEC)
-  }
+  gwas <- if (!runPRS) {
+    emptyGWAS()
+  } else if (is.character(gwasSPEC) && length(gwasSPEC) == 1L) {
+      discoverGWAS(option[["gwas-staged"]], gwasSPEC)
+    } else {
+      explicitGWAS(gwasSPEC)
+    }
 }
+
+rawTARGET <- referenceONLY || any(target$input_stage == "raw")
+requiredREFERENCE <- c("imputation_panel", "population_panel", "related_samples", "unbref3_jar")
+if (rawTARGET) requiredREFERENCE <- c(requiredREFERENCE, "dbsnp", "reference_fasta")
+if (runIMPUTATION) requiredREFERENCE <- c(requiredREFERENCE, "reference_fasta")
+if (referenceONLY || runIMPUTATION) requiredREFERENCE <- c(requiredREFERENCE, "genetic_map", "beagle_jar")
+if (referenceONLY || (runPRS && "sbayesrc" %in% method)) {
+  requiredREFERENCE <- c(requiredREFERENCE, "sbayesrc_ld_source", "annotation_source")
+}
+requiredREFERENCE <- unique(requiredREFERENCE)
 
 referenceMODE <- tolower(option[["reference-mode"]])
 reference <- if (is.list(referenceSPEC) && !is.character(referenceSPEC) && length(referenceSPEC) > 0L) {
   explicitREFERENCES(referenceSPEC)
 } else if (is.character(referenceSPEC) && length(referenceSPEC) == 1L && nzchar(referenceSPEC)) {
-  discoverREFERENCES(option[["reference-staged"]], referenceSPEC, referenceMODE)
+  discoverREFERENCES(option[["reference-staged"]], referenceSPEC, referenceMODE, requiredREFERENCE)
 } else {
   data.frame()
 }
 
-models <- if (referenceONLY) buildMODELS(list(), gwas) else buildMODELS(modelSPEC, gwas)
+models <- if (runPHENOTYPE) buildMODELS(modelSPEC, gwas) else buildMODELS(list(), gwas)
 
 writeTABLE(target, "targets.tsv")
 writeTABLE(gwas, "gwas.tsv")
@@ -639,12 +663,48 @@ if (nrow(reference) > 0L) writeTABLE(reference, "references.tsv") else {
   ), "references.tsv")
 }
 writeTABLE(models, "models.tsv")
-
-resolution <- rbind(
-  data.frame(kind = "target", id = target$cohort, source = target$genotype, resolution = if (is.character(inputSPEC)) "directory" else "yaml", stringsAsFactors = FALSE),
-  data.frame(kind = "gwas", id = gwas$trait_id, source = gwas$path, resolution = if (is.character(gwasSPEC)) "directory" else "yaml", stringsAsFactors = FALSE),
-  if (nrow(reference) > 0L) data.frame(kind = "reference", id = reference$reference_id, source = reference$path, resolution = if (is.character(referenceSPEC)) "directory" else "yaml", stringsAsFactors = FALSE)
+writeTABLE(
+  data.frame(
+    setting = c(
+      "stop_after", "run_imputation", "run_prs", "run_phenotype", "reference_only",
+      "required_reference_roles"
+    ),
+    value = c(
+      stopAFTER, tolower(runIMPUTATION), tolower(runPRS), tolower(runPHENOTYPE),
+      tolower(referenceONLY), paste(requiredREFERENCE, collapse = ",")
+    ),
+    stringsAsFactors = FALSE
+  ),
+  "run_plan.tsv"
 )
+
+resolutionPARTS <- list()
+if (nrow(target) > 0L) {
+  resolutionPARTS[[length(resolutionPARTS) + 1L]] <- data.frame(
+    kind = "target", id = target$cohort, source = target$genotype,
+    resolution = if (is.character(inputSPEC)) "directory" else "yaml",
+    stringsAsFactors = FALSE
+  )
+}
+if (nrow(gwas) > 0L) {
+  resolutionPARTS[[length(resolutionPARTS) + 1L]] <- data.frame(
+    kind = "gwas", id = gwas$trait_id, source = gwas$path,
+    resolution = if (is.character(gwasSPEC)) "directory" else "yaml",
+    stringsAsFactors = FALSE
+  )
+}
+if (nrow(reference) > 0L) {
+  resolutionPARTS[[length(resolutionPARTS) + 1L]] <- data.frame(
+    kind = "reference", id = reference$reference_id, source = reference$path,
+    resolution = if (is.character(referenceSPEC)) "directory" else "yaml",
+    stringsAsFactors = FALSE
+  )
+}
+resolution <- if (length(resolutionPARTS)) {
+  do.call(rbind, resolutionPARTS)
+} else {
+  data.frame(kind = character(), id = character(), source = character(), resolution = character())
+}
 writeTABLE(resolution, "input_resolution.tsv")
 
 settings <- list(
@@ -653,6 +713,11 @@ settings <- list(
   reference_mode = referenceMODE,
   reference_bundle = option[["reference-bundle"]],
   reference_only = referenceONLY,
+  stop_after = stopAFTER,
+  run_imputation = runIMPUTATION,
+  run_prs = runPRS,
+  run_phenotype = runPHENOTYPE,
+  required_reference_roles = requiredREFERENCE,
   target_count = nrow(target),
   gwas_count = nrow(gwas),
   reference_count = nrow(reference),

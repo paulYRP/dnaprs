@@ -6,3 +6,36 @@ tools:
       description: Utilities for variant calling and manipulating VCF and BCF files
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+  - R:
+      description: Statistical computing environment used for marker resolution
+input:
+  - target:
+      type: tuple
+      description: Target metadata and staged genotype inputs.
+  - dbsnp:
+      type: tuple
+      description: dbSNP metadata and source files.
+  - reference_fasta:
+      type: tuple
+      description: Reference FASTA metadata and files.
+  - scripts:
+      type: file
+      description: Target preparation, input adapter, and marker-resolution scripts.
+output:
+  - prepared:
+      type: tuple
+      description: Target metadata, corrected PGEN directory, and preparation summary.
+  - prep:
+      type: tuple
+      description: Target metadata and preparation summary.
+  - marker_decisions:
+      type: tuple
+      description: Deterministic marker and duplicate-probe audit table.
+  - checkpoint:
+      type: tuple
+      description: Reusable corrected PGEN checkpoint and manifest.
+  - versions:
+      type: file
+      description: Software versions in YAML format.
+authors: ["@paulYRP"]
+maintainers: ["@paulYRP"]

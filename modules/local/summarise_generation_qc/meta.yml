@@ -6,3 +6,21 @@ tools:
       description: R statistical computing environment
   - data.table:
       description: Fast tabular data processing in R
+input:
+  - generation_qc_files:
+      type: file
+      description: Ordered GWAS, reference, method, and scoring QC records.
+  - score_qc:
+      type: file
+      description: Combined participant score QC.
+  - generation_qc_script:
+      type: file
+      description: R implementation used to construct the variant-flow audit.
+output:
+  - variant_flow:
+      type: file
+      description: Ordered per-trait and per-method variant-flow table.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]

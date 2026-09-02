@@ -43,27 +43,15 @@ Run before proposing a change:
 find bin -maxdepth 1 -name '*.sh' -exec bash -n '{}' \;
 nextflow-25.10.4 lint .
 python3 -m nf_core pipelines lint --dir .
-nf-test test tests/default.nf.test --ci
-nextflow-25.10.4 run . -profile test_full -stub-run \
-  --outdir /tmp/dnaprs-test-full \
-  -work-dir /tmp/dnaprs-test-work
+nf-test test tests/default.nf.test --profile +docker --ci
+nf-test test tests/stub.nf.test --profile +test_full --ci
+nf-test test tests/stages.nf.test tests/reference.nf.test --profile +docker --ci
 docker build --file containers/analysis/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 .
 docker build --file containers/plink2/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 .
-docker build --build-arg ANALYSIS_IMAGE=ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
-  --file containers/report/Dockerfile \
+docker build --file containers/report/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 .
-nextflow-25.10.4 run . -profile docker,test_full -stub-run \
-  --outdir /tmp/dnaprs-docker-test \
-  -work-dir /tmp/dnaprs-docker-work
-```
-
-On Windows, parse every R script, exercise the phenotype models, create every figure
-format, and render the complete report with the artificial fixtures:
-
-```powershell
-.\tests\smoke.ps1 -OutputDirectory ..\test\synthetic_analysis
 ```
 
 A change to PLINK or SBayesRC commands also requires a small real method test and

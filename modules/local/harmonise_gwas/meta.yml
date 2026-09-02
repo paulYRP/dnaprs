@@ -6,3 +6,21 @@ tools:
       description: R statistical computing environment
   - data.table:
       description: High-performance tabular data processing in R
+input:
+  - meta:
+      type: map
+      description: GWAS trait metadata and source-column mapping.
+  - gwas_file:
+      type: file
+      description: Raw GWAS summary-statistics file.
+  - harmonise_script:
+      type: file
+      description: R implementation used to validate and harmonise the GWAS.
+output:
+  - harmonised:
+      type: tuple
+      description: COJO and clumping inputs plus harmonisation QC.
+  - versions:
+      type: file
+      description: Software versions used by the task.
+authors: ["@paulYRP"]
