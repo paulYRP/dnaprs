@@ -42,7 +42,6 @@ workflow NFCORE_DNAPRS {
     launch_dir
     reference_base
     input_checks
-    input_versions
     run_plan
 
     main:
@@ -107,7 +106,6 @@ workflow NFCORE_DNAPRS {
         script_files,
         report_source,
         input_checks,
-        input_versions,
         run_plan,
     )
 
@@ -211,7 +209,6 @@ workflow {
 
     resolved_references = RESOLVE_INPUTS.out.references
     resolved_input_checks = RESOLVE_INPUTS.out.checks
-    resolved_input_versions = RESOLVE_INPUTS.out.versions
     if (params.reference_mode != 'local') {
         REFERENCE_PLAN(
             RESOLVE_INPUTS.out.references,
@@ -246,15 +243,29 @@ workflow {
         resolved_input_checks = resolved_input_checks
             .mix(REFERENCE_PLAN.out.plan)
             .mix(ASSEMBLE_REFERENCES.out.receipt)
-        resolved_input_versions = resolved_input_versions
-            .mix(REFERENCE_PLAN.out.versions)
-            .mix(REFERENCE_ASSET.out.versions)
-            .mix(ASSEMBLE_REFERENCES.out.versions)
     }
 
     if (params.reference_only) {
+        reference_topic_versions = channel.topic('versions')
+            .distinct()
+            .map { process, tool, version ->
+                def process_name = process.substring(process.lastIndexOf(':') + 1)
+                [process_name, "  ${tool}: ${version.toString().trim()}"]
+            }
+            .groupTuple(by: 0)
+            .map { process, tool_versions ->
+                def unique_tool_versions = tool_versions.unique().sort()
+                "${process}:\n${unique_tool_versions.join('\n')}"
+            }
+
+        reference_topic_versions_file = reference_topic_versions.collectFile(
+            name: 'reference_topic_versions.yml',
+            sort: true,
+            newLine: true
+        )
+
         COLLECT_REFERENCE_VERSIONS(
-            resolved_input_versions.collect(),
+            reference_topic_versions_file,
             file("${projectDir}/bin/collect_versions.R"),
         )
         pipeline_results = resolved_references.map { result_file -> tuple('data/inputs', result_file) }
@@ -288,7 +299,6 @@ workflow {
             launchDir,
             launchDir,
             resolved_input_checks,
-            resolved_input_versions,
             RESOLVE_INPUTS.out.run_plan,
         )
         pipeline_results = NFCORE_DNAPRS.out

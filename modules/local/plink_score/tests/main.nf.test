@@ -1,0 +1,45 @@
+nextflow_process {
+
+    name "Test Process PLINK_SCORE"
+    script "../main.nf"
+    process "PLINK_SCORE"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_stub"
+    tag "plink_score"
+
+    test("PLINK score - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [cohort: 'test_target', role: 'target', score_method: 'plink_ct'],
+                    file("${projectDir}/tests/data/target"),
+                    file("${projectDir}/tests/data/generation_qc/target_variant_decisions.tsv"),
+                    file("${projectDir}/tests/data/generation_qc/participant_decisions.tsv"),
+                    file("${projectDir}/tests/data/target/test.keep"),
+                    [trait_id: 'MDD', prs_name: 'MDD_PRS'],
+                    file("${projectDir}/tests/data/scores/test_plink.score.tsv"),
+                    file("${projectDir}/tests/data/generation_qc/plink_qc.tsv"),
+                    file("${projectDir}/tests/data/generation_qc/harmonisation_qc.tsv"),
+                    file("${projectDir}/tests/data/gwas/mdd.clumps"),
+                    [reference_id: 'TEST_REFERENCE'],
+                    file("${projectDir}/tests/data/reference/eur_ref.pvar"),
+                    file("${projectDir}/tests/data/reference/baseline.annot")
+                ]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.raw.size() == 1
+            assert process.out.versions_plink2.size() == 1
+            assert process.out.versions_plink2[0][2].toString()
+            assert file(process.out.raw[0][2]).text.contains("SCORE1_SUM")
+            assert file(process.out.raw[0][5]).text == file("${projectDir}/tests/data/scores/test_plink.score.tsv").text
+        }
+    }
+}

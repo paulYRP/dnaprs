@@ -28,7 +28,15 @@ if [[ -f "$genetic_map" && "$genetic_map" == *.zip ]]; then
 fi
 
 reference_vcf=""
-reference_candidates=("${panel}/chr${chromosome}.vcf.gz" "${panel}/panel/chr${chromosome}.vcf.gz" "${panel}/chr${chromosome}.bcf" "${panel}/chr${chromosome}.bref3" "${panel}/panel/chr${chromosome}.bref3")
+reference_candidates=(
+    "${panel}/chr${chromosome}.vcf.gz"
+    "${panel}/panel/chr${chromosome}.vcf.gz"
+    "${panel}/chr${chromosome}.vcf"
+    "${panel}/panel/chr${chromosome}.vcf"
+    "${panel}/chr${chromosome}.bcf"
+    "${panel}/chr${chromosome}.bref3"
+    "${panel}/panel/chr${chromosome}.bref3"
+)
 shopt -s nullglob
 reference_candidates+=("${panel}/chr${chromosome}."*.bref3 "${panel}/panel/chr${chromosome}."*.bref3)
 shopt -u nullglob

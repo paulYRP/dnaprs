@@ -1,9 +1,18 @@
 name: combine_phenotype
 description: Deterministically gather independently fitted phenotype models.
-keywords: [phenotype, prs, gather]
+keywords:
+  - phenotype
+  - prs
+  - gather
 tools:
   - R:
       description: Statistical computing environment
+      identifier: ""
+      homepage: https://www.r-project.org/
+  - data.table:
+      description: Software dependency reported by the `combine_phenotype` process
+      identifier: ""
+      homepage: https://r-datatable.com/
 input:
   - associations:
       type: file
@@ -25,27 +34,73 @@ input:
       description: Per-model participant phenotype and PRS tables.
   - combine_script:
       type: file
-      description: R implementation used to gather model outputs.
+      description: Executable script used to produce r implementation used to gather model outputs.
 output:
-  - associations:
-      type: file
-      description: Combined phenotype association estimates.
-  - fitted_models:
-      type: file
-      description: Combined fitted-model specifications.
-  - plot_data:
-      type: file
-      description: Combined report plot data.
-  - permutations:
-      type: file
-      description: Combined permutation results.
-  - influence:
-      type: file
-      description: Combined influence diagnostics.
-  - phenotype_prs:
-      type: file
-      description: Combined participant phenotype and PRS data.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  associations:
+    - phenotype_associations.tsv:
+        type: file
+        description: Combined phenotype association estimates.
+  fitted_models:
+    - phenotype_models_fitted.tsv:
+        type: file
+        description: Combined fitted-model specifications.
+  plot_data:
+    - phenotype_plot_data.tsv:
+        type: file
+        description: Combined report plot data.
+  permutations:
+    - phenotype_permutations.tsv:
+        type: file
+        description: Combined permutation results.
+  influence:
+    - phenotype_influence.tsv:
+        type: file
+        description: Combined influence diagnostics.
+  phenotype_prs:
+    - phenoPRS.csv:
+        type: file
+        description: Combined participant phenotype and PRS data.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_data_table:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - data.table:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("data.table")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - data.table:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("data.table")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

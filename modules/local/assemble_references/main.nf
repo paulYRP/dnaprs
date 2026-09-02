@@ -17,8 +17,7 @@ process ASSEMBLE_REFERENCES {
     path 'references.tsv', emit: references
     path 'reference_bundle', emit: bundle
     path 'reference_receipt.tsv', emit: receipt
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     script:
     assets_json = groovy.json.JsonOutput.toJson(asset_rows).getBytes('UTF-8').encodeBase64().toString()
     """
@@ -29,7 +28,6 @@ process ASSEMBLE_REFERENCES {
         --bundle '${reference_bundle}' \
         --genome-build '${genome_build}' \
         --cache-root '${cache_root}'
-    printf '"${task.process}":\n  R: %s\n' "\$(Rscript -e 'cat(as.character(getRversion()))')" > versions.yml
     """
 
     stub:
@@ -37,6 +35,5 @@ process ASSEMBLE_REFERENCES {
     mkdir -p reference_bundle
     cp ${provided_references} references.tsv
     printf 'asset_id\treference_type\tsource_url\tchecksum_algorithm\texpected_checksum\tobserved_checksum\texpected_size\tcache_path\tstatus\n' > reference_receipt.tsv
-    printf '"${task.process}":\n  R: stub\n' > versions.yml
     """
 }

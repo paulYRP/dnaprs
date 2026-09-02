@@ -1,36 +1,95 @@
 name: compare_direct_score
 description: Compare imputed and direct-genotype PLINK scores and their variant coverage.
-keywords: [prs, sensitivity, plink]
+keywords:
+  - prs
+  - sensitivity
+  - plink
 tools:
   - R:
       description: Statistical computing environment
+      identifier: ""
+      homepage: https://www.r-project.org/
+  - data.table:
+      description: Software dependency reported by the `compare_direct_score` process
+      identifier: ""
+      homepage: https://r-datatable.com/
 input:
-  - target:
-      type: map
-      description: Target-cohort metadata.
-  - gwas:
-      type: map
-      description: GWAS trait metadata.
-  - primary_score:
-      type: file
-      description: Participant score table from the imputed target.
-  - direct_score:
-      type: file
-      description: Participant score table from the direct-genotype target.
-  - primary_used:
-      type: file
-      description: Variants used for the imputed-target score.
-  - direct_used:
-      type: file
-      description: Variants used for the direct-target score.
+  - - target:
+        type: map
+        description: Metadata associated with inputs required by the `compare_direct_score` process.
+    - gwas:
+        type: map
+        description: Metadata associated with inputs required by the `compare_direct_score` process.
+    - primary_score:
+        type: file
+        description: Inputs required by the `compare_direct_score` process.
+    - primary_used:
+        type: string
+        description: Inputs required by the `compare_direct_score` process.
+    - direct_score:
+        type: file
+        description: Inputs required by the `compare_direct_score` process.
+    - direct_used:
+        type: string
+        description: Inputs required by the `compare_direct_score` process.
   - comparison_script:
       type: file
-      description: R implementation used for the sensitivity comparison.
+      description: Executable script used to produce r implementation used for the sensitivity comparison.
 output:
-  - comparison:
-      type: tuple
-      description: Participant-level and summary sensitivity results.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  comparison:
+    - - target:
+          type: map
+          description: Metadata associated with participant-level and summary sensitivity results.
+      - gwas:
+          type: map
+          description: Metadata associated with participant-level and summary sensitivity results.
+      - ${target.cohort}.${gwas.trait_id}.plink_ct.sensitivity.tsv:
+          type: file
+          description: Participant-level and summary sensitivity results.
+      - ${target.cohort}.${gwas.trait_id}.plink_ct.sensitivity_qc.tsv:
+          type: file
+          description: Participant-level and summary sensitivity results.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_data_table:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - data.table:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("data.table")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - data.table:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("data.table")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

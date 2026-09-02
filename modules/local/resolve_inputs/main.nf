@@ -39,8 +39,9 @@ process RESOLVE_INPUTS {
     path 'run_plan.tsv', emit: run_plan
     path 'reference_settings.yml', emit: settings
     path 'input_resolution.tsv', emit: checks
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('jsonlite'), eval("Rscript -e 'cat(as.character(packageVersion(\"jsonlite\")))' 2>/dev/null || printf stub"), emit: versions_jsonlite, topic: versions
+    tuple val("${task.process}"), val('yaml'), eval("Rscript -e 'cat(as.character(packageVersion(\"yaml\")))' 2>/dev/null || printf stub"), emit: versions_yaml, topic: versions
     script:
     method_arg = methods.join(',')
     """
@@ -69,13 +70,6 @@ process RESOLVE_INPUTS {
         --target-staged target_source \
         --gwas-staged gwas_source \
         --reference-staged reference_source
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        jsonlite: \$(Rscript -e "cat(as.character(packageVersion('jsonlite')))" 2>/dev/null)
-        yaml: \$(Rscript -e "cat(as.character(packageVersion('yaml')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
@@ -107,6 +101,5 @@ process RESOLVE_INPUTS {
     printf 'setting\tvalue\nstop_after\t${stop_after}\nrun_imputation\t${target_imputation}\nrun_prs\ttrue\nrun_phenotype\ttrue\nreference_only\t${reference_only}\nrequired_reference_roles\tdbsnp,reference_fasta,imputation_panel,population_panel,related_samples,unbref3_jar,genetic_map,beagle_jar,sbayesrc_ld_source,annotation_source\n' > run_plan.tsv
     printf 'genome: ${genome_build}\nmethods:\n  - plink_ct\nreference_only: ${reference_only}\n' > reference_settings.yml
     printf 'kind\tid\tsource\tresolution\ntarget\tTEST\tstub\tstub\n' > input_resolution.tsv
-    printf '"${task.process}":\n  R: stub\n  jsonlite: stub\n  yaml: stub\n' > versions.yml
     """
 }

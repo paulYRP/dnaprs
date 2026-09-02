@@ -1,0 +1,199 @@
+name: report_software
+description: Record the Quarto and R package versions used to render the dnaprs website.
+keywords:
+- report
+- provenance
+- versions
+tools:
+- quarto:
+    description: Scientific publishing system
+    homepage: https://quarto.org/
+    identifier: ''
+- r:
+    description: Statistical computing environment
+    homepage: https://www.r-project.org/
+    identifier: ''
+- ggplot2:
+    description: Grammar of graphics for R
+    homepage: https://ggplot2.tidyverse.org/
+    identifier: biotools:ggplot2
+- jsonlite:
+    description: Software dependency reported by the `report_software` process
+    identifier: ''
+    homepage: https://jeroen.r-universe.dev/jsonlite/
+- knitr:
+    description: Software dependency reported by the `report_software` process
+    identifier: ''
+    homepage: https://yihui.org/knitr/
+- openxlsx:
+    description: Software dependency reported by the `report_software` process
+    identifier: ''
+    homepage: https://ycphs.github.io/openxlsx/
+- rmarkdown:
+    description: Software dependency reported by the `report_software` process
+    identifier: ''
+    homepage: https://rmarkdown.rstudio.com/
+- scales:
+    description: Software dependency reported by the `report_software` process
+    identifier: ''
+    homepage: https://scales.r-lib.org/
+input: []
+output:
+  versions_quarto:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - quarto:
+        type: string
+        description: The name of the tool
+    - quarto --version 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_r:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - R:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_ggplot2:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - ggplot2:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("ggplot2")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_jsonlite:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - jsonlite:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("jsonlite")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_knitr:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - knitr:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("knitr")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_openxlsx:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - openxlsx:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("openxlsx")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_rmarkdown:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - rmarkdown:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("rmarkdown")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  versions_scales:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - scales:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("scales")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+topics:
+  versions:
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - quarto:
+        type: string
+        description: The name of the tool
+    - quarto --version 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - R:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - ggplot2:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("ggplot2")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - jsonlite:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("jsonlite")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - knitr:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("knitr")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - openxlsx:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("openxlsx")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - rmarkdown:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("rmarkdown")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+  - - ${task.process}:
+        type: string
+        description: The name of the process
+    - scales:
+        type: string
+        description: The name of the tool
+    - Rscript -e 'cat(as.character(packageVersion("scales")))' 2>/dev/null || printf stub:
+        type: eval
+        description: The expression to obtain the version of the tool
+authors:
+- '@paulYRP'
+maintainers:
+- '@paulYRP'

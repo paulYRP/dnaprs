@@ -10,8 +10,8 @@ process BUILD_CT_WEIGHTS {
 
     output:
     tuple val(meta), path("${meta.trait_id}.plink_ct.weights.tsv"), path("${meta.trait_id}.plink_ct.weight_qc.tsv"), path(harmonisation_qc), path(clump_log), emit: weights
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     """
     Rscript ${weight_script} \
@@ -19,18 +19,11 @@ process BUILD_CT_WEIGHTS {
         --clumps '${clumps}' \
         --trait-id '${meta.trait_id}' \
         --prs-name '${meta.prs_name}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.trait_id}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
     """
     printf 'SNP\tA1\tBETA\n1:100:A:G\tG\t0.10\n' > ${meta.trait_id}.plink_ct.weights.tsv
     printf 'trait_id\tprs_name\tharmonised_variants\tclumped_variants\tretained_percent\tstatus\n${meta.trait_id}\t${meta.prs_name}\t1\t1\t100\tPASS\n' > ${meta.trait_id}.plink_ct.weight_qc.tsv
-    printf '"${task.process}:${meta.trait_id}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

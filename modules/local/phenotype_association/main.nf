@@ -17,8 +17,9 @@ process PHENOTYPE_ASSOCIATION {
     path '*.phenotype_permutations.tsv', emit: permutations
     path '*.phenotype_influence.tsv', emit: influence
     path '*.phenoPRS.csv', emit: phenotype_prs
-    path '*.versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('glm2'), eval("Rscript -e 'if (requireNamespace(\"glm2\", quietly=TRUE)) cat(as.character(packageVersion(\"glm2\"))) else cat(\"not-used\")' 2>/dev/null || printf stub"), emit: versions_glm2, topic: versions
+    tuple val("${task.process}"), val('lme4'), eval("Rscript -e 'if (requireNamespace(\"lme4\", quietly=TRUE)) cat(as.character(packageVersion(\"lme4\"))) else cat(\"not-used\")' 2>/dev/null || printf stub"), emit: versions_lme4, topic: versions
     script:
     job_id = "${model_id}__${score_job.cohort}__${score_job.trait_id}__${score_job.method}"
     """
@@ -38,13 +39,6 @@ process PHENOTYPE_ASSOCIATION {
     mv phenotype_permutations.tsv ${job_id}.phenotype_permutations.tsv
     mv phenotype_influence.tsv ${job_id}.phenotype_influence.tsv
     mv phenoPRS.csv ${job_id}.phenoPRS.csv
-
-    cat > ${job_id}.versions.yml <<-VERSIONS
-    "${task.process}:${job_id}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        glm2: \$(Rscript -e "if (requireNamespace('glm2', quietly=TRUE)) cat(as.character(packageVersion('glm2'))) else cat('not-used')" 2>/dev/null)
-        lme4: \$(Rscript -e "if (requireNamespace('lme4', quietly=TRUE)) cat(as.character(packageVersion('lme4'))) else cat('not-used')" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
@@ -56,6 +50,5 @@ process PHENOTYPE_ASSOCIATION {
     printf 'model_id\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\testimator\tpermutation_id\tpermuted_beta\tobserved_beta\tpermutation_scheme\tstatus\treason\n' > ${job_id}.phenotype_permutations.tsv
     printf 'model_id\tcohort\trole\ttrait_id\tprs_name\tmethod\tfamily\testimator\tIID\tfull_beta\tbeta_without\tbeta_change\tstatus\treason\n' > ${job_id}.phenotype_influence.tsv
     printf 'IID\tMDD_PRS\tMDD_PRS_SBAYESRC\nTEST01\t-0.7071\t-0.7071\nTEST02\t0.7071\t0.7071\n' > ${job_id}.phenoPRS.csv
-    printf '"${task.process}:${job_id}":\n  R: stub\n  glm2: stub\n  lme4: stub\n' > ${job_id}.versions.yml
     """
 }

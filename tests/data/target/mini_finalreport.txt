@@ -3,7 +3,7 @@ Num SNPs	2
 Num Samples	2
 [Data]
 SNP Name	Sample ID	Allele1 - Top	Allele2 - Top	GC Score
-rsMini1	SAMPLE1	A	G	0.95
-rsMini2	SAMPLE1	A	C	0.92
-rsMini1	SAMPLE2	G	G	0.96
-rsMini2	SAMPLE2	C	C	0.93
+rs100	SAMPLE1	A	G	0.95
+rs200	SAMPLE1	C	T	0.92
+rs100	SAMPLE2	G	G	0.96
+rs200	SAMPLE2	T	T	0.93

@@ -20,8 +20,7 @@ process TARGET_QC {
     tuple val(meta), path("${meta.cohort}.variant_decisions.tsv"), emit: variant_decisions
     tuple val(meta), path("${meta.cohort}.imputation_ready"), path("${meta.cohort}.imputation_ready_target.tsv"), emit: imputation_checkpoint
     tuple val(meta), path("${meta.cohort}.direct_ready"), path("${meta.cohort}.direct_ready_target.tsv"), emit: direct_checkpoint
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     script:
     """
     bash ${qc_script} \
@@ -48,11 +47,6 @@ process TARGET_QC {
         'data/target/prepared/${meta.cohort}/direct_ready/${meta.cohort}.pgen' \
         '${meta.build}' '${meta.ancestry}' \
         >> ${meta.cohort}.direct_ready_target.tsv
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.cohort}":
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-    VERSIONS
     """
 
     stub:
@@ -73,6 +67,5 @@ process TARGET_QC {
     printf '${meta.cohort}\t${meta.role}\tpgen\tdata/target/prepared/${meta.cohort}/imputation_ready/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\tqc_completed\t\t\n' >> ${meta.cohort}.imputation_ready_target.tsv
     printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.direct_ready_target.tsv
     printf '${meta.cohort}\t${meta.role}\tpgen\tdata/target/prepared/${meta.cohort}/direct_ready/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\tqc_completed\t\t\n' >> ${meta.cohort}.direct_ready_target.tsv
-    printf '"${task.process}:${meta.cohort}":\n  plink2: stub\n' > versions.yml
     """
 }

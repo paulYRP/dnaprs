@@ -1,58 +1,143 @@
 name: prepare_plink_reference
 description: Build a European PLINK LD reference from downloaded chromosome reference sources.
-keywords: [reference, plink, ld, prs]
+keywords:
+  - reference
+  - plink
+  - ld
+  - prs
 tools:
   - bcftools:
       description: Utilities for variant calling and manipulating VCF and BCF files
+      identifier: biotools:bcftools
+      homepage: https://samtools.github.io/bcftools/
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
   - unbref3:
       description: Convert a downloaded bref3 reference panel to VCF
+      identifier: ""
+      homepage: https://faculty.washington.edu/browning/beagle/beagle.html
 input:
-  - panel:
-      type: map
-      description: Genotype-panel reference metadata.
-  - panel_files:
-      type: file
-      description: Downloaded or user-provided genotype-panel assets.
-  - population:
-      type: map
-      description: Population-label reference metadata.
-  - population_files:
-      type: file
-      description: Population-label assets.
-  - related:
-      type: map
-      description: Related-sample exclusion reference metadata.
-  - related_files:
-      type: file
-      description: Related-sample exclusion assets.
-  - unbref3:
-      type: map
-      description: unbref3 package metadata.
-  - unbref3_files:
-      type: file
-      description: Verified unbref3 package assets.
+  - - panel:
+        type: map
+        description: Metadata associated with inputs required by the `prepare_plink_reference` process.
+    - panel_files:
+        type: list
+        description: Inputs required by the `prepare_plink_reference` process.
+  - - population:
+        type: map
+        description: Metadata associated with inputs required by the `prepare_plink_reference` process.
+    - population_files:
+        type: list
+        description: Inputs required by the `prepare_plink_reference` process.
+  - - related:
+        type: map
+        description: Metadata associated with inputs required by the `prepare_plink_reference` process.
+    - related_files:
+        type: list
+        description: Inputs required by the `prepare_plink_reference` process.
+  - - unbref3:
+        type: string
+        description: Inputs required by the `prepare_plink_reference` process.
+    - unbref3_files:
+        type: list
+        description: Inputs required by the `prepare_plink_reference` process.
   - prepare_script:
       type: file
-      description: Reference preparation implementation.
+      description: Executable script used to produce reference preparation implementation.
   - genome_build:
-      type: value
+      type: string
       description: Target genome build.
 output:
-  - reference:
-      type: tuple
-      description: Prepared PLINK LD reference.
-  - summary:
-      type: tuple
-      description: Preparation summary and marker counts.
-  - source_qc:
-      type: tuple
-      description: Source-reference validation audit.
-  - logs:
-      type: tuple
-      description: Reference-preparation log.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  reference:
+    - - panel:
+          type: map
+          description: Metadata associated with prepared plink ld reference.
+      - ${panel.reference_id}.plink_ld:
+          type: file
+          description: Prepared PLINK LD reference.
+  summary:
+    - - panel:
+          type: map
+          description: Metadata associated with preparation summary and marker counts.
+      - ${panel.reference_id}.plink_ld.summary.tsv:
+          type: file
+          description: Preparation summary and marker counts.
+  source_qc:
+    - - panel:
+          type: map
+          description: Metadata associated with source-reference validation audit.
+      - ${panel.reference_id}.plink_ld.source_qc.tsv:
+          type: file
+          description: Source-reference validation audit.
+  logs:
+    - - panel:
+          type: map
+          description: Metadata associated with reference-preparation log.
+      - ${panel.reference_id}.plink_ld.prepare.log:
+          type: file
+          description: Reference-preparation log.
+  versions_bcftools:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - bcftools:
+          type: string
+          description: The name of the tool
+      - command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_unbref3:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - unbref3:
+          type: string
+          description: The name of the tool
+      - printf 27Feb25.75f:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - bcftools:
+          type: string
+          description: The name of the tool
+      - command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - unbref3:
+          type: string
+          description: The name of the tool
+      - printf 27Feb25.75f:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

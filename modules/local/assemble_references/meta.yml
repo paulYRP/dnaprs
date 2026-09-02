@@ -1,34 +1,71 @@
 name: assemble_references
 description: Assemble validated local and downloaded assets into one reusable reference bundle.
-keywords: [reference, cache, provenance]
+keywords:
+  - reference
+  - cache
+  - provenance
 tools:
   - R:
       description: Statistical computing environment
+      identifier: ""
+      homepage: https://www.r-project.org/
 input:
-  - assets:
-      type: file
-      description: Planned asset metadata and verified downloaded files.
+  - asset_rows:
+      type: list
+      description: Inputs required by the `assemble_references` process.
+  - asset_files:
+      type: list
+      description: Inputs required by the `assemble_references` process.
   - provided_references:
       type: file
       description: User-provided reference records to retain in the bundle.
-  - settings:
-      type: value
-      description: Reference bundle name, genome build, and cache root.
+  - reference_bundle:
+      type: file
+      description: Inputs required by the `assemble_references` process.
+  - genome_build:
+      type: string
+      description: Inputs required by the `assemble_references` process.
+  - cache_root:
+      type: string
+      description: Inputs required by the `assemble_references` process.
   - assemble_script:
       type: file
-      description: Reference bundle assembly implementation.
+      description: Executable script used to produce reference bundle assembly implementation.
 output:
-  - references:
-      type: file
-      description: Generated canonical reference records.
-  - bundle:
-      type: directory
-      description: Validated reference bundle.
-  - receipt:
-      type: file
-      description: Reference source, checksum, size, and cache receipt.
-  - versions:
-      type: file
-      description: Software versions in YAML format.
-authors: ["@paulYRP"]
-maintainers: ["@paulYRP"]
+  references:
+    - references.tsv:
+        type: file
+        description: Generated canonical reference records.
+  bundle:
+    - reference_bundle:
+        type: directory
+        description: Validated reference bundle.
+  receipt:
+    - reference_receipt.tsv:
+        type: file
+        description: Reference source, checksum, size, and cache receipt.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

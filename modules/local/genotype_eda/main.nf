@@ -1,4 +1,4 @@
-process GENOTYPE_EDA_PLINK {
+process GENOTYPE_EDA {
     tag "${meta.cohort}"
     label 'process_high'
 
@@ -12,8 +12,7 @@ process GENOTYPE_EDA_PLINK {
     output:
     tuple val(meta), path("${meta.cohort}.*.tsv"), emit: tables
     tuple val(meta), path("${meta.cohort}.genotype_eda.log"), emit: logs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     script:
     """
     bash ${genotype_eda_script} \
@@ -27,11 +26,6 @@ process GENOTYPE_EDA_PLINK {
         '${meta.role}' \
         '${meta.assay_manifest ?: ''}' \
         '${adapter_script}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.cohort}":
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-    VERSIONS
     """
 
     stub:
@@ -55,6 +49,5 @@ process GENOTYPE_EDA_PLINK {
     printf 'cohort\tcomponent\teigenvalue\tpercent_of_reported_eigenvalues\n' > ${meta.cohort}.pca_eigenvalues.tsv
     printf 'cohort\tcheck\tstatus\tvalue\treason\n${meta.cohort}\tformat_import\tPASS\t2 participants; 2 variants\tThe supplied target was imported without changing the source files.\n${meta.cohort}\treported_sex\tNOT_RUN\t0 recorded; 0 X variants\tRecorded sex or X-chromosome variants were unavailable.\n' > ${meta.cohort}.genotype_eda_checks.tsv
     printf 'Genotype EDA stub completed.\n' > ${meta.cohort}.genotype_eda.log
-    printf '"${task.process}:${meta.cohort}":\n  plink2: stub\n' > versions.yml
     """
 }

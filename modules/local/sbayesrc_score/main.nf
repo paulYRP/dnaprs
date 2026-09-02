@@ -11,8 +11,9 @@ process SBAYESRC_SCORE {
     output:
     tuple val(target), val(gwas), path("${target.cohort}.${gwas.trait_id}.sbayesrc.score.tsv"), path("${target.cohort}.${gwas.trait_id}.sbayesrc.score_qc.tsv"), emit: scores
     tuple val(target), val(gwas), path("${target.cohort}.${gwas.trait_id}.sbayesrc.score.log"), emit: logs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('SBayesRC'), eval("Rscript -e 'cat(as.character(packageVersion(\"SBayesRC\")))' 2>/dev/null || printf stub"), emit: versions_sbayesrc, topic: versions
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     script:
     """
     export OMP_NUM_THREADS='${task.cpus}'
@@ -26,13 +27,6 @@ process SBAYESRC_SCORE {
         --prs-name '${gwas.prs_name}' \
         --keep '${participant_keep}' \
         --plink \$(command -v plink2)
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${target.cohort}:${gwas.trait_id}":
-        SBayesRC: \$(Rscript -e "cat(as.character(packageVersion('SBayesRC')))" 2>/dev/null)
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-    VERSIONS
     """
 
     stub:
@@ -40,6 +34,5 @@ process SBAYESRC_SCORE {
     printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tFID\tIID\traw_prs\tallele_count\tused_variants\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\tTEST01\tTEST01\t0.15\t2\tNA\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\tTEST02\tTEST02\t0.25\t2\tNA\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score.tsv
     printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tparticipants\trequested_variants\tused_variants\tused_fraction\treview_required\tfinite_scores\tstatus\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\tsbayesrc\t2\t1\t1\t1\tFALSE\t2\tPASS\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score_qc.tsv
     printf 'SBayesRC score stub\n' > ${target.cohort}.${gwas.trait_id}.sbayesrc.score.log
-    printf '"${task.process}:${target.cohort}:${gwas.trait_id}":\n  SBayesRC: stub\n  plink2: stub\n  R: stub\n' > versions.yml
     """
 }

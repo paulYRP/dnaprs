@@ -9,8 +9,7 @@ process PLINK_CLUMP {
 
     output:
     tuple val(meta), path(cojo), path("${meta.trait_id}.clumps"), path(harmonisation_qc), path("${meta.trait_id}.clump.log"), emit: clumped
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     script:
     """
     plink2 \
@@ -28,17 +27,11 @@ process PLINK_CLUMP {
         --out '${meta.trait_id}.clump'
 
     mv '${meta.trait_id}.clump.clumps' '${meta.trait_id}.clumps'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.trait_id}":
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-    VERSIONS
     """
 
     stub:
     """
     printf '#CHROM\tPOS\tID\tREF\tALT\tPROVISIONAL_REF?\tA1\tF\tP\tTOTAL\tNONMAJOR\n1\t100\t1:100:A:G\tA\tG\tN\tG\t1\t0.001\t1\t1\n' > ${meta.trait_id}.clumps
     printf 'PLINK clumping stub\n' > ${meta.trait_id}.clump.log
-    printf '"${task.process}:${meta.trait_id}":\n  plink2: stub\n' > versions.yml
     """
 }

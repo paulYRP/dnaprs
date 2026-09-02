@@ -40,8 +40,18 @@ for directory in "${chromosome_dirs[@]}"; do
 done
 
 printf '%s\n' "${prefixes[@]}" > "${output_dir}/${cohort}_merge.txt"
-plink2 --pmerge-list "${output_dir}/${cohort}_merge.txt" pfile --make-pgen \
-    --threads "$threads" --out "${output_dir}/${cohort}" > "${cohort}.target_imputation.log" 2>&1
+if [[ "${#prefixes[@]}" -eq 1 ]]; then
+    # PLINK requires at least two filesets for --pmerge-list. A one-chromosome
+    # scatter is valid for small tests and chromosome-restricted analyses, so
+    # assemble it by copying the already validated PGEN bundle.
+    cp "${prefixes[0]}.pgen" "${output_dir}/${cohort}.pgen"
+    cp "${prefixes[0]}.pvar" "${output_dir}/${cohort}.pvar"
+    cp "${prefixes[0]}.psam" "${output_dir}/${cohort}.psam"
+    printf 'One chromosome bundle supplied; no PLINK merge was required.\n' > "${cohort}.target_imputation.log"
+else
+    plink2 --pmerge-list "${output_dir}/${cohort}_merge.txt" pfile --make-pgen \
+        --threads "$threads" --out "${output_dir}/${cohort}" > "${cohort}.target_imputation.log" 2>&1
+fi
 
 combine_tables() {
     local pattern="$1" output="$2"

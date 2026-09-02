@@ -1,37 +1,110 @@
 name: assemble_target_imputation
 description: Validate and deterministically gather completed chromosome-imputation tasks.
-keywords: [genotype, imputation, scatter-gather]
+keywords:
+  - genotype
+  - imputation
+  - scatter-gather
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
 input:
-  - chromosomes:
-      type: tuple
-      description: Target metadata, expected chromosome IDs, and all chromosome products.
+  - - meta:
+        type: map
+        description: Metadata associated with inputs required by the `assemble_target_imputation` process.
+    - chromosomes:
+        type: list
+        description: Inputs required by the `assemble_target_imputation` process.
+    - chromosome_dirs:
+        type: string
+        description: Inputs required by the `assemble_target_imputation` process.
+    - chromosome_manifests:
+        type: file
+        description: Inputs required by the `assemble_target_imputation` process.
+    - chromosome_qc:
+        type: file
+        description: Inputs required by the `assemble_target_imputation` process.
+    - chromosome_dr2:
+        type: string
+        description: Inputs required by the `assemble_target_imputation` process.
+    - chromosome_logs:
+        type: file
+        description: Inputs required by the `assemble_target_imputation` process.
   - assembly_script:
       type: file
-      description: Deterministic chromosome validation and gather implementation.
+      description: Executable script used to produce deterministic chromosome validation and gather implementation.
 output:
-  - prepared:
-      type: directory
-      description: Merged imputed target PGEN checkpoint.
-  - manifest:
-      type: file
-      description: Ordered chromosome-level imputation handoff manifest.
-  - qc:
-      type: file
-      description: Combined imputation checks and counts.
-  - dr2:
-      type: file
-      description: Combined dosage-quality distribution.
-  - checkpoint:
-      type: tuple
-      description: Reusable imputed PGEN checkpoint and handoff manifest.
-  - logs:
-      type: tuple
-      description: Combined chromosome imputation log.
-  - versions:
-      type: file
-      description: Software versions in YAML format.
-authors: ["@paulYRP"]
-maintainers: ["@paulYRP"]
+  prepared:
+    - - meta:
+          type: directory
+          description: Metadata associated with merged imputed target pgen checkpoint.
+      - ${meta.cohort}.imputed:
+          type: directory
+          description: Merged imputed target PGEN checkpoint.
+      - ${meta.cohort}.imputation_qc.tsv:
+          type: directory
+          description: Merged imputed target PGEN checkpoint.
+  manifest:
+    - - meta:
+          type: file
+          description: Metadata associated with ordered chromosome-level imputation handoff manifest.
+      - ${meta.cohort}.imputation_manifest.tsv:
+          type: file
+          description: Ordered chromosome-level imputation handoff manifest.
+  qc:
+    - - meta:
+          type: file
+          description: Metadata associated with combined imputation checks and counts.
+      - ${meta.cohort}.imputation_qc.tsv:
+          type: file
+          description: Combined imputation checks and counts.
+  dr2:
+    - - meta:
+          type: file
+          description: Metadata associated with combined dosage-quality distribution.
+      - ${meta.cohort}.imputation_dr2.tsv:
+          type: file
+          description: Combined dosage-quality distribution.
+  checkpoint:
+    - - meta:
+          type: map
+          description: Metadata associated with reusable imputed pgen checkpoint and handoff manifest.
+      - ${meta.cohort}.imputed:
+          type: file
+          description: Reusable imputed PGEN checkpoint and handoff manifest.
+      - ${meta.cohort}.imputed_target_manifest.tsv:
+          type: file
+          description: Reusable imputed PGEN checkpoint and handoff manifest.
+  logs:
+    - - meta:
+          type: map
+          description: Metadata associated with combined chromosome imputation log.
+      - ${meta.cohort}.target_imputation.log:
+          type: file
+          description: Combined chromosome imputation log.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

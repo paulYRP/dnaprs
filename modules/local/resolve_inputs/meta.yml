@@ -1,55 +1,188 @@
 name: resolve_inputs
 description: Discover raw target and GWAS inputs or normalise nested YAML declarations into internal records.
-keywords: [input, discovery, yaml, validation]
+keywords:
+  - input
+  - discovery
+  - yaml
+  - validation
 tools:
   - R:
       description: Statistical computing environment
+      identifier: ""
+      homepage: https://www.r-project.org/
+  - jsonlite:
+      description: Software dependency reported by the `resolve_inputs` process
+      identifier: ""
+      homepage: https://jeroen.r-universe.dev/jsonlite/
+  - yaml:
+      description: Software dependency reported by the `resolve_inputs` process
+      identifier: ""
+      homepage: https://cran.r-project.org/package=yaml
 input:
   - input_spec:
-      type: value
+      type: string
       description: Base64-encoded target input declaration.
   - gwas_spec:
-      type: value
+      type: string
       description: Base64-encoded GWAS input declaration.
   - reference_spec:
-      type: value
+      type: file
       description: Base64-encoded reference declaration.
   - models_spec:
-      type: value
-      description: Base64-encoded phenotype model declaration.
-  - settings:
-      type: value
-      description: Genome, methods, stages, phenotype columns, and reference mode values.
-  - sources:
       type: file
-      description: Staged target, GWAS, and reference source paths or empty placeholders.
+      description: Base64-encoded phenotype model declaration.
+  - genome_build:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - methods:
+      type: list
+      description: Inputs required by the `resolve_inputs` process.
+  - target_imputation:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - stop_after:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - reference_only:
+      type: boolean
+      description: Inputs required by the `resolve_inputs` process.
+  - reference_mode:
+      type: file
+      description: Inputs required by the `resolve_inputs` process.
+  - reference_bundle:
+      type: file
+      description: Inputs required by the `resolve_inputs` process.
+  - phenotype:
+      type: file
+      description: Inputs required by the `resolve_inputs` process.
+  - outcome:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - covariates:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - model_type:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - participant_id:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - group_column:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - control_value:
+      type: integer
+      description: Inputs required by the `resolve_inputs` process.
+  - case_value:
+      type: integer
+      description: Inputs required by the `resolve_inputs` process.
+  - beagle_jar:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - unbref3_jar:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - target_source:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - gwas_source:
+      type: string
+      description: Inputs required by the `resolve_inputs` process.
+  - reference_source:
+      type: file
+      description: Inputs required by the `resolve_inputs` process.
   - resolver_script:
       type: file
-      description: Input resolver implementation.
+      description: Executable script used to produce input resolver implementation.
 output:
-  - targets:
-      type: file
-      description: Internally generated target records.
-  - gwas:
-      type: file
-      description: Internally generated GWAS records.
-  - references:
-      type: file
-      description: Internally generated local-reference records.
-  - models:
-      type: file
-      description: Internally generated phenotype-model records.
-  - run_plan:
-      type: file
-      description: Stage decisions and required reference roles.
-  - settings:
-      type: file
-      description: Normalised reference settings.
-  - checks:
-      type: file
-      description: Input discovery and normalisation checks.
-  - versions:
-      type: file
-      description: Software versions in YAML format.
-authors: ["@paulYRP"]
-maintainers: ["@paulYRP"]
+  targets:
+    - targets.tsv:
+        type: file
+        description: Internally generated target records.
+  gwas:
+    - gwas.tsv:
+        type: file
+        description: Internally generated GWAS records.
+  references:
+    - references.tsv:
+        type: file
+        description: Internally generated local-reference records.
+  models:
+    - models.tsv:
+        type: file
+        description: Internally generated phenotype-model records.
+  run_plan:
+    - run_plan.tsv:
+        type: file
+        description: Stage decisions and required reference roles.
+  settings:
+    - reference_settings.yml:
+        type: file
+        description: Normalised reference settings.
+  checks:
+    - input_resolution.tsv:
+        type: file
+        description: Input discovery and normalisation checks.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_jsonlite:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - jsonlite:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("jsonlite")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_yaml:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - yaml:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("yaml")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - jsonlite:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("jsonlite")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - yaml:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("yaml")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

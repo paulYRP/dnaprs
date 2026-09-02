@@ -13,8 +13,8 @@ process PARSE_PLINK_SCORE {
     tuple val(target), val(gwas), path("${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.score.tsv"), path("${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.score_qc.tsv"), emit: scores
     tuple val(target), val(gwas), path("${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.variant_compatibility.tsv"), path("${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.variant_coverage.tsv"), emit: compatibility
     tuple val(target), val(gwas), path(score_log), emit: logs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     """
     Rscript ${parser_script} \
@@ -33,12 +33,6 @@ process PARSE_PLINK_SCORE {
         --trait-id '${gwas.trait_id}' \
         --method '${target.score_method ?: 'plink_ct'}' \
         --scoring-stage '${target.scoring_stage ?: 'direct'}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${target.cohort}:${gwas.trait_id}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
@@ -47,6 +41,5 @@ process PARSE_PLINK_SCORE {
     printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tparticipants\tused_variants\n${target.cohort}\t${target.role}\t${gwas.trait_id}\t${gwas.prs_name}\t${target.score_method ?: 'plink_ct'}\t2\t1\n' > ${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.score_qc.tsv
     printf 'cohort\ttrait_id\tmethod\tscoring_stage\tvariant_id\teffect_allele\ttarget_ref\ttarget_alt\tallele_state\tused\treason\n${target.cohort}\t${gwas.trait_id}\t${target.score_method ?: 'plink_ct'}\t${target.scoring_stage ?: 'direct'}\t1:100:A:G\tA\tA\tG\tDIRECT\tTRUE\tUsed by PLINK scoring\n' > ${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.variant_compatibility.tsv
     printf 'cohort\ttrait_id\tmethod\tscoring_stage\trequested_variants\ttarget_compatible_variants\tused_variants\tused_fraction\treview_required\tstatus\n${target.cohort}\t${gwas.trait_id}\t${target.score_method ?: 'plink_ct'}\t${target.scoring_stage ?: 'direct'}\t1\t1\t1\t1\tFALSE\tPASS\n' > ${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.variant_coverage.tsv
-    printf '"${task.process}:${target.cohort}:${gwas.trait_id}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

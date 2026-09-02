@@ -8,7 +8,11 @@ tools:
   - r:
       description: R statistical computing environment
       homepage: https://www.r-project.org/
+      identifier: ""
 input:
+  - run_name:
+      type: string
+      description: Stable name used for this pipeline run.
   - target_manifest:
       type: file
       description: Target-cohort manifest.
@@ -18,45 +22,107 @@ input:
   - reference_manifest:
       type: file
       description: Versioned manifest of immutable downloaded reference sources.
-  - reference_base:
-      type: directory
-      description: Base directory used to resolve relative paths in the reference manifest.
   - phenotype_file:
       type: file
       description: Phenotype table or the pipeline empty placeholder.
   - phenotype_models:
       type: file
       description: Phenotype-model manifest or the pipeline empty placeholder.
+  - target_assets:
+      type: list
+      description: Target genotype files staged so the validator can inspect paths outside the pipeline directory.
+  - gwas_assets:
+      type: list
+      description: GWAS files staged so the validator can inspect paths outside the pipeline directory.
+  - reference_assets:
+      type: list
+      description: Reference files and directories staged for integrity and content validation.
+  - methods:
+      type: list
+      description: Inputs required by the `validate_manifests` process.
+  - genome_build:
+      type: string
+      description: Inputs required by the `validate_manifests` process.
+  - seed:
+      type: integer
+      description: Inputs required by the `validate_manifests` process.
+  - report_enabled:
+      type: boolean
+      description: Inputs required by the `validate_manifests` process.
+  - target_imputation:
+      type: boolean
+      description: Whether chromosome-level target imputation is enabled.
+  - launch_dir:
+      type: string
+      description: Inputs required by the `validate_manifests` process.
+  - reference_base:
+      type: string
+      description: Base directory used to resolve relative paths in the reference manifest.
   - run_plan:
       type: file
       description: Validated stage and reference-role plan.
-  - run_settings:
-      type: value
-      description: Run name, methods, build, seed, report, imputation, and launch paths.
   - validator_script:
       type: file
-      description: Manifest validator implementation.
+      description: Executable script used to produce manifest validator implementation.
 output:
-  - validated_manifests:
-      type: file
-      description: Normalised manifests containing absolute, checked input paths.
-  - run_settings:
-      type: file
-      description: Run settings used by the workflow.
-  - input_checksums:
-      type: file
-      description: SHA-256 checksums for file inputs suitable for direct hashing.
-  - input_checks:
-      type: file
-      description: Essential input validation results.
-  - reference_integrity:
-      type: file
-      description: Declared and observed reference digests with authentication status.
-  - run_plan:
-      type: file
-      description: Validated copy of the stage plan.
-  - versions:
-      type: file
-      description: Software versions used by this process.
-authors: ["@paulYRP"]
-maintainers: ["@paulYRP"]
+  target_manifest:
+    - targets.tsv:
+        type: file
+        description: Output emitted as `target_manifest` by the `validate_manifests` process.
+  gwas_manifest:
+    - gwas.tsv:
+        type: file
+        description: Output emitted as `gwas_manifest` by the `validate_manifests` process.
+  reference_manifest:
+    - references.tsv:
+        type: file
+        description: Output emitted as `reference_manifest` by the `validate_manifests` process.
+  phenotype_models:
+    - models.tsv:
+        type: file
+        description: Output emitted as `phenotype_models` by the `validate_manifests` process.
+  run_plan:
+    - run_plan.tsv:
+        type: file
+        description: Validated copy of the stage plan.
+  run_settings:
+    - run_settings.yml:
+        type: file
+        description: Run settings used by the workflow.
+  input_checksums:
+    - input_checksums.tsv:
+        type: file
+        description: SHA-256 checksums for file inputs suitable for direct hashing.
+  input_checks:
+    - input_checks.tsv:
+        type: file
+        description: Essential input validation results.
+  reference_integrity:
+    - reference_integrity.tsv:
+        type: file
+        description: Declared and observed reference digests with authentication status.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

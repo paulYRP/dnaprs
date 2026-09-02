@@ -2,5 +2,5 @@
 Descriptor File Name,mini_manifest.csv
 [Assay]
 IlmnID,Name,IlmnStrand,SNP,GenomeBuild,Chr,MapInfo,RefStrand
-probe1,rsMini1,TOP,[A/G],37,1,100,+
-probe2,rsMini2,TOP,[A/C],37,1,200,-
+probe1,rs100,TOP,[A/G],37,1,100,+
+probe2,rs200,TOP,[C/T],37,1,200,+

@@ -11,6 +11,9 @@ process VALIDATE_MANIFESTS {
     path reference_manifest, stageAs: 'input_references.tsv'
     path phenotype_file
     path phenotype_models, stageAs: 'input_models.tsv'
+    path target_assets, stageAs: 'validation_target/asset??/*'
+    path gwas_assets, stageAs: 'validation_gwas/asset??/*'
+    path reference_assets, stageAs: 'validation_reference/asset??/*'
     val methods
     val genome_build
     val seed
@@ -31,8 +34,7 @@ process VALIDATE_MANIFESTS {
     path 'input_checksums.tsv', emit: input_checksums
     path 'input_checks.tsv', emit: input_checks
     path 'reference_integrity.tsv', emit: reference_integrity
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     script:
     method_arg = methods.join(',')
     """
@@ -43,6 +45,9 @@ process VALIDATE_MANIFESTS {
         --reference-manifest '${reference_manifest}' \
         --phenotype-file '${phenotype_file}' \
         --phenotype-models '${phenotype_models}' \
+        --target-assets 'validation_target' \
+        --gwas-assets 'validation_gwas' \
+        --reference-assets 'validation_reference' \
         --methods '${method_arg}' \
         --genome-build '${genome_build}' \
         --seed '${seed}' \
@@ -51,11 +56,6 @@ process VALIDATE_MANIFESTS {
         --launch-dir '${launch_dir}' \
         --reference-base '${reference_base}' \
         --run-plan '${run_plan}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${run_name}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-    VERSIONS
     """
 
     stub:
@@ -96,6 +96,5 @@ process VALIDATE_MANIFESTS {
     printf 'path\talgorithm\tchecksum\nmanifest\tSHA-256\tstub\n' > input_checksums.tsv
     printf 'check\tvalue\tstatus\ntarget_cohorts\t1\tPASS\ngwas_traits\t1\tPASS\nreference_resources\t1\tPASS\n' > input_checks.tsv
     printf 'reference_id\treference_type\tdeclared_sha256\tobserved_sha256\tstatus\nTEST\tdbsnp\tstub\tstub\tAUTHENTICATED\n' > reference_integrity.tsv
-    printf '"${task.process}:${run_name}":\n  R: stub\n' > versions.yml
     """
 }

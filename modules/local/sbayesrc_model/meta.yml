@@ -1,51 +1,124 @@
 name: sbayesrc_model
 description: Estimate annotation-informed posterior joint effects with official SBayesRC defaults.
-keywords: [sbayesrc, bayesian, prs]
+keywords:
+  - sbayesrc
+  - bayesian
+  - prs
 tools:
   - sbayesrc:
       description: Bayesian multiple regression using summary statistics
+      identifier: ""
+      homepage: https://github.com/zhilizheng/SBayesRC
+  - R:
+      description: Software dependency reported by the `sbayesrc_model` process
+      identifier: ""
+      homepage: https://www.r-project.org/
 input:
-  - meta:
-      type: map
-      description: GWAS trait metadata.
-  - imputed:
-      type: file
-      description: Imputed GWAS summary statistics.
-  - impute_qc:
-      type: file
-      description: Imputation-stage QC.
-  - tidy_qc:
-      type: file
-      description: Tidy-stage QC.
-  - harmonisation_qc:
-      type: file
-      description: Common GWAS harmonisation audit.
-  - ld_reference:
-      type: map
-      description: SBayesRC LD-reference metadata.
-  - ld_reference_files:
-      type: directory
-      description: Prepared SBayesRC LD reference.
-  - annotation_reference:
-      type: map
-      description: SBayesRC annotation-reference metadata.
-  - annotation_reference_files:
-      type: file
-      description: Prepared SBayesRC annotation reference.
+  - - meta:
+        type: map
+        description: Metadata associated with inputs required by the `sbayesrc_model` process.
+    - imputed:
+        type: string
+        description: Inputs required by the `sbayesrc_model` process.
+    - impute_qc:
+        type: file
+        description: Inputs required by the `sbayesrc_model` process.
+    - tidy_qc:
+        type: file
+        description: Inputs required by the `sbayesrc_model` process.
+    - harmonisation_qc:
+        type: file
+        description: Inputs required by the `sbayesrc_model` process.
+    - ld_reference:
+        type: file
+        description: Inputs required by the `sbayesrc_model` process.
+    - ld_reference_files:
+        type: list
+        description: Inputs required by the `sbayesrc_model` process.
+    - annotation_reference:
+        type: file
+        description: Inputs required by the `sbayesrc_model` process.
+    - annotation_reference_files:
+        type: list
+        description: Inputs required by the `sbayesrc_model` process.
   - sbayesrc_script:
       type: file
-      description: SBayesRC wrapper implementation.
+      description: Executable script used to produce sbayesrc wrapper implementation.
   - seed:
-      type: value
+      type: integer
       description: Reproducible model seed.
 output:
-  - model:
-      type: tuple
-      description: Posterior weights, parameters, model QC, and chained QC files.
-  - logs:
-      type: tuple
-      description: SBayesRC model log.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  model:
+    - - meta:
+          type: map
+          description: Metadata associated with posterior weights, parameters, model qc, and chained qc
+            files.
+      - ${meta.trait_id}.sbayesrc.txt:
+          type: file
+          description: Posterior weights, parameters, model QC, and chained QC files.
+      - ${meta.trait_id}.sbayesrc.par:
+          type: file
+          description: Posterior weights, parameters, model QC, and chained QC files.
+      - ${meta.trait_id}.sbayesrc.model_qc.tsv:
+          type: file
+          description: Posterior weights, parameters, model QC, and chained QC files.
+      - impute_qc:
+          type: file
+          description: Posterior weights, parameters, model QC, and chained QC files.
+      - tidy_qc:
+          type: file
+          description: Posterior weights, parameters, model QC, and chained QC files.
+      - harmonisation_qc:
+          type: file
+          description: Posterior weights, parameters, model QC, and chained QC files.
+  logs:
+    - - meta:
+          type: map
+          description: Metadata associated with sbayesrc model log.
+      - ${meta.trait_id}.sbayesrc.model.log:
+          type: file
+          description: SBayesRC model log.
+  versions_sbayesrc:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - SBayesRC:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("SBayesRC")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - SBayesRC:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("SBayesRC")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - R:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

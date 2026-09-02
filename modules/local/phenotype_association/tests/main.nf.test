@@ -1,0 +1,38 @@
+nextflow_process {
+
+    name "Test Process PHENOTYPE_ASSOCIATION"
+    script "../main.nf"
+    process "PHENOTYPE_ASSOCIATION"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_stub"
+    tag "phenotype_association"
+
+    test("phenotype association - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST', role: 'target', trait_id: 'MDD', prs_name: 'MDD_PRS', method: 'plink_ct'], file("${projectDir}/tests/data/scores/test_plink.score.tsv"), file("${projectDir}/tests/data/phenotype_models.tsv"), 'mhc_total']
+                input[1] = file("${projectDir}/tests/data/phenotype.tsv")
+                input[2] = file("${projectDir}/bin/phenotype_association.R")
+                input[3] = 20260829
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.associations.size() == 1
+            assert process.out.fitted_models.size() == 1
+            assert process.out.plot_data.size() == 1
+            assert process.out.permutations.size() == 1
+            assert process.out.influence.size() == 1
+            assert process.out.phenotype_prs.size() == 1
+            assert process.out.findAll { key, value -> key.startsWith("versions_") }.size() == 3
+            assert process.out.versions_r[0][2].toString()
+        }
+    }
+
+}

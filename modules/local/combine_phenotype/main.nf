@@ -20,17 +20,11 @@ process COMBINE_PHENOTYPE {
     path 'phenotype_permutations.tsv', emit: permutations
     path 'phenotype_influence.tsv', emit: influence
     path 'phenoPRS.csv', emit: phenotype_prs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     """
     Rscript ${combine_script} --input-dir .
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))")
-    VERSIONS
     """
 
     stub:
@@ -41,6 +35,5 @@ process COMBINE_PHENOTYPE {
     cp ${permutations[0]} phenotype_permutations.tsv
     cp ${influence[0]} phenotype_influence.tsv
     cp ${phenotype_prs[0]} phenoPRS.csv
-    printf '"${task.process}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

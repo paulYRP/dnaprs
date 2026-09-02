@@ -1,19 +1,107 @@
 name: plink_score
-description: Apply fixed clumping-and-thresholding weights to a prepared target using dosage-aware PLINK scoring.
-keywords: [plink, scoring, prs]
+description: Apply fixed clumping-and-thresholding weights to a prepared target using dosage-aware PLINK
+  scoring.
+keywords:
+  - plink
+  - scoring
+  - prs
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
 input:
-  - score_job:
-      type: tuple
-      description: Target, participant, GWAS, weight, and reference-frequency records for one score.
+  - - target:
+        type: map
+        description: Metadata associated with inputs required by the `plink_score` process.
+    - target_dir:
+        type: string
+        description: Inputs required by the `plink_score` process.
+    - target_qc:
+        type: file
+        description: Inputs required by the `plink_score` process.
+    - participant_decisions:
+        type: list
+        description: Inputs required by the `plink_score` process.
+    - participant_keep:
+        type: string
+        description: Inputs required by the `plink_score` process.
+    - gwas:
+        type: map
+        description: Metadata associated with inputs required by the `plink_score` process.
+    - weight:
+        type: file
+        description: Inputs required by the `plink_score` process.
+    - weight_qc:
+        type: file
+        description: Inputs required by the `plink_score` process.
+    - harmonisation_qc:
+        type: file
+        description: Inputs required by the `plink_score` process.
+    - clump_log:
+        type: file
+        description: Inputs required by the `plink_score` process.
+    - reference:
+        type: map
+        description: Metadata associated with inputs required by the `plink_score` process.
+    - reference_freq:
+        type: file
+        description: Inputs required by the `plink_score` process.
+    - reference_log:
+        type: file
+        description: Inputs required by the `plink_score` process.
 output:
-  - raw:
-      type: tuple
-      description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target PVAR.
-  - versions:
-      type: file
-      description: PLINK version in YAML format.
-authors: ["@paulYRP"]
-maintainers: ["@paulYRP"]
+  raw:
+    - - target:
+          type: map
+          description: Metadata associated with target/gwas metadata, plink score, used variants, log, staged
+            weights, and target pvar.
+      - gwas:
+          type: map
+          description: Metadata associated with target/gwas metadata, plink score, used variants, log, staged
+            weights, and target pvar.
+      - "${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.sscore":
+          type: file
+          description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target
+            PVAR.
+      - "${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.sscore.vars":
+          type: file
+          description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target
+            PVAR.
+      - "${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.log":
+          type: file
+          description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target
+            PVAR.
+      - "${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.weights.tsv":
+          type: file
+          description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target
+            PVAR.
+      - "${target.cohort}.${gwas.trait_id}.${target.score_method ?: 'plink_ct'}.target.pvar":
+          type: file
+          description: Target/GWAS metadata, PLINK score, used variants, log, staged weights, and target
+            PVAR.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

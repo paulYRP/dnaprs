@@ -1,36 +1,73 @@
 name: prepare_sbayesrc_reference
 description: Extract and validate downloaded SBayesRC LD and annotation archives.
-keywords: [reference, sbayesrc, ld, annotation, prs]
+keywords:
+  - reference
+  - sbayesrc
+  - ld
+  - annotation
+  - prs
 tools:
   - unzip:
       description: Extract ZIP archives
+      identifier: ""
+      homepage: https://infozip.sourceforge.net/UnZip.html
 input:
-  - ld_source:
-      type: map
-      description: SBayesRC LD-reference metadata.
-  - ld_files:
-      type: file
-      description: Verified SBayesRC LD-reference archive.
-  - annotation_source:
-      type: map
-      description: SBayesRC annotation-reference metadata.
-  - annotation_files:
-      type: file
-      description: Verified SBayesRC annotation archive.
+  - - ld_source:
+        type: map
+        description: Metadata associated with inputs required by the `prepare_sbayesrc_reference` process.
+    - ld_files:
+        type: list
+        description: Inputs required by the `prepare_sbayesrc_reference` process.
+  - - annotation_source:
+        type: map
+        description: Metadata associated with inputs required by the `prepare_sbayesrc_reference` process.
+    - annotation_files:
+        type: list
+        description: Inputs required by the `prepare_sbayesrc_reference` process.
   - prepare_script:
       type: file
-      description: Reference extraction and validation implementation.
+      description: Executable script used to produce reference extraction and validation implementation.
 output:
-  - ld:
-      type: tuple
-      description: Prepared SBayesRC LD-reference directory.
-  - annotation:
-      type: tuple
-      description: Prepared SBayesRC annotation file.
-  - summary:
-      type: file
-      description: Reference preparation and validation summary.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  ld:
+    - - ld_source:
+          type: map
+          description: Metadata associated with prepared sbayesrc ld-reference directory.
+      - prepared_sbayesrc/ld:
+          type: directory
+          description: Prepared SBayesRC LD-reference directory.
+  annotation:
+    - - annotation_source:
+          type: map
+          description: Metadata associated with prepared sbayesrc annotation file.
+      - prepared_sbayesrc/annotation/annotation.txt:
+          type: file
+          description: Prepared SBayesRC annotation file.
+  summary:
+    - prepared_sbayesrc.summary.tsv:
+        type: file
+        description: Reference preparation and validation summary.
+  versions_unzip:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - unzip:
+          type: string
+          description: The name of the tool
+      - command -v unzip >/dev/null && unzip -v 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - unzip:
+          type: string
+          description: The name of the tool
+      - command -v unzip >/dev/null && unzip -v 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

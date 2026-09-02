@@ -1,15 +1,31 @@
 name: render_report
 description: Render the portable conditional dnaprs report with contextual result and figure downloads.
-keywords: [prs, report, tiff, png, jpeg, dictionary, visualisation, phenotype]
+keywords:
+  - prs
+  - report
+  - tiff
+  - png
+  - jpeg
+  - dictionary
+  - visualisation
+  - phenotype
 tools:
   - quarto:
       description: Scientific publishing system
+      identifier: ""
+      homepage: https://quarto.org/
   - ggplot2:
       description: Grammar of graphics for R
+      identifier: biotools:ggplot2
+      homepage: https://ggplot2.tidyverse.org/
   - openssl:
       description: SHA-256 calculation for the report file dictionary
+      identifier: ""
+      homepage: https://docs.ropensci.org/openssl/
   - jsonlite:
       description: Figure-gallery data embedded in each report page
+      identifier: ""
+      homepage: https://jeroen.r-universe.dev/jsonlite/
 input:
   - report_files:
       type: file
@@ -21,22 +37,31 @@ input:
       type: directory
       description: Quarto report source directory.
 output:
-  - pages:
-      type: file
-      description: Rendered report HTML pages.
-  - libraries:
-      type: directory
-      description: Local JavaScript and CSS dependencies.
-  - assets:
-      type: directory
-      description: Report logos and static assets.
-  - downloads:
-      type: directory
-      description: Optional downloadable result tables.
-  - figures:
-      type: directory
-      description: Optional report figure bundle.
-  - provenance:
-      type: file
-      description: Embedded Nextflow execution and software provenance.
-authors: ["@paulYRP"]
+  pages:
+    - reports/*.html:
+        type: file
+        description: Rendered report HTML pages.
+  libraries:
+    - reports/site_libs:
+        type: directory
+        description: Local JavaScript and CSS dependencies.
+  assets:
+    - reports/assets:
+        type: directory
+        description: Report logos and static assets.
+  downloads:
+    - reports/downloads:
+        type: directory
+        description: Optional downloadable result tables.
+  figures:
+    - reports/figures:
+        type: directory
+        description: Optional report figure bundle.
+  provenance:
+    - reports/provenance/*:
+        type: file
+        description: Embedded Nextflow execution and software provenance.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

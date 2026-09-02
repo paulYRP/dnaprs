@@ -10,8 +10,8 @@ process PARTICIPANT_DECISIONS {
 
     output:
     tuple val(meta), path("${meta.cohort}.participant_decisions.tsv"), path("${meta.cohort}.score_eligible.keep"), emit: decisions
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     relatedness = eda_tables.find { it.name == "${meta.cohort}.relatedness.tsv" }
     if (!relatedness) error "The genotype EDA output for ${meta.cohort} has no relatedness table."
@@ -22,18 +22,11 @@ process PARTICIPANT_DECISIONS {
         --ancestry '${target_ancestry}' \
         --output '${meta.cohort}.participant_decisions.tsv' \
         --keep '${meta.cohort}.score_eligible.keep'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.cohort}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
     """
     printf 'cohort\tFID\tIID\tmissingness\ttechnical_pass\tscore_eligible\trelated_flag\tancestry_flag\tancestry_distance\tprimary_analysis\treason\n${meta.cohort}\tTEST01\tTEST01\t0\tTRUE\tTRUE\tFALSE\tPASS\t0.5\tTRUE\tEligible\n${meta.cohort}\tTEST02\tTEST02\t0\tTRUE\tTRUE\tFALSE\tPASS\t0.6\tTRUE\tEligible\n' > ${meta.cohort}.participant_decisions.tsv
     printf 'TEST01\tTEST01\nTEST02\tTEST02\n' > ${meta.cohort}.score_eligible.keep
-    printf '"${task.process}:${meta.cohort}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

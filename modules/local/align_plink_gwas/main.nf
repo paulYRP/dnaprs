@@ -11,8 +11,8 @@ process ALIGN_PLINK_GWAS {
     output:
     tuple val(meta), path("${meta.trait_id}.plink.cojo.ma"), path("${meta.trait_id}.plink.clump.tsv"), path(harmonisation_qc), emit: aligned
     tuple val(meta), path("${meta.trait_id}.plink.reference_alignment_qc.tsv"), emit: qc
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     """
     Rscript ${align_script} \
@@ -23,12 +23,6 @@ process ALIGN_PLINK_GWAS {
         --output-cojo '${meta.trait_id}.plink.cojo.ma' \
         --output-clump '${meta.trait_id}.plink.clump.tsv' \
         --output-qc '${meta.trait_id}.plink.reference_alignment_qc.tsv'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.trait_id}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
@@ -36,6 +30,5 @@ process ALIGN_PLINK_GWAS {
     cp ${cojo} ${meta.trait_id}.plink.cojo.ma
     cp ${clump_input} ${meta.trait_id}.plink.clump.tsv
     printf 'trait_id\tprs_name\tinput_variants\treference_aligned_variants\tfiltered_reference_missing\tfiltered_reference_ambiguous\tfiltered_reference_duplicate\tcomplemented_alleles\tstatus\n${meta.trait_id}\t${meta.prs_name}\t1\t1\t0\t0\t0\t0\tPASS\n' > ${meta.trait_id}.plink.reference_alignment_qc.tsv
-    printf '"${task.process}:${meta.trait_id}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

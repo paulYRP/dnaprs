@@ -8,54 +8,112 @@ tools:
   - plink2:
       description: Whole genome association analysis toolset
       homepage: https://www.cog-genomics.org/plink/2.0/
+      identifier: ""
 input:
-  - meta:
-      type: map
-      description: Target cohort metadata.
-  - target_dir:
-      type: directory
-      description: Normalised PLINK 2 target directory.
-  - prep_qc:
-      type: file
-      description: Target-preparation and marker-resolution audit.
+  - - meta:
+        type: map
+        description: Metadata associated with inputs required by the `target_qc` process.
+    - target_dir:
+        type: string
+        description: Inputs required by the `target_qc` process.
+    - prep_qc:
+        type: file
+        description: Inputs required by the `target_qc` process.
   - qc_script:
       type: file
-      description: Target QC implementation.
+      description: Executable script used to produce target qc implementation.
   - imputation_geno:
-      type: value
+      type: string
       description: Missingness threshold for the imputation-ready target.
   - direct_geno:
-      type: value
+      type: string
       description: Missingness threshold for the direct-score sensitivity target.
   - target_mind:
-      type: value
+      type: string
       description: Participant missingness threshold.
   - target_maf:
-      type: value
+      type: string
       description: Target minor-allele-frequency threshold.
   - target_hwe:
-      type: value
+      type: string
       description: Hardy-Weinberg equilibrium threshold.
 output:
-  - imputation_ready:
-      type: tuple
-      description: Imputation-ready target dataset and QC summary.
-  - direct_ready:
-      type: tuple
-      description: Direct-score sensitivity dataset and QC summary.
-  - sample_decisions:
-      type: tuple
-      description: Participant-level retain/filter decisions.
-  - variant_decisions:
-      type: tuple
-      description: Variant-level retain/filter decisions.
-  - imputation_checkpoint:
-      type: tuple
-      description: Imputation-ready target checkpoint record.
-  - direct_checkpoint:
-      type: tuple
-      description: Direct-score target checkpoint record.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  imputation_ready:
+    - - meta:
+          type: map
+          description: Metadata associated with imputation-ready target dataset and qc summary.
+      - ${meta.cohort}.imputation_ready:
+          type: file
+          description: Imputation-ready target dataset and QC summary.
+      - ${meta.cohort}.target_qc.tsv:
+          type: file
+          description: Imputation-ready target dataset and QC summary.
+  direct_ready:
+    - - meta:
+          type: map
+          description: Metadata associated with direct-score sensitivity dataset and qc summary.
+      - ${meta.cohort}.direct_ready:
+          type: file
+          description: Direct-score sensitivity dataset and QC summary.
+      - ${meta.cohort}.target_qc.tsv:
+          type: file
+          description: Direct-score sensitivity dataset and QC summary.
+  sample_decisions:
+    - - meta:
+          type: map
+          description: Metadata associated with participant-level retain/filter decisions.
+      - ${meta.cohort}.sample_decisions.tsv:
+          type: file
+          description: Participant-level retain/filter decisions.
+  variant_decisions:
+    - - meta:
+          type: map
+          description: Metadata associated with variant-level retain/filter decisions.
+      - ${meta.cohort}.variant_decisions.tsv:
+          type: file
+          description: Variant-level retain/filter decisions.
+  imputation_checkpoint:
+    - - meta:
+          type: map
+          description: Metadata associated with imputation-ready target checkpoint record.
+      - ${meta.cohort}.imputation_ready:
+          type: file
+          description: Imputation-ready target checkpoint record.
+      - ${meta.cohort}.imputation_ready_target.tsv:
+          type: file
+          description: Imputation-ready target checkpoint record.
+  direct_checkpoint:
+    - - meta:
+          type: map
+          description: Metadata associated with direct-score target checkpoint record.
+      - ${meta.cohort}.direct_ready:
+          type: file
+          description: Direct-score target checkpoint record.
+      - ${meta.cohort}.direct_ready_target.tsv:
+          type: file
+          description: Direct-score target checkpoint record.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

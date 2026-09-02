@@ -19,8 +19,18 @@ nextflow_pipeline {
             def prep = path("$runDir/data/target_prep/TEST/TEST.target_prep_summary.tsv")
             def coverage = path("$runDir/data/qc/scores/TEST/MDD/TEST.MDD.plink_ct.variant_coverage.tsv")
             def association = path("$runDir/data/phenotype/phenotype_associations.tsv")
+            def scores = path("$runDir/data/scores/combined/prs_scores_long.tsv")
+            def participants = path("$runDir/data/target_qc/TEST/TEST.participant_decisions.tsv")
+            def variants = path("$runDir/data/target_qc/TEST/TEST.variant_decisions.tsv")
             def report = path("$runDir/reports/index.html")
             def logsPage = path("$runDir/reports/logs.html")
+            def software = path("$runDir/data/pipeline_info/software_versions.yml")
+            def scoreByParticipant = scores.text.readLines().tail().collectEntries { line ->
+                def fields = line.replace('"', '').split('\t', -1)
+                [(fields[2]): fields[7] as Double]
+            }
+            def associationFields = association.text.readLines()[1].replace('"', '').split('\t', -1)
+            def coverageFields = coverage.text.readLines()[1].split('\t', -1)
 
             assert workflow.success
             assertAll(
@@ -35,9 +45,18 @@ nextflow_pipeline {
                 { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
                 { assert path("$runDir/data/scores/combined/prs_scores_long.tsv").exists() },
                 { assert coverage.exists() },
-                { assert coverage.text.contains("PASS") },
+                { assert coverageFields[4..6] == ['2', '2', '2'] },
+                { assert coverageFields[9] == 'PASS' },
+                { assert scoreByParticipant == [TEST01: -0.08d, TEST02: -0.06d, TEST03: 0.20d, TEST04: -0.16d, TEST05: 0.10d, TEST06: 0.12d] },
+                { assert participants.text.readLines().tail().size() == 6 },
+                { assert participants.text.readLines().tail().every { it.contains('\tTRUE\tTRUE\tFALSE\t"PASS"') } },
+                { assert variants.text.readLines().tail().size() == 2 },
+                { assert variants.text.readLines().tail().every { it.endsWith('\tRETAIN\tVariant passes both technical checkpoints') } },
                 { assert association.exists() },
-                { assert association.text.contains("gaussian") },
+                { assert associationFields[6] == 'gaussian' },
+                { assert associationFields[7] == '6' },
+                { assert Math.abs((associationFields[8] as Double) - (-3.06747624096187d)) < 1e-10 },
+                { assert associationFields[29] == 'ESTIMATED' },
                 { assert report.exists() },
                 { assert report.text.contains('aria-label="Open the dnaprs GitHub repository"') },
                 { assert !report.text.contains('target="_blank"') },
@@ -50,7 +69,8 @@ nextflow_pipeline {
                 { assert path("$runDir/reports/provenance/execution_report.html").exists() },
                 { assert path("$runDir/reports/provenance/execution_timeline.html").exists() },
                 { assert path("$runDir/reports/provenance/pipeline_dag.html").exists() },
-                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() },
+                { assert software.text.contains('REPORT_SOFTWARE') },
+                { assert snapshot(software).match() },
                 { assert path("$runDir/data/inputs/published_files.json").exists() },
                 { assert path(runDir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] }
             )

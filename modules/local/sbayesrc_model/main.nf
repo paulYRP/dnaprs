@@ -12,8 +12,8 @@ process SBAYESRC_MODEL {
     output:
     tuple val(meta), path("${meta.trait_id}.sbayesrc.txt"), path("${meta.trait_id}.sbayesrc.par"), path("${meta.trait_id}.sbayesrc.model_qc.tsv"), path(impute_qc), path(tidy_qc), path(harmonisation_qc), emit: model
     tuple val(meta), path("${meta.trait_id}.sbayesrc.model.log"), emit: logs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('SBayesRC'), eval("Rscript -e 'cat(as.character(packageVersion(\"SBayesRC\")))' 2>/dev/null || printf stub"), emit: versions_sbayesrc, topic: versions
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     script:
     """
     export OMP_NUM_THREADS='${task.cpus}'
@@ -24,12 +24,6 @@ process SBAYESRC_MODEL {
         --annotation '${annotation_reference.path}' \
         --trait-id '${meta.trait_id}' \
         --seed '${seed}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.trait_id}":
-        SBayesRC: \$(Rscript -e "cat(as.character(packageVersion('SBayesRC')))" 2>/dev/null)
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-    VERSIONS
     """
 
     stub:
@@ -38,6 +32,5 @@ process SBAYESRC_MODEL {
     printf 'parameter\tvalue\nheritability\t0.10\n' > ${meta.trait_id}.sbayesrc.par
     printf 'trait_id\tweights\tnonzero_weights\tmaximum_pip\tstatus\n${meta.trait_id}\t1\t1\t0.20\tPASS\n' > ${meta.trait_id}.sbayesrc.model_qc.tsv
     printf 'SBayesRC model stub\n' > ${meta.trait_id}.sbayesrc.model.log
-    printf '"${task.process}:${meta.trait_id}":\n  SBayesRC: stub\n  R: stub\n' > versions.yml
     """
 }

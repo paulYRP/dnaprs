@@ -15,15 +15,10 @@ process ASSEMBLE_TARGET_IMPUTATION {
     tuple val(meta), path("${meta.cohort}.imputation_dr2.tsv"), emit: dr2
     tuple val(meta), path("${meta.cohort}.imputed"), path("${meta.cohort}.imputed_target_manifest.tsv"), emit: checkpoint
     tuple val(meta), path("${meta.cohort}.target_imputation.log"), emit: logs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     script:
     """
     bash ${assembly_script} '${meta.cohort}' '${meta.role}' '${meta.build}' '${meta.ancestry}' '${task.cpus}' '${chromosomes.join(',')}'
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.cohort}":
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-    VERSIONS
     """
 
     stub:
@@ -39,6 +34,5 @@ process ASSEMBLE_TARGET_IMPUTATION {
     cp ${chromosome_logs[0]} ${meta.cohort}.target_imputation.log
     printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.imputed_target_manifest.tsv
     printf '${meta.cohort}\t${meta.role}\tpgen\tcheckpoints/imputed/${meta.cohort}.imputed/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\timputed\t\t\n' >> ${meta.cohort}.imputed_target_manifest.tsv
-    printf '"${task.process}:${meta.cohort}":\n  plink2: stub\n' > versions.yml
     """
 }

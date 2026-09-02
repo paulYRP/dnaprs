@@ -60,6 +60,11 @@ combinePATH <- function(root, relative) {
 }
 
 relativePATH <- function(path, root) {
+  # normalizePath() may leave a relative path unchanged when the final path is a
+  # PLINK prefix rather than an existing file. Anchor it first so prefixes such as
+  # target_source/cohort are still checked against the staged directory.
+  path <- normaliseSLASH(path)
+  if (!grepl("^(/|[A-Za-z]:/)", path)) path <- combinePATH(getwd(), path)
   path <- normaliseSLASH(normalizePath(path, winslash = "/", mustWork = FALSE))
   root <- normaliseSLASH(normalizePath(root, winslash = "/", mustWork = TRUE))
   if (identical(path, root)) return("")
@@ -500,6 +505,7 @@ explicitREFERENCES <- function(specification) {
   namesASSET <- setdiff(names(assets), "fasta_index")
   role <- unname(aliases[namesASSET])
   if (any(is.na(role))) stop(sprintf("Unknown reference asset role(s): %s", paste(namesASSET[is.na(role)], collapse = ", ")), call. = FALSE)
+  if (anyDuplicated(role)) stop("references.assets must declare each reference role once.", call. = FALSE)
   format <- c(
     dbsnp = "directory", reference_fasta = "fasta", genetic_map = "directory",
     imputation_panel = "bref3_directory", population_panel = "tsv",
@@ -507,6 +513,20 @@ explicitREFERENCES <- function(specification) {
     beagle_jar = "jar", unbref3_jar = "jar"
   )
   path <- vapply(namesASSET, function(name) combinePATH(root, asTEXT(assets[[name]])), character(1L))
+  overrides <- c(beagle_jar = "beagle-jar", unbref3_jar = "unbref3-jar")
+  for (overrideROLE in names(overrides)) {
+    overridePATH <- option[[overrides[[overrideROLE]]]]
+    if (!nzchar(overridePATH)) next
+    index <- match(overrideROLE, role)
+    if (is.na(index)) {
+      role <- c(role, overrideROLE)
+      path <- c(path, overridePATH)
+    } else {
+      path[[index]] <- overridePATH
+    }
+  }
+  sourceFORMAT <- unname(format[role])
+  sourceFORMAT[role == "genetic_map" & grepl("[.]zip$", path, ignore.case = TRUE)] <- "zip"
   data.frame(
     bundle_id = paste0("dnaprs_", genomeBUILD),
     bundle_version = option[["reference-bundle"]],
@@ -518,10 +538,17 @@ explicitREFERENCES <- function(specification) {
     }, character(1L)),
     build = genomeBUILD,
     ancestry = ifelse(role %in% c("dbsnp", "reference_fasta", "genetic_map"), "All", ifelse(role == "imputation_panel", "Multiple", "European")),
-    version = option[["reference-bundle"]], checksum = "", source_format = unname(format[role]),
+    version = option[["reference-bundle"]], checksum = "", source_format = sourceFORMAT,
     reference_stage = "source", stringsAsFactors = FALSE
   )
 }
+
+emptyMODELS <- function() data.frame(
+  model_id = character(), outcome = character(), prs_name = character(), family = character(),
+  covariates = character(), participant_id = character(), group_id = character(),
+  expected_direction = character(), primary = logical(), control_value = character(),
+  case_value = character(), stringsAsFactors = FALSE
+)
 
 buildMODELS <- function(specification, gwas) {
   phenotype <- option[["phenotype"]]
@@ -535,12 +562,7 @@ buildMODELS <- function(specification, gwas) {
     stop("The scalar phenotype interface requires --phenotype, --outcome, --covariates (or none), and --model_type.", call. = FALSE)
   }
   if (!hasSCALAR && !hasLIST) {
-    return(data.frame(
-      model_id = character(), outcome = character(), prs_name = character(), family = character(),
-      covariates = character(), participant_id = character(), group_id = character(),
-      expected_direction = character(), primary = logical(), control_value = character(),
-      case_value = character(), stringsAsFactors = FALSE
-    ))
+    return(emptyMODELS())
   }
   if (!nzchar(phenotype)) stop("Phenotype models require --phenotype.", call. = FALSE)
   if (hasSCALAR && hasLIST) stop("Use either scalar phenotype-model parameters or models, not both.", call. = FALSE)
@@ -650,7 +672,7 @@ reference <- if (is.list(referenceSPEC) && !is.character(referenceSPEC) && lengt
   data.frame()
 }
 
-models <- if (runPHENOTYPE) buildMODELS(modelSPEC, gwas) else buildMODELS(list(), gwas)
+models <- if (runPHENOTYPE) buildMODELS(modelSPEC, gwas) else emptyMODELS()
 
 writeTABLE(target, "targets.tsv")
 writeTABLE(gwas, "gwas.tsv")

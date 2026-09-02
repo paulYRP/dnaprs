@@ -34,11 +34,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - NXF_VER: "25.10.4"
-            REAL_TOOLS: true
-          - NXF_VER: "latest-everything"
-            REAL_TOOLS: false
+        # Test the pipeline's declared minimum and Nextflow's current edge
+        # release. The minimum-version entry is also required by nf-core lint.
+        NXF_VER: ["25.10.4", "latest-everything"]
 
     steps:
       - name: Check out pipeline code
@@ -55,8 +53,14 @@ jobs:
           version: ${{ env.NFT_VER }}
           install-pdiff: true
 
+      - name: Check local module contracts
+        run: bash tests/scripts/check_local_modules.sh
+
+      - name: Test verified reference caching
+        run: bash tests/scripts/test_reference_asset.sh
+
       - name: Build pinned test containers
-        if: ${{ matrix.REAL_TOOLS }}
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
           docker build --pull \
             --file containers/analysis/Dockerfile \
@@ -76,11 +80,11 @@ jobs:
             .
 
       - name: Run minimal real-tool workflow test
-        if: ${{ matrix.REAL_TOOLS }}
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
           mkdir -p nf-test-results
           nf-test test tests/default.nf.test \
-            --profile +docker \
+            --profile test,docker \
             --ci \
             --verbose \
             --log nf-test-results/nf-test.log \
@@ -90,21 +94,60 @@ jobs:
         run: |
           mkdir -p nf-test-results
           nf-test test tests/stub.nf.test \
-            --profile +test_full \
+            --profile test_full \
             --ci \
             --verbose \
             --log nf-test-results/stub.log \
             --junitxml nf-test-results/stub.junit.xml
 
-      - name: Run focused stage and reference tests
-        if: ${{ matrix.REAL_TOOLS }}
+      - name: Run focused local-module stub tests
         run: |
-          nf-test test tests/stages.nf.test tests/reference.nf.test \
-            --profile +docker \
+          nf-test test 'modules/local/**/tests/*.nf.test' \
+            --tag modules_stub \
+            --profile test_full \
+            --ci \
+            --verbose \
+            --log nf-test-results/modules.log \
+            --junitxml nf-test-results/modules.junit.xml
+
+      - name: Run focused local-module real tests
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          nf-test test 'modules/local/**/tests/*.nf.test' \
+            --tag modules_real \
+            --profile test,docker \
+            --ci \
+            --verbose \
+            --log nf-test-results/modules-real.log \
+            --junitxml nf-test-results/modules-real.junit.xml
+
+      - name: Run focused stage and reference tests
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          nf-test test tests/stages.nf.test tests/reference.nf.test tests/formats.nf.test \
+            --profile test,docker \
             --ci \
             --verbose \
             --log nf-test-results/focused.log \
             --junitxml nf-test-results/focused.junit.xml
+
+      - name: Run real chromosome-imputation test
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        env:
+          # Keep the temporary JAR below projectDir so Docker receives the same
+          # bind mount used for the other synthetic reference fixtures.
+          DNAPRS_TEST_BEAGLE_JAR: ${{ github.workspace }}/tests/data/reference/beagle.27Feb25.75f.jar
+        run: |
+          curl --fail --location --retry 5 \
+            https://faculty.washington.edu/browning/beagle/beagle.27Feb25.75f.jar \
+            --output "$DNAPRS_TEST_BEAGLE_JAR"
+          echo "7319f4af9638be05c18dcc1bfb8fb41a58a09293507ebf0d54617d0e40df5a70  $DNAPRS_TEST_BEAGLE_JAR" | sha256sum --check --strict
+          nf-test test tests/imputation.nf.test \
+            --profile test,docker \
+            --ci \
+            --verbose \
+            --log nf-test-results/imputation.log \
+            --junitxml nf-test-results/imputation.junit.xml
 
       - name: Upload test records
         if: always()

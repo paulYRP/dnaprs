@@ -1,0 +1,58 @@
+nextflow_pipeline {
+
+    name "Import every supported raw target format with real tools"
+    script "../main.nf"
+    tag "pipeline"
+    tag "formats"
+    tag "real"
+
+    test("PGEN, BED, PED, BGEN, VCF, and GenomeStudio reach target QC") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "formats"
+                input = [
+                    [id: 'PGEN', path: "${projectDir}/tests/data/target/test_target.pgen", format: 'pgen', stage: 'raw', build: 'GRCh37', ancestry: 'European'],
+                    [id: 'BED', path: "${projectDir}/tests/data/target/formats/target_bed.bed", format: 'bed', stage: 'raw', build: 'GRCh37', ancestry: 'European'],
+                    [id: 'PED', path: "${projectDir}/tests/data/target/formats/target_ped.ped", format: 'ped', stage: 'raw', build: 'GRCh37', ancestry: 'European'],
+                    [id: 'BGEN', path: "${projectDir}/tests/data/target/formats/target_bgen.bgen", sample: "${projectDir}/tests/data/target/formats/target_bgen.sample", format: 'bgen', stage: 'raw', build: 'GRCh37', ancestry: 'European'],
+                    [id: 'VCF', path: "${projectDir}/tests/data/target/test_target.vcf", format: 'vcf', stage: 'raw', build: 'GRCh37', ancestry: 'European'],
+                    [id: 'GENOMESTUDIO', path: "${projectDir}/tests/data/target/mini_finalreport.txt", assay_manifest: "${projectDir}/tests/data/target/mini_manifest.csv", format: 'genomestudio', stage: 'raw', build: 'GRCh37', ancestry: 'European'],
+                ]
+                stop_after = "target_qc"
+                phenotype = null
+                outcome = null
+                covariates = null
+                model_type = null
+                participant_id = null
+                target_imputation = false
+                report_enabled = false
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/formats"
+            def cohorts = ['PGEN', 'BED', 'PED', 'BGEN', 'VCF', 'GENOMESTUDIO']
+            def targets = path("$runDir/data/inputs/targets.tsv")
+
+            assert workflow.success
+            assertAll(
+                { assert targets.exists() },
+                { assert targets.text.readLines().tail().size() == 6 },
+                { assert targets.text.contains('\tpgen\t') },
+                { assert targets.text.contains('\tbed\t') },
+                { assert targets.text.contains('\tped\t') },
+                { assert targets.text.contains('\tbgen\t') },
+                { assert targets.text.contains('\tvcf\t') },
+                { assert targets.text.contains('\tgenomestudio\t') },
+                { assert cohorts.every { cohort -> path("$runDir/data/target_prep/${cohort}/${cohort}.target_prep_summary.tsv").exists() } },
+                { assert cohorts.every { cohort -> path("$runDir/data/target_qc/${cohort}/${cohort}.target_qc.tsv").exists() } },
+                { assert cohorts.every { cohort -> path("$runDir/data/target_qc/${cohort}/${cohort}.participant_decisions.tsv").exists() } },
+                { assert path("$runDir/data/target_prep/GENOMESTUDIO/GENOMESTUDIO.marker_decisions.tsv").exists() },
+                { assert !path("$runDir/data/scores").exists() },
+                { assert !path("$runDir/data/phenotype").exists() }
+            )
+        }
+    }
+}

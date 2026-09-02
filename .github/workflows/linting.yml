@@ -4,6 +4,10 @@ name: nf-core linting
 # that the code meets the nf-core guidelines.
 on:
   pull_request:
+  push:
+    branches:
+      - dev
+      - main
   release:
     types: [published]
 

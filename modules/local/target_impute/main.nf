@@ -11,8 +11,9 @@ process TARGET_IMPUTE_CHROMOSOME {
 
     output:
     tuple val(group_key), val(chromosome), path("*.chr*.imputed"), path("*.chr*.imputation_manifest.tsv"), path("*.chr*.imputation_qc.tsv"), path("*.chr*.imputation_dr2.tsv"), path("*.chr*.target_imputation.log"), emit: chromosomes
-    path "*.chr*.versions.yml", emit: versions
-
+    tuple val("${task.process}"), val('beagle'), eval("printf 27Feb25.75f"), emit: versions_beagle, topic: versions
+    tuple val("${task.process}"), val('bcftools'), eval("command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub"), emit: versions_bcftools, topic: versions
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     script:
     meta = group_key.getGroupTarget()
     memory_mb = Math.max(1024, (task.memory.toMega() * 0.85) as int)
@@ -21,13 +22,6 @@ process TARGET_IMPUTE_CHROMOSOME {
         '${meta.cohort}' '${chromosome}' '${target_pgen}' '${target_pvar}' '${target_psam}' \
         '${panel.path}' '${genetic_map.path}' '${imputation_dr2}' '${task.cpus}' '${memory_mb}' '${panel.build}' \
         '${reference_fasta.path}'
-
-    cat > ${meta.cohort}.chr${chromosome}.versions.yml <<-VERSIONS
-    "${task.process}:${meta.cohort}:chr${chromosome}":
-        beagle: 27Feb25.75f
-        bcftools: \$(bcftools --version | head -n 1 | awk '{print \$2}')
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-    VERSIONS
     """
 
     stub:
@@ -43,6 +37,5 @@ process TARGET_IMPUTE_CHROMOSOME {
     printf 'cohort\tchromosome\tinput_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus\n${meta.cohort}\t${chromosome}\t1\t1\t0\t${imputation_dr2}\tPASS\tPASS\tPASS\tPASS\tPASS\n' > ${meta.cohort}.chr${chromosome}.imputation_qc.tsv
     printf 'cohort\tchromosome\tdr2_bin\tvariants\n${meta.cohort}\t${chromosome}\t[0.9,1]\t1\n' > ${meta.cohort}.chr${chromosome}.imputation_dr2.tsv
     printf 'Target chromosome imputation stub\n' > ${meta.cohort}.chr${chromosome}.target_imputation.log
-    printf '"${task.process}:${meta.cohort}:chr${chromosome}":\n  beagle: stub\n  bcftools: stub\n  plink2: stub\n' > ${meta.cohort}.chr${chromosome}.versions.yml
     """
 }

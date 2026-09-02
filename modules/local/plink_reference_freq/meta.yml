@@ -1,21 +1,54 @@
 name: plink_reference_freq
 description: Calculate fixed allele frequencies in the declared PLINK LD reference.
-keywords: [plink, allele-frequency, reference]
+keywords:
+  - plink
+  - allele-frequency
+  - reference
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
 input:
-  - reference:
-      type: map
-      description: PLINK LD-reference metadata.
-  - reference_files:
-      type: directory
-      description: Prepared PLINK LD-reference dataset.
+  - - reference:
+        type: map
+        description: Metadata associated with inputs required by the `plink_reference_freq` process.
+    - reference_files:
+        type: list
+        description: Inputs required by the `plink_reference_freq` process.
 output:
-  - frequency:
-      type: tuple
-      description: Fixed reference allele counts and PLINK log.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  frequency:
+    - - reference:
+          type: map
+          description: Metadata associated with fixed reference allele counts and plink log.
+      - reference.afreq:
+          type: file
+          description: Fixed reference allele counts and PLINK log.
+      - reference.log:
+          type: file
+          description: Fixed reference allele counts and PLINK log.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

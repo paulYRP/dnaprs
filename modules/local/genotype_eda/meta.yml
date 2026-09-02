@@ -1,29 +1,69 @@
 name: genotype_eda
-description: Describe raw target genotype composition and exploratory sample and variant diagnostics without applying QC exclusions.
-keywords: [plink, genotype, eda, missingness, heterozygosity, relatedness, pca]
+description: Describe raw target genotype composition and exploratory sample and variant diagnostics without
+  applying QC exclusions.
+keywords:
+  - plink
+  - genotype
+  - eda
+  - missingness
+  - heterozygosity
+  - relatedness
+  - pca
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
 input:
-  - meta:
-      type: map
-      description: Target metadata containing stable cohort, format, build, and input-stage identifiers.
-  - target_files:
+  - - meta:
+        type: map
+        description: Metadata associated with inputs required by the `genotype_eda` process.
+    - target_files:
+        type: list
+        description: Inputs required by the `genotype_eda` process.
+  - genotype_eda_script:
       type: file
-      description: Staged target genotype files and required format companions.
+      description: Executable script used to produce inputs required by the `genotype_eda` process.
+  - adapter_script:
+      type: file
+      description: Executable script used to produce inputs required by the `genotype_eda` process.
 output:
-  - tables:
-      type: file
-      description: Cohort-specific exploratory summaries and exact figure-source tables.
-      pattern: "*.tsv"
-  - logs:
-      type: file
-      description: Complete command and PLINK log for the exploratory stage.
-      pattern: "*.genotype_eda.log"
-  - versions:
-      type: file
-      description: Software versions used by the process.
-      pattern: versions.yml
+  tables:
+    - - meta:
+          type: file
+          description: Metadata associated with cohort-specific exploratory summaries and exact figure-source
+            tables.
+      - ${meta.cohort}.*.tsv:
+          type: file
+          description: Cohort-specific exploratory summaries and exact figure-source tables.
+  logs:
+    - - meta:
+          type: file
+          description: Metadata associated with complete command and plink log for the exploratory stage.
+      - ${meta.cohort}.genotype_eda.log:
+          type: file
+          description: Complete command and PLINK log for the exploratory stage.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
 authors:
   - "@paulYRP"
 maintainers:

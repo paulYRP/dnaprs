@@ -1,25 +1,61 @@
 name: reference_asset
 description: Fetch or reuse one pinned reference asset and verify its declared integrity metadata.
-keywords: [reference, download, checksum, cache]
+keywords:
+  - reference
+  - download
+  - checksum
+  - cache
 tools:
   - curl:
       description: Command-line data transfer tool
+      identifier: ""
+      homepage: https://curl.se/
 input:
-  - asset:
-      type: tuple
-      description: Catalogue row, existing cache candidate, and final cache path.
+  - - row:
+        type: map
+        description: Metadata associated with inputs required by the `reference_asset` process.
+    - cached:
+        type: string
+        description: Inputs required by the `reference_asset` process.
+    - cache_target:
+        type: string
+        description: Inputs required by the `reference_asset` process.
   - embedded_fasta_index:
       type: file
       description: Bundled FASTA index used only for the matching catalogue asset.
   - asset_script:
       type: file
-      description: Atomic download, checksum, and cache implementation.
+      description: Executable script used to produce atomic download, checksum, and cache implementation.
 output:
-  - asset:
-      type: tuple
-      description: Catalogue metadata and verified reference asset.
-  - versions:
-      type: file
-      description: Software versions in YAML format.
-authors: ["@paulYRP"]
-maintainers: ["@paulYRP"]
+  asset:
+    - - row:
+          type: map
+          description: Metadata associated with catalogue metadata and verified reference asset.
+      - ${row.asset_id}:
+          type: directory
+          description: Catalogue metadata and verified reference asset.
+  versions_curl:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - curl:
+          type: string
+          description: The name of the tool
+      - command -v curl >/dev/null && curl --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - curl:
+          type: string
+          description: The name of the tool
+      - command -v curl >/dev/null && curl --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

@@ -17,8 +17,9 @@ process PREPARE_TARGET {
     tuple val(meta), path("${meta.cohort}.target_prep_summary.tsv"), emit: prep
     tuple val(meta), path("${meta.cohort}.marker_decisions.tsv"), emit: marker_decisions
     tuple val(meta), path("${meta.cohort}"), path("${meta.cohort}.corrected_target_manifest.tsv"), emit: checkpoint
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('bcftools'), eval("command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub"), emit: versions_bcftools, topic: versions
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     script:
     checkpoint_stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
     """
@@ -44,13 +45,6 @@ process PREPARE_TARGET {
         'checkpoints/${checkpoint_stage}/${meta.cohort}/${meta.cohort}.pgen' \
         '${meta.build}' '${meta.ancestry}' '${checkpoint_stage}' \
         >> ${meta.cohort}.corrected_target_manifest.tsv
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.cohort}":
-        bcftools: \$(bcftools --version | head -n 1 | awk '{print \$2}')
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-    VERSIONS
     """
 
     stub:
@@ -68,6 +62,5 @@ process PREPARE_TARGET {
     printf 'source_id\tfinal_id\tsource_chr\tsource_pos\tfinal_chr\tfinal_pos\tsource_ref\tsource_alt\tfinal_ref\tfinal_alt\tdecision\treason\n1:100:A:G\t1:100:A:G\t1\t100\t1\t100\tA\tG\tA\tG\tINHERITED\tStub target\n' > ${meta.cohort}.marker_decisions.tsv
     printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.corrected_target_manifest.tsv
     printf '${meta.cohort}\t${meta.role}\tpgen\tcheckpoints/${checkpoint_stage}/${meta.cohort}/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\t${checkpoint_stage}\t\t\n' >> ${meta.cohort}.corrected_target_manifest.tsv
-    printf '"${task.process}:${meta.cohort}":\n  bcftools: stub\n  plink2: stub\n  R: stub\n' > versions.yml
     """
 }

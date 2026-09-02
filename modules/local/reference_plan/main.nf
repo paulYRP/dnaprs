@@ -14,8 +14,7 @@ process REFERENCE_PLAN {
     output:
     path 'reference_assets.tsv', emit: assets
     path 'reference_plan.tsv', emit: plan
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     script:
     """
     Rscript ${plan_script} \
@@ -23,7 +22,6 @@ process REFERENCE_PLAN {
         --catalogue '${catalogue}' \
         --run-plan '${run_plan}' \
         --mode '${reference_mode}'
-    printf '"${task.process}":\n  R: %s\n' "\$(Rscript -e 'cat(as.character(getRversion()))')" > versions.yml
     """
 
     stub:
@@ -31,6 +29,5 @@ process REFERENCE_PLAN {
     head -n 1 ${catalogue} > reference_assets.tsv
     grep -E '^beagle_jar\t|^unbref3_jar\t' ${catalogue} >> reference_assets.tsv || true
     printf 'reference_type\tsource\tstatus\nreferences\tstub\tPLANNED\n' > reference_plan.tsv
-    printf '"${task.process}":\n  R: stub\n' > versions.yml
     """
 }

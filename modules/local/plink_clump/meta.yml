@@ -1,33 +1,72 @@
 name: plink_clump
 description: Select approximately independent variants using a fixed European LD reference.
-keywords: [plink, clumping, prs]
+keywords:
+  - plink
+  - clumping
+  - prs
 tools:
   - plink2:
       description: Whole-genome association and genotype-processing toolset
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
 input:
-  - meta:
-      type: map
-      description: GWAS trait metadata.
-  - cojo:
-      type: file
-      description: Reference-aligned GWAS summary statistics.
-  - clump_input:
-      type: file
-      description: Reference-aligned PLINK clumping input.
-  - harmonisation_qc:
-      type: file
-      description: Upstream GWAS harmonisation audit.
-  - reference:
-      type: map
-      description: PLINK LD-reference metadata.
-  - reference_files:
-      type: directory
-      description: Prepared PLINK LD-reference dataset.
+  - - meta:
+        type: map
+        description: Metadata associated with inputs required by the `plink_clump` process.
+    - cojo:
+        type: file
+        description: Inputs required by the `plink_clump` process.
+    - clump_input:
+        type: file
+        description: Inputs required by the `plink_clump` process.
+    - harmonisation_qc:
+        type: file
+        description: Inputs required by the `plink_clump` process.
+    - reference:
+        type: map
+        description: Metadata associated with inputs required by the `plink_clump` process.
+    - reference_files:
+        type: list
+        description: Inputs required by the `plink_clump` process.
 output:
-  - clumped:
-      type: tuple
-      description: Clumping results with aligned GWAS, audit, and task log.
-  - versions:
-      type: file
-      description: Software versions used by the task.
-authors: ["@paulYRP"]
+  clumped:
+    - - meta:
+          type: map
+          description: Metadata associated with clumping results with aligned gwas, audit, and task log.
+      - cojo:
+          type: file
+          description: Clumping results with aligned GWAS, audit, and task log.
+      - ${meta.trait_id}.clumps:
+          type: file
+          description: Clumping results with aligned GWAS, audit, and task log.
+      - harmonisation_qc:
+          type: file
+          description: Clumping results with aligned GWAS, audit, and task log.
+      - ${meta.trait_id}.clump.log:
+          type: file
+          description: Clumping results with aligned GWAS, audit, and task log.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - plink2:
+          type: string
+          description: The name of the tool
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

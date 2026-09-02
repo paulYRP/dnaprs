@@ -10,8 +10,8 @@ process HARMONISE_GWAS {
 
     output:
     tuple val(meta), path("${meta.trait_id}.cojo.ma"), path("${meta.trait_id}.clump.tsv"), path("${meta.trait_id}.harmonisation_qc.tsv"), emit: harmonised
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     """
     Rscript ${harmonise_script} \
@@ -38,12 +38,6 @@ process HARMONISE_GWAS {
         --info-min '${meta.info_min ?: ''}' \
         --maf-min '${meta.maf_min ?: '0.01'}' \
         --source-format '${meta.source_format ?: 'auto'}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${meta.trait_id}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
@@ -51,6 +45,5 @@ process HARMONISE_GWAS {
     printf 'SNP\tCHR\tBP\tA1\tA2\tfreq\tb\tse\tp\tN\n1:100:A:G\t1\t100\tG\tA\t0.25\t0.10\t0.03\t0.001\t100000\n' > ${meta.trait_id}.cojo.ma
     printf 'ID\tCHR\tPOS\tA1\tP\n1:100:A:G\t1\t100\tG\t0.001\n' > ${meta.trait_id}.clump.tsv
     printf 'trait_id\tprs_name\tsource_format\tsource_variants\tharmonised_variants\tfiltered_structural\tfiltered_frequency\tfiltered_maf\tfiltered_info\tfiltered_ambiguous\tfiltered_duplicate\tmaf_min\tinfo_min\tduplicated_snp\tstructural_status\n${meta.trait_id}\t${meta.prs_name}\t${meta.source_format ?: 'auto'}\t1\t1\t0\t0\t0\t0\t0\t0\t0.01\t\t0\tPASS\n' > ${meta.trait_id}.harmonisation_qc.tsv
-    printf '"${task.process}:${meta.trait_id}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

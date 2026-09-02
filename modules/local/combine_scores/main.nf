@@ -14,19 +14,13 @@ process COMBINE_SCORES {
     path 'prs_scores_wide.tsv', emit: scores_wide
     path 'score_qc.tsv', emit: score_qc
     path 'method_concordance.tsv', emit: concordance
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
+    tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
     scoreARG = score_files.collect { score_file -> score_file.toString() }.join(',')
     decisionARG = participant_decisions.collect { decision_file -> decision_file.toString() }.join(',')
     """
     Rscript ${combine_script} --scores '${scoreARG}' --participant-decisions '${decisionARG}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}":
-        R: \$(Rscript -e 'cat(as.character(getRversion()))')
-        data.table: \$(Rscript -e "cat(as.character(packageVersion('data.table')))" 2>/dev/null)
-    VERSIONS
     """
 
     stub:
@@ -36,6 +30,5 @@ process COMBINE_SCORES {
     printf 'cohort\trole\tFID\tIID\tMDD_PRS\ttechnical_pass\tscore_eligible\trelated_flag\tancestry_flag\tancestry_distance\tprimary_analysis\nTEST\ttarget\tTEST01\tTEST01\t-0.7071\tTRUE\tTRUE\tFALSE\tNOT_ASSESSED\tNA\tTRUE\nTEST\ttarget\tTEST02\tTEST02\t0.7071\tTRUE\tTRUE\tFALSE\tNOT_ASSESSED\tNA\tTRUE\n' > prs_scores_wide.tsv
     printf 'cohort\trole\ttrait_id\tprs_name\tmethod\tparticipants\tfinite_scores\traw_mean\traw_sd\tz_mean\tz_sd\tused_variants\tstatus\nTEST\ttarget\tMDD\tMDD_PRS\tplink_ct\t2\t2\t0.15\t0.07\t0\t1\t1\tPASS\n' > score_qc.tsv
     printf 'cohort\ttrait_id\tprs_name\tmethod_1\tmethod_2\tparticipants\tpearson_r\tspearman_r\n' > method_concordance.tsv
-    printf '"${task.process}":\n  R: stub\n  data.table: stub\n' > versions.yml
     """
 }

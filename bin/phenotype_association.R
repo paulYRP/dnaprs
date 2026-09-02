@@ -143,7 +143,9 @@ resultN <- 0L
 for (modelROW in seq_len(nrow(modelSPEC))) {
   specification <- modelSPEC[modelROW]
   familyVALUE <- tolower(specification$family)
-  covariate <- trimws(strsplit(specification$covariates, ",", fixed = TRUE)[[1L]])
+  covariateVALUE <- as.character(specification$covariates)
+  if (length(covariateVALUE) != 1L || is.na(covariateVALUE)) covariateVALUE <- ""
+  covariate <- trimws(strsplit(covariateVALUE, ",", fixed = TRUE)[[1L]])
   covariate <- covariate[covariate != ""]
   scoreSUBSET <- score[
     prs_name == specification$prs_name &

@@ -19,10 +19,13 @@ nextflow_pipeline {
 
         then {
             def runDir = "$outputDir/stub"
+            def models = path("$runDir/data/inputs/models.tsv")
             assert workflow.success
             assertAll(
                 { assert path("$runDir/data/inputs/run_plan.tsv").exists() },
                 { assert path("$runDir/data/inputs/checks/reference_integrity.tsv").exists() },
+                { assert models.text.readLines().tail().size() == 4 },
+                { assert ['mhc_total', 'who_total', 'brs_total', 'bdsst_total'].every { models.text.contains(it) } },
                 { assert path("$runDir/data/target_imputation/TEST/TEST.imputation_manifest.tsv").exists() },
                 { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
                 { assert path("$runDir/data/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },

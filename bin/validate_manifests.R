@@ -91,6 +91,51 @@ checkPATH <- function(path, label) {
   }
 }
 
+# Nextflow may copy declared inputs into the task directory instead of bind-mounting
+# their original parent directories. Keep the original manifest paths for provenance,
+# but use the staged copies for validation inside Docker or Apptainer.
+stagedMATCH <- new.env(parent = emptyenv())
+stagedPATH <- function(path, root) {
+  path <- as.character(path)
+  if (length(path) == 0L || is.null(root) || length(root) == 0L || !nzchar(root) || !dir.exists(root)) {
+    return(path)
+  }
+  vapply(path, function(value) {
+    if (file.exists(value) || dir.exists(value)) return(value)
+    patternVALUE <- grepl("\\{chromosome\\}|\\{chr\\}|\\{CHR\\}|#|[*?]", value)
+    fileNAME <- basename(value)
+    if (patternVALUE) {
+      fileNAME <- gsub("\\{chromosome\\}|\\{chr\\}|\\{CHR\\}", "*", fileNAME)
+      fileNAME <- gsub("#", "*", fileNAME, fixed = TRUE)
+      return(file.path(root, "*", fileNAME))
+    }
+    candidate <- list.files(
+      root,
+      recursive = TRUE,
+      full.names = TRUE,
+      all.files = FALSE,
+      include.dirs = TRUE,
+      no.. = TRUE
+    )
+    candidate <- sort(candidate[basename(candidate) == fileNAME])
+    if (length(candidate) == 0L) return(value)
+    sourceKEY <- paste(root, value, sep = "\r")
+    if (exists(sourceKEY, envir = stagedMATCH, inherits = FALSE)) {
+      return(get(sourceKEY, envir = stagedMATCH, inherits = FALSE))
+    }
+    baseKEY <- paste(root, fileNAME, sep = "\r")
+    occurrence <- if (exists(baseKEY, envir = stagedMATCH, inherits = FALSE)) {
+      get(baseKEY, envir = stagedMATCH, inherits = FALSE) + 1L
+    } else {
+      1L
+    }
+    occurrence <- min(occurrence, length(candidate))
+    assign(baseKEY, occurrence, envir = stagedMATCH)
+    assign(sourceKEY, candidate[[occurrence]], envir = stagedMATCH)
+    candidate[[occurrence]]
+  }, character(1L), USE.NAMES = FALSE)
+}
+
 sha256FILE <- function(path) {
   if (nzchar(Sys.which("sha256sum"))) {
     value <- system2("sha256sum", shQuote(path), stdout = TRUE, stderr = TRUE)
@@ -139,7 +184,7 @@ resourceDIGEST <- function(files, base) {
   as.character(openssl::sha256(charToRaw(paste0(paste(inventory, collapse = "\n"), "\n"))))
 }
 
-checkTARGET <- function(path, format, label) {
+checkTARGET <- function(path, format, label, stagedROOT = "") {
   hasPATTERN <- grepl("\\{chromosome\\}|\\{chr\\}|\\{CHR\\}|#|[*?]", path)
   pattern <- gsub("\\{chromosome\\}|\\{chr\\}|\\{CHR\\}", "*", path)
   pattern <- gsub("#", "*", pattern, fixed = TRUE)
@@ -152,16 +197,16 @@ checkTARGET <- function(path, format, label) {
   if (format == "pgen") {
     prefix <- ifelse(grepl("\\.pgen$", expanded, ignore.case = TRUE), sub("\\.pgen$", "", expanded, ignore.case = TRUE), expanded)
     companion <- as.vector(outer(prefix, c(".pgen", ".pvar", ".psam"), paste0))
-    checkPATH(companion, paste(label, "PGEN companion"))
+    checkPATH(stagedPATH(companion, stagedROOT), paste(label, "PGEN companion"))
   } else if (format == "bed") {
     prefix <- ifelse(grepl("\\.bed$", expanded, ignore.case = TRUE), sub("\\.bed$", "", expanded, ignore.case = TRUE), expanded)
     companion <- as.vector(outer(prefix, c(".bed", ".bim", ".fam"), paste0))
-    checkPATH(companion, paste(label, "BED companion"))
+    checkPATH(stagedPATH(companion, stagedROOT), paste(label, "BED companion"))
   } else if (format == "ped") {
     if (hasPATTERN) stop("PED/MAP input cannot use a chromosome pattern.", call. = FALSE)
     prefix <- ifelse(grepl("\\.ped$", expanded, ignore.case = TRUE), sub("\\.ped$", "", expanded, ignore.case = TRUE), expanded)
     companion <- as.vector(outer(prefix, c(".ped", ".map"), paste0))
-    checkPATH(companion, paste(label, "PED/MAP companion"))
+    checkPATH(stagedPATH(companion, stagedROOT), paste(label, "PED/MAP companion"))
   } else {
     checkPATH(expanded, label)
   }
@@ -221,7 +266,7 @@ firstMATCH <- function(path) {
   sort(matched)[[1L]]
 }
 
-targetSAMPLEIDS <- function(target, nativePATH) {
+targetSAMPLEIDS <- function(target, nativePATH, stagedROOT = "") {
   output <- character()
   for (row in seq_len(nrow(target))) {
     format <- target$source_format[[row]]
@@ -229,7 +274,7 @@ targetSAMPLEIDS <- function(target, nativePATH) {
     if (is.na(genotype)) next
     if (format == "pgen") {
       prefix <- sub("\\.pgen$", "", genotype, ignore.case = TRUE)
-      samplePATH <- paste0(prefix, ".psam")
+      samplePATH <- stagedPATH(paste0(prefix, ".psam"), stagedROOT)
       if (file.exists(samplePATH)) {
         sample <- utils::read.table(samplePATH, header = TRUE, comment.char = "", check.names = FALSE, stringsAsFactors = FALSE)
         iidCOLUMN <- intersect(c("IID", "#IID"), names(sample))
@@ -238,13 +283,17 @@ targetSAMPLEIDS <- function(target, nativePATH) {
     } else if (format %in% c("bed", "ped")) {
       extension <- if (format == "bed") "\\.bed$" else "\\.ped$"
       prefix <- sub(extension, "", genotype, ignore.case = TRUE)
-      samplePATH <- paste0(prefix, if (format == "bed") ".fam" else ".ped")
+      samplePATH <- stagedPATH(paste0(prefix, if (format == "bed") ".fam" else ".ped"), stagedROOT)
       if (file.exists(samplePATH)) {
         sample <- utils::read.table(samplePATH, header = FALSE, stringsAsFactors = FALSE)
         if (ncol(sample) >= 2L) output <- c(output, as.character(sample[[2L]]))
       }
     } else if (format == "bgen") {
-      samplePATH <- if (nzchar(target$sample[[row]])) resolvePATH(target$sample[[row]], launchNATIVE) else NA_character_
+      samplePATH <- if (nzchar(target$sample[[row]])) {
+        stagedPATH(resolvePATH(target$sample[[row]], launchNATIVE), stagedROOT)
+      } else {
+        NA_character_
+      }
       if (length(samplePATH) == 1L && !is.na(samplePATH) && file.exists(samplePATH)) {
         sample <- utils::read.table(samplePATH, header = TRUE, skip = 1L, stringsAsFactors = FALSE)
         iidCOLUMN <- intersect(c("ID_2", "IID", "ID"), names(sample))
@@ -302,6 +351,9 @@ referenceBASENATIVE <- resolvePATH(referenceBASE, getwd())
 if (!dir.exists(referenceBASENATIVE)) {
   stop(sprintf("Reference base directory does not exist: %s", referenceBASE), call. = FALSE)
 }
+targetSTAGEROOT <- resolvePATH(option[["target-assets"]], getwd())
+gwasSTAGEROOT <- resolvePATH(option[["gwas-assets"]], getwd())
+referenceSTAGEROOT <- resolvePATH(option[["reference-assets"]], getwd())
 
 # Validate both raw and completed target checkpoints. Input format and scientific stage
 # are independent so a BED trio can enter as raw, corrected, QC-completed, or imputed.
@@ -355,13 +407,18 @@ target$sample[samplePRESENT] <- pipelinePATH(target$sample[samplePRESENT], launc
 target$keep[keepPRESENT] <- pipelinePATH(target$keep[keepPRESENT], launchDIR)
 target$assay_manifest[assayPRESENT] <- pipelinePATH(target$assay_manifest[assayPRESENT], launchDIR)
 target$marker_map[markerMAPRESENT] <- pipelinePATH(target$marker_map[markerMAPRESENT], launchDIR)
-targetGENOTYPENATIVE <- resolvePATH(target$genotype, launchNATIVE)
-targetSAMPLENATIVE <- resolvePATH(target$sample[target$sample != ""], launchNATIVE)
-targetKEEPNATIVE <- resolvePATH(target$keep[target$keep != ""], launchNATIVE)
-targetASSAYNATIVE <- resolvePATH(target$assay_manifest[target$assay_manifest != ""], launchNATIVE)
-targetMARKERMAPNATIVE <- resolvePATH(target$marker_map[target$marker_map != ""], launchNATIVE)
+targetGENOTYPENATIVE <- stagedPATH(resolvePATH(target$genotype, launchNATIVE), targetSTAGEROOT)
+targetSAMPLENATIVE <- stagedPATH(resolvePATH(target$sample[target$sample != ""], launchNATIVE), targetSTAGEROOT)
+targetKEEPNATIVE <- stagedPATH(resolvePATH(target$keep[target$keep != ""], launchNATIVE), targetSTAGEROOT)
+targetASSAYNATIVE <- stagedPATH(resolvePATH(target$assay_manifest[target$assay_manifest != ""], launchNATIVE), targetSTAGEROOT)
+targetMARKERMAPNATIVE <- stagedPATH(resolvePATH(target$marker_map[target$marker_map != ""], launchNATIVE), targetSTAGEROOT)
 for (row in seq_len(nrow(target))) {
-  checkTARGET(targetGENOTYPENATIVE[row], target$source_format[row], sprintf("Target '%s' genotype", target$cohort[row]))
+  checkTARGET(
+    targetGENOTYPENATIVE[row],
+    target$source_format[row],
+    sprintf("Target '%s' genotype", target$cohort[row]),
+    targetSTAGEROOT
+  )
   if (target$source_format[row] == "genomestudio" && !nzchar(target$assay_manifest[row])) {
     stop(sprintf("Target '%s' requires assay_manifest for GenomeStudio input.", target$cohort[row]), call. = FALSE)
   }
@@ -403,7 +460,7 @@ if (runPRS) {
     stop("Every GWAS row must use the selected genome build.", call. = FALSE)
   }
   gwas$path <- pipelinePATH(gwas$path, launchDIR)
-  gwasPATHNATIVE <- resolvePATH(gwas$path, launchNATIVE)
+  gwasPATHNATIVE <- stagedPATH(resolvePATH(gwas$path, launchNATIVE), gwasSTAGEROOT)
   checkPATH(gwasPATHNATIVE, "GWAS input")
   for (row in seq_len(nrow(gwas))) {
     declaredCOLUMN <- unlist(gwas[row, c(
@@ -498,11 +555,15 @@ reference$companion[is.na(reference$companion)] <- ""
 reference$path <- pipelinePATH(reference$path, referenceBASE)
 companionPRESENT <- nzchar(trimws(reference$companion))
 reference$companion[companionPRESENT] <- pipelinePATH(reference$companion[companionPRESENT], referenceBASE)
-referencePATHNATIVE <- resolvePATH(reference$path, referenceBASENATIVE)
+referencePATHNATIVE <- stagedPATH(resolvePATH(reference$path, referenceBASENATIVE), referenceSTAGEROOT)
 referenceCOMPANIONNATIVE <- rep("", nrow(reference))
 referenceCOMPANIONNATIVE[companionPRESENT] <- resolvePATH(
   reference$companion[companionPRESENT],
   referenceBASENATIVE
+)
+referenceCOMPANIONNATIVE[companionPRESENT] <- stagedPATH(
+  referenceCOMPANIONNATIVE[companionPRESENT],
+  referenceSTAGEROOT
 )
 referenceFILELIST <- vector("list", nrow(reference))
 verifiedREFERENCE <- logical(nrow(reference))
@@ -617,7 +678,7 @@ if (nrow(phenotypeMODEL) > 0L) {
     stop("All phenotype models in one run must use one participant-ID column.", call. = FALSE)
   }
   if (length(declaredPARTICIPANT) == 0L) {
-    targetID <- targetSAMPLEIDS(target, targetGENOTYPENATIVE)
+    targetID <- targetSAMPLEIDS(target, targetGENOTYPENATIVE, targetSTAGEROOT)
     if (length(targetID) == 0L) {
       stop("Could not read target sample IDs; provide --participant_id explicitly.", call. = FALSE)
     }

@@ -8,7 +8,7 @@ include { TARGET_IMPUTE_CHROMOSOME } from '../modules/local/target_impute/main'
 include { ASSEMBLE_TARGET_IMPUTATION } from '../modules/local/assemble_target_imputation/main'
 include { PREPARE_PLINK_REFERENCE } from '../modules/local/prepare_plink_reference/main'
 include { PREPARE_SBAYESRC_REFERENCE } from '../modules/local/prepare_sbayesrc_reference/main'
-include { GENOTYPE_EDA_PLINK as GENOTYPE_EDA } from '../modules/local/genotype_eda/main'
+include { GENOTYPE_EDA } from '../modules/local/genotype_eda/main'
 include { PLINK_REFERENCE_FREQ } from '../modules/local/plink_reference_freq/main'
 include { ALIGN_PLINK_GWAS } from '../modules/local/align_plink_gwas/main'
 include { PLINK_CLUMP } from '../modules/local/plink_clump/main'
@@ -27,6 +27,7 @@ include { SUMMARISE_GENERATION_QC } from '../modules/local/summarise_generation_
 include { PHENOTYPE_ASSOCIATION } from '../modules/local/phenotype_association/main'
 include { COMBINE_PHENOTYPE } from '../modules/local/combine_phenotype/main'
 include { RENDER_REPORT } from '../modules/local/render_report/main'
+include { REPORT_SOFTWARE } from '../modules/local/report_software/main'
 include { PUBLIC_FIGURES } from '../modules/local/public_figures/main'
 include { COLLECT_VERSIONS } from '../modules/local/collect_versions/main'
 
@@ -185,12 +186,31 @@ workflow DNAPRS {
     script_files
     report_source
     input_checks
-    input_versions
     run_plan
 
     main:
     run_prs = ['prs', 'phenotype', 'report'].contains(stop_after)
     run_phenotype = phenotype_enabled && ['phenotype', 'report'].contains(stop_after)
+
+    // Declare every path inspected by the validator as a real Nextflow input.
+    // This lets Docker and Apptainer mount data outside projectDir while the
+    // manifests retain the user's stable source paths for provenance.
+    validation_target_assets = target_manifest
+        .splitCsv(header: true, sep: '\t')
+        .flatMap { row -> targetInputFiles(row)[1] }
+        .ifEmpty { file("${projectDir}/assets/empty_input") }
+        .collect()
+    validation_gwas_assets = gwas_manifest
+        .splitCsv(header: true, sep: '\t')
+        .map { row -> file(row.path, checkIfExists: true) }
+        .ifEmpty { file("${projectDir}/assets/empty_input") }
+        .collect()
+    validation_reference_assets = reference_manifest
+        .splitCsv(header: true, sep: '\t')
+        .flatMap { row -> referenceInputFiles(row)[1] }
+        .ifEmpty { file("${projectDir}/assets/empty_input") }
+        .collect()
+
     VALIDATE_MANIFESTS(
         run_name,
         target_manifest,
@@ -198,6 +218,9 @@ workflow DNAPRS {
         reference_manifest,
         phenotype_file,
         phenotype_models,
+        validation_target_assets,
+        validation_gwas_assets,
+        validation_reference_assets,
         methods,
         genome_build,
         seed,
@@ -353,15 +376,6 @@ workflow DNAPRS {
         .mix(TARGET_QC.out.direct_checkpoint.map { meta, _target_dir, manifest ->
             tuple("target/prepared/${meta.cohort}/direct_ready", manifest)
         })
-    version_files = VALIDATE_MANIFESTS.out.versions
-        .mix(input_versions)
-        .mix(GENOTYPE_EDA.out.versions)
-        .mix(PREPARE_TARGET.out.versions)
-        .mix(TARGET_QC.out.versions)
-        .mix(PARTICIPANT_DECISIONS.out.versions)
-        .mix(PREPARE_PLINK_REFERENCE.out.versions)
-        .mix(REFERENCE_ANCESTRY.out.versions)
-
     score_target_files = TARGET_QC.out.direct_ready.map { meta, target_dir, target_qc ->
         tuple(meta + [scoring_stage: 'direct'], target_dir, target_qc)
     }
@@ -425,9 +439,6 @@ workflow DNAPRS {
         checkpoint_files = checkpoint_files.mix(
             ASSEMBLE_TARGET_IMPUTATION.out.checkpoint.map { _meta, target_dir, _manifest -> tuple('checkpoints/imputed', target_dir) }
         )
-        version_files = version_files
-            .mix(TARGET_IMPUTE_CHROMOSOME.out.versions)
-            .mix(ASSEMBLE_TARGET_IMPUTATION.out.versions)
     }
 
     participant_decision_rows = PARTICIPANT_DECISIONS.out.decisions
@@ -452,7 +463,6 @@ workflow DNAPRS {
         result_files = result_files
             .mix(HARMONISE_GWAS.out.harmonised.map { meta, cojo, _clump_input, _harmonisation_qc -> tuple("gwas/${meta.trait_id}", cojo) })
             .mix(HARMONISE_GWAS.out.harmonised.map { meta, _cojo, _clump_input, harmonisation_qc -> tuple("qc/gwas/${meta.trait_id}", harmonisation_qc) })
-        version_files = version_files.mix(HARMONISE_GWAS.out.versions)
     }
 
     if (run_prs && methods.contains('plink_ct')) {
@@ -489,14 +499,6 @@ workflow DNAPRS {
             .mix(PARSE_PLINK_SCORE.out.compatibility.map { target, gwas, audit, _coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", audit) })
             .mix(PARSE_PLINK_SCORE.out.compatibility.map { target, gwas, _audit, coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", coverage) })
             .mix(PARSE_PLINK_SCORE.out.logs.map { target, gwas, score_log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}", score_log) })
-        version_files = version_files
-            .mix(PLINK_REFERENCE_FREQ.out.versions)
-            .mix(ALIGN_PLINK_GWAS.out.versions)
-            .mix(PLINK_CLUMP.out.versions)
-            .mix(BUILD_CT_WEIGHTS.out.versions)
-            .mix(PLINK_SCORE.out.versions)
-            .mix(PARSE_PLINK_SCORE.out.versions)
-
         if (target_imputation) {
             plink_direct_input = direct_score_targets
                 .combine(BUILD_CT_WEIGHTS.out.weights)
@@ -529,10 +531,6 @@ workflow DNAPRS {
                 .mix(PLINK_DIRECT_SCORE.out.raw.map { target, gwas, _score, _used, log, _weight, _pvar -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}/sensitivity", log) })
                 .mix(COMPARE_DIRECT_SCORE.out.comparison.map { target, gwas, comparison, _qc -> tuple("scores/${target.cohort}/${gwas.trait_id}/sensitivity", comparison) })
                 .mix(COMPARE_DIRECT_SCORE.out.comparison.map { target, gwas, _comparison, qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}/sensitivity", qc) })
-            version_files = version_files
-                .mix(PLINK_DIRECT_SCORE.out.versions)
-                .mix(PARSE_PLINK_DIRECT_SCORE.out.versions)
-                .mix(COMPARE_DIRECT_SCORE.out.versions)
         }
     }
 
@@ -599,12 +597,6 @@ workflow DNAPRS {
             .mix(SBAYESRC_SCORE.out.scores.map { target, gwas, score, _score_qc -> tuple("scores/${target.cohort}/${gwas.trait_id}", score) })
             .mix(SBAYESRC_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
             .mix(SBAYESRC_SCORE.out.logs.map { target, gwas, stage_log -> tuple("logs/sbayesrc/${gwas.trait_id}/${target.cohort}", stage_log) })
-        version_files = version_files
-            .mix(PREPARE_SBAYESRC_REFERENCE.out.versions)
-            .mix(SBAYESRC_TIDY.out.versions)
-            .mix(SBAYESRC_IMPUTE.out.versions)
-            .mix(SBAYESRC_MODEL.out.versions)
-            .mix(SBAYESRC_SCORE.out.versions)
         checkpoint_files = checkpoint_files
             .mix(PREPARE_SBAYESRC_REFERENCE.out.ld.map { _meta, ld_dir -> tuple('reference/sbayesrc/prepared', ld_dir) })
             .mix(PREPARE_SBAYESRC_REFERENCE.out.annotation.map { _meta, annotation_file -> tuple('reference/sbayesrc/prepared', annotation_file) })
@@ -627,10 +619,6 @@ workflow DNAPRS {
             .mix(COMBINE_SCORES.out.score_qc.map { result_file -> tuple('qc/scores', result_file) })
             .mix(COMBINE_SCORES.out.concordance.map { result_file -> tuple('qc/scores', result_file) })
             .mix(SUMMARISE_GENERATION_QC.out.variant_flow.map { result_file -> tuple('qc/generation', result_file) })
-        version_files = version_files
-            .mix(COMBINE_SCORES.out.versions)
-            .mix(SUMMARISE_GENERATION_QC.out.versions)
-
         if (run_phenotype) {
             phenotype_model_records = phenotype_models
                 .splitCsv(header: true, sep: '\t')
@@ -668,13 +656,37 @@ workflow DNAPRS {
                 .mix(COMBINE_PHENOTYPE.out.permutations.map { result_file -> tuple('phenotype', result_file) })
                 .mix(COMBINE_PHENOTYPE.out.influence.map { result_file -> tuple('phenotype', result_file) })
                 .mix(COMBINE_PHENOTYPE.out.phenotype_prs.map { result_file -> tuple('phenotype', result_file) })
-            version_files = version_files
-                .mix(PHENOTYPE_ASSOCIATION.out.versions)
-                .mix(COMBINE_PHENOTYPE.out.versions)
         }
     }
 
-    COLLECT_VERSIONS(version_files.collect(), script_files.collect_versions)
+    if (report_enabled && stop_after == 'report') {
+        // The report consumes software_versions.yml, so its environment is recorded
+        // in a small upstream task to avoid a provenance dependency cycle.
+        REPORT_SOFTWARE()
+    }
+
+    // Local modules publish the current nf-core (process, tool, version) tuples.
+    // Collapse repeated scatter-task records into one deterministic YAML document
+    // before it becomes a report input.
+    topic_versions = channel.topic('versions')
+        .distinct()
+        .map { process, tool, version ->
+            def process_name = process.substring(process.lastIndexOf(':') + 1)
+            [process_name, "  ${tool}: ${version.toString().trim()}"]
+        }
+        .groupTuple(by: 0)
+        .map { process, tool_versions ->
+            def unique_tool_versions = tool_versions.unique().sort()
+            "${process}:\n${unique_tool_versions.join('\n')}"
+        }
+
+    topic_versions_file = topic_versions.collectFile(
+        name: 'topic_versions.yml',
+        sort: true,
+        newLine: true
+    )
+
+    COLLECT_VERSIONS(topic_versions_file, script_files.collect_versions)
     result_files = result_files.mix(COLLECT_VERSIONS.out.versions.map { result_file -> tuple('pipeline_info', result_file) })
 
     if (report_enabled && stop_after == 'report') {

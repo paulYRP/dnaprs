@@ -1,0 +1,40 @@
+nextflow_pipeline {
+
+    name "Run chromosome imputation with real Beagle and PLINK tools"
+    script "../main.nf"
+    tag "pipeline"
+    tag "real"
+    tag "imputation"
+
+    test("one synthetic chromosome passes real imputation QC") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "imputation"
+                methods = "plink_ct"
+                target_imputation = true
+                stop_after = "imputation"
+                report_enabled = false
+                beagle_jar = System.getenv("DNAPRS_TEST_BEAGLE_JAR")
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/imputation"
+            def qc = path("$runDir/data/target_imputation/TEST/TEST.imputation_qc.tsv")
+            def manifest = path("$runDir/data/target_imputation/TEST/TEST.imputation_manifest.tsv")
+
+            assert workflow.success
+            assertAll(
+                { assert qc.exists() },
+                { assert qc.text.contains("sample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus") },
+                { assert qc.text.contains("PASS\tPASS\tPASS\tPASS\tPASS") },
+                { assert manifest.exists() },
+                { assert manifest.text.contains("GRCh37\t0.80\tPASS") },
+                { assert path("$runDir/data/checkpoints/imputed/TEST.imputed/TEST.pgen").exists() },
+                { assert path("$runDir/data/pipeline_info/software_versions.yml").text.contains("TARGET_IMPUTE_CHROMOSOME") }
+            )
+        }
+    }
+}

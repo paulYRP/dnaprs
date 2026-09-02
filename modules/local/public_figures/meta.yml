@@ -1,12 +1,20 @@
 name: public_figures
 description: Copy the completed report figure bundle to the public figures output.
-keywords: [report, figures]
+keywords:
+  - report
+  - figures
+  - nextflow
+tools: []
 input:
   - report_figures:
       type: directory
       description: Figure bundle created while rendering the report.
 output:
-  - figures:
-      type: directory
-      description: SVG, TIFF, PNG, JPEG, and source-table figure bundle.
-authors: ["@paulYRP"]
+  figures:
+    - figures:
+        type: directory
+        description: SVG, TIFF, PNG, JPEG, and source-table figure bundle.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

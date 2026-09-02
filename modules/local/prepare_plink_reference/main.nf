@@ -17,20 +17,14 @@ process PREPARE_PLINK_REFERENCE {
     tuple val(panel), path("${panel.reference_id}.plink_ld.summary.tsv"), emit: summary
     tuple val(panel), path("${panel.reference_id}.plink_ld.source_qc.tsv"), emit: source_qc
     tuple val(panel), path("${panel.reference_id}.plink_ld.prepare.log"), emit: logs
-    path 'versions.yml', emit: versions
-
+    tuple val("${task.process}"), val('bcftools'), eval("command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub"), emit: versions_bcftools, topic: versions
+    tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
+    tuple val("${task.process}"), val('unbref3'), eval("printf 27Feb25.75f"), emit: versions_unbref3, topic: versions
     script:
     """
     UNBREF3_JAR='${unbref3.path}' bash ${prepare_script} \
         '${panel.path}' '${population.path}' '${related.path}' \
         '${panel.reference_id}.plink_ld' '${task.cpus}' '${genome_build}'
-
-    cat > versions.yml <<-VERSIONS
-    "${task.process}:${panel.reference_id}":
-        bcftools: \$(bcftools --version | head -n 1 | awk '{print \$2}')
-        plink2: \$(plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//')
-        unbref3: 27Feb25.75f
-    VERSIONS
     """
 
     stub:
@@ -46,6 +40,5 @@ process PREPARE_PLINK_REFERENCE {
     printf 'reference_type\tbuild\tancestry\tchromosomes\tsamples\tvariants\tstatus\nplink_ld\t${genome_build}\tEuropean\t1\t2\t1\tPASS\nancestry_reference\t${genome_build}\tMultiple\t1\t2\t1\tPASS\n' > ${panel.reference_id}.plink_ld.summary.tsv
     printf 'chromosome\tsource\tsamples\tvariants\tstatus\n1\tstub.bref3\t2\t1\tPASS\n' > ${panel.reference_id}.plink_ld.source_qc.tsv
     printf 'PLINK source-reference preparation stub\n' > ${panel.reference_id}.plink_ld.prepare.log
-    printf '"${task.process}:${panel.reference_id}":\n  bcftools: stub\n  plink2: stub\n  unbref3: stub\n' > versions.yml
     """
 }

@@ -1,0 +1,21 @@
+nextflow_process {
+
+    name "Test Process REPORT_SOFTWARE"
+    script "../main.nf"
+    process "REPORT_SOFTWARE"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_stub"
+    tag "report_software"
+
+    test("report software - stub") {
+        options "-stub"
+
+        then {
+            assert process.success
+            assert process.out.findAll { key, value -> key.startsWith("versions_") }.size() == 8
+            assert process.out.versions_quarto[0][2].toString()
+            assert process.out.versions_r[0][2].toString()
+        }
+    }
+}

@@ -1,0 +1,32 @@
+nextflow_process {
+
+    name "Test Process REFERENCE_ASSET"
+    script "../main.nf"
+    process "REFERENCE_ASSET"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_stub"
+    tag "reference_asset"
+
+    test("reference asset - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [[asset_id: 'fixture'], file("${projectDir}/assets/empty_input"), "${outputDir}/cache/fixture"]
+                input[1] = file("${projectDir}/assets/reference/human_g1k_v37.fasta.fai")
+                input[2] = file("${projectDir}/bin/reference_asset.sh")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.asset.size() == 1
+            assert process.out.versions_curl.size() == 1
+            assert process.out.versions_curl[0][2].toString()
+            assert file(process.out.asset[0][1]).text == file("${projectDir}/assets/reference/human_g1k_v37.fasta.fai").text
+        }
+    }
+}
