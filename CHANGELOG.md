@@ -8,8 +8,9 @@ All notable changes to dnaprs are recorded here.
   validation.
 - Added directory discovery and explicit YAML records for raw genotype and GWAS
   inputs, with optional phenotype files and parameter overrides.
-- Corrected namespaced staging for directory-based target, GWAS, and reference
-  inputs, including paths with spaces, and added resolver regression tests.
+- Corrected namespaced staging and symlinked PLINK-prefix resolution for
+  directory-based target, GWAS, and reference inputs, including paths with spaces,
+  and added resolver regression tests.
 - Added support for PLINK 1 BED, PLINK 2 PGEN, PED/MAP, BGEN, VCF, and Illumina
   GenomeStudio inputs without dataset-specific names.
 - Added validated local, cached, and downloaded reference modes, including pinned

@@ -59,13 +59,32 @@ combinePATH <- function(root, relative) {
   if (!nzchar(relative) || relative == ".") root else paste(root, relative, sep = "/")
 }
 
-relativePATH <- function(path, root) {
-  # normalizePath() may leave a relative path unchanged when the final path is a
-  # PLINK prefix rather than an existing file. Anchor it first so prefixes such as
-  # target_source/cohort are still checked against the staged directory.
+canonicalPATH <- function(path) {
   path <- normaliseSLASH(path)
   if (!grepl("^(/|[A-Za-z]:/)", path)) path <- combinePATH(getwd(), path)
-  path <- normaliseSLASH(normalizePath(path, winslash = "/", mustWork = FALSE))
+
+  # PLINK dataset paths are prefixes rather than files. Resolve the nearest
+  # existing ancestor first so a staged-directory symlink and its non-existent
+  # child prefix are canonicalised consistently across container runtimes.
+  suffix <- character()
+  cursor <- path
+  while (!file.exists(cursor)) {
+    parent <- normaliseSLASH(dirname(cursor))
+    child <- basename(cursor)
+    if (!nzchar(child) || child %in% c(".", "..") || identical(parent, cursor)) {
+      stop(sprintf("Cannot resolve path safely: %s", path), call. = FALSE)
+    }
+    suffix <- c(child, suffix)
+    cursor <- parent
+  }
+
+  resolved <- normaliseSLASH(normalizePath(cursor, winslash = "/", mustWork = TRUE))
+  for (child in suffix) resolved <- combinePATH(resolved, child)
+  resolved
+}
+
+relativePATH <- function(path, root) {
+  path <- canonicalPATH(path)
   root <- normaliseSLASH(normalizePath(root, winslash = "/", mustWork = TRUE))
   if (identical(path, root)) return("")
   prefix <- paste0(root, "/")

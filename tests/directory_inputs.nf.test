@@ -6,13 +6,13 @@ nextflow_pipeline {
     tag "directory_inputs"
     tag "real"
 
-    test("target directory with an arbitrary name and spaces") {
+    test("directory-based PLINK target reaches target QC") {
 
         when {
             params {
                 outdir = "$outputDir"
                 run_name = "directory_inputs"
-                input = "${projectDir}/tests/data/resolver inputs/target cohort"
+                input = "${projectDir}/tests/data/resolver inputs/ukr"
                 stop_after = "target_qc"
                 phenotype = null
                 outcome = null
@@ -32,11 +32,12 @@ nextflow_pipeline {
             assert workflow.success
             assertAll(
                 { assert targets.exists() },
-                { assert targets.text.contains('resolver inputs/target cohort/cohort.vcf') },
-                { assert checks.text.contains('target\tcohort') },
+                { assert targets.text.contains('resolver inputs/ukr/ukr') },
+                { assert targets.text.contains('\tped\t') },
+                { assert checks.text.contains('target\tukr') },
                 { assert checks.text.contains('\tdirectory') },
                 { assert plan.text.contains('run_prs\tfalse') },
-                { assert path("$runDir/data/target_qc/cohort/cohort.target_qc.tsv").exists() },
+                { assert path("$runDir/data/target_qc/ukr/ukr.target_qc.tsv").exists() },
                 { assert path("$runDir/data/pipeline_info/software_versions.yml").exists() }
             )
         }

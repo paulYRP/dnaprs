@@ -8,11 +8,11 @@ nextflow_process {
     tag "modules_real"
     tag "resolve_inputs"
 
-    test("directory declarations - target, GWAS, and references with arbitrary names") {
+    test("directory declarations - symlinked PLINK prefix, GWAS, and references") {
         when {
             process {
                 """
-                target_dir = file("${projectDir}/tests/data/resolver inputs/target cohort", checkIfExists: true)
+                target_dir = file("${projectDir}/tests/data/resolver inputs/ukr", checkIfExists: true)
                 gwas_dir = file("${projectDir}/tests/data/resolver inputs/gwas summaries", checkIfExists: true)
                 reference_dir = file("${projectDir}/tests/data/reference", checkIfExists: true)
                 input[0] = groovy.json.JsonOutput.toJson(target_dir.toString()).getBytes('UTF-8').encodeBase64().toString()
@@ -53,8 +53,8 @@ nextflow_process {
 
             assert process.success
             assertAll(
-                { assert targets.contains('cohort.vcf') },
-                { assert targets.contains('resolver inputs/target cohort/cohort.vcf') },
+                { assert targets.contains('\tped\t') },
+                { assert targets.contains('resolver inputs/ukr/ukr') },
                 { assert gwas.contains('resolver inputs/gwas summaries/mdd.tsv') },
                 { assert references.contains('REFERENCE_FASTA_GRCh37') },
                 { assert references.contains('tests/data/reference/human_g1k_v37.fasta') },
