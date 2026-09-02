@@ -17,7 +17,6 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -35,9 +34,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        NXF_VER:
-          - "25.10.4"
-          - "latest-everything"
+        include:
+          - NXF_VER: "25.10.4"
+            REAL_TOOLS: true
+          - NXF_VER: "latest-everything"
+            REAL_TOOLS: false
 
     steps:
       - name: Check out pipeline code
@@ -54,21 +55,28 @@ jobs:
           version: ${{ env.NFT_VER }}
           install-pdiff: true
 
-      - name: Authenticate to the project container registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build the current imputation image
+      - name: Build pinned test containers
+        if: ${{ matrix.REAL_TOOLS }}
         run: |
+          docker build --pull \
+            --file containers/analysis/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            .
+          docker build --pull \
+            --file containers/plink2/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+            .
+          docker build --pull \
+            --file containers/report/Dockerfile \
+            --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+            .
           docker build --pull \
             --file containers/imputation/Dockerfile \
             --tag ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
-            containers/imputation
+            .
 
       - name: Run minimal real-tool workflow test
+        if: ${{ matrix.REAL_TOOLS }}
         run: |
           mkdir -p nf-test-results
           nf-test test tests/default.nf.test \
@@ -79,8 +87,8 @@ jobs:
             --junitxml nf-test-results/junit.xml
 
       - name: Run complete stub graph test
-        if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
+          mkdir -p nf-test-results
           nf-test test tests/stub.nf.test \
             --profile +test_full \
             --ci \
@@ -89,7 +97,7 @@ jobs:
             --junitxml nf-test-results/stub.junit.xml
 
       - name: Run focused stage and reference tests
-        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        if: ${{ matrix.REAL_TOOLS }}
         run: |
           nf-test test tests/stages.nf.test tests/reference.nf.test \
             --profile +docker \
