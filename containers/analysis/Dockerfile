@@ -22,12 +22,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY containers/analysis/R-packages.tsv /tmp/dnaprs-R-packages.tsv
+COPY containers/install-r-packages.R /tmp/install-r-packages.R
 
 RUN curl --fail --location --retry 5 "${REMOTES_URL}" --output /tmp/remotes.tar.gz \
     && echo "${REMOTES_SHA256}  /tmp/remotes.tar.gz" | sha256sum --check --strict \
-    && Rscript -e "install.packages('/tmp/remotes.tar.gz', repos=NULL, type='source'); manifest <- read.delim('/tmp/dnaprs-R-packages.tsv', check.names=FALSE); for (row in seq_len(nrow(manifest))) remotes::install_version(manifest\$package[row], version=manifest\$install_version[row], repos='${CRAN_SNAPSHOT}', upgrade='never'); observed <- vapply(manifest\$package, function(package) as.character(packageVersion(package)), character(1)); if (any(observed != manifest\$expected_version)) stop(paste('Package version mismatch:', paste(manifest\$package[observed != manifest\$expected_version], collapse=', ')))" \
+    && Rscript -e "install.packages('/tmp/remotes.tar.gz', repos=NULL, type='source')" \
+    && Rscript /tmp/install-r-packages.R "${CRAN_SNAPSHOT}" /tmp/dnaprs-R-packages.tsv \
     && rm -f /tmp/remotes.tar.gz \
-    && rm -f /tmp/dnaprs-R-packages.tsv
+    && rm -f /tmp/dnaprs-R-packages.tsv /tmp/install-r-packages.R
 
 LABEL org.opencontainers.image.title="dnaprs analysis"
 LABEL org.opencontainers.image.description="Pinned R environment for dnaprs validation, QC, score processing, and phenotype models"

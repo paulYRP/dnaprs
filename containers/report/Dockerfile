@@ -26,9 +26,13 @@ RUN apt-get update \
 
 COPY containers/analysis/R-packages.tsv /tmp/dnaprs-analysis-R-packages.tsv
 COPY containers/report/R-packages.tsv /tmp/dnaprs-report-R-packages.tsv
+COPY containers/install-r-packages.R /tmp/install-r-packages.R
 
-RUN Rscript -e "install.packages('/tmp/remotes.tar.gz', repos=NULL, type='source'); analysis <- read.delim('/tmp/dnaprs-analysis-R-packages.tsv', check.names=FALSE); report <- read.delim('/tmp/dnaprs-report-R-packages.tsv', check.names=FALSE); manifest <- rbind(analysis, report); manifest <- manifest[!duplicated(manifest\$package, fromLast=TRUE), ]; for (row in seq_len(nrow(manifest))) remotes::install_version(manifest\$package[row], version=manifest\$install_version[row], repos='${CRAN_SNAPSHOT}', upgrade='never'); observed <- vapply(manifest\$package, function(package) as.character(packageVersion(package)), character(1)); if (any(observed != manifest\$expected_version)) stop(paste('Package version mismatch:', paste(manifest\$package[observed != manifest\$expected_version], collapse=', ')))" \
-    && rm -f /tmp/remotes.tar.gz /tmp/dnaprs-analysis-R-packages.tsv /tmp/dnaprs-report-R-packages.tsv
+RUN Rscript -e "install.packages('/tmp/remotes.tar.gz', repos=NULL, type='source')" \
+    && Rscript /tmp/install-r-packages.R "${CRAN_SNAPSHOT}" \
+        /tmp/dnaprs-analysis-R-packages.tsv /tmp/dnaprs-report-R-packages.tsv \
+    && rm -f /tmp/remotes.tar.gz /tmp/dnaprs-analysis-R-packages.tsv \
+        /tmp/dnaprs-report-R-packages.tsv /tmp/install-r-packages.R
 
 LABEL org.opencontainers.image.title="dnaprs report"
 LABEL org.opencontainers.image.description="Pinned R and Quarto environment for the dnaprs report"

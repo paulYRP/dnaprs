@@ -62,12 +62,13 @@ docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
   bash -c "bcftools --version | head -n 1; java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2; java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2; Rscript -e \"stopifnot(as.character(packageVersion('data.table')) == '1.18.0')\""
 ```
 
-`.github/workflows/containers.yml` repeats these builds and checks. Pull requests can
-build and test without package-write permission. Images are pushed only by a matching
-stable release or an explicitly requested manual publish job, and the publish job is
-the only job granted `packages: write`. After the first publish, each package must be
-made public, tested by anonymous Docker and Apptainer/Singularity pulls, and its remote
-digest recorded in the process definitions before the HPC run is accepted.
+`.github/workflows/containers.yml` builds each image once and verifies that exact local
+image before any registry login. Images are pushed only by a matching stable release
+or an explicitly requested manual publication. Pull requests run the build and tests,
+but their publication conditions are false, so they do not log in or push. After the
+first publish, each package must be made public, tested by anonymous Docker and
+Apptainer/Singularity pulls, and its remote digest recorded in the process definitions
+before the HPC run is accepted.
 
 The Docker profile clears container entry points before starting each task. This is
 required for the authors' SBayesRC image, whose default entry point is its command-line
