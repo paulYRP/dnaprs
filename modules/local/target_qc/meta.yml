@@ -12,30 +12,30 @@ tools:
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `target_qc` process.
+        description: Target cohort, build, and checkpoint metadata.
     - target_dir:
-        type: string
-        description: Inputs required by the `target_qc` process.
+        type: directory
+        description: Corrected target PGEN dataset.
     - prep_qc:
         type: file
-        description: Inputs required by the `target_qc` process.
+        description: Target preparation summary.
   - qc_script:
       type: file
-      description: Executable script used to produce target qc implementation.
+      description: Shell script that applies participant and variant QC checkpoints.
   - imputation_geno:
-      type: string
+      type: float
       description: Missingness threshold for the imputation-ready target.
   - direct_geno:
-      type: string
+      type: float
       description: Missingness threshold for the direct-score sensitivity target.
   - target_mind:
-      type: string
+      type: float
       description: Participant missingness threshold.
   - target_maf:
-      type: string
+      type: float
       description: Target minor-allele-frequency threshold.
   - target_hwe:
-      type: string
+      type: float
       description: Hardy-Weinberg equilibrium threshold.
 output:
   imputation_ready:

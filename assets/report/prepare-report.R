@@ -427,7 +427,7 @@ if (nrow(identifierCLASS)) {
     "genotype_identifier_classes", identifierPLOT, 10, 6,
     "Genotype EDA", "Variant identifiers and alleles", "Identifier classes",
     "Raw marker identifiers classified as rsID, array-probe-like, coordinate, missing, or other.",
-    "Inspect whether manifest-assisted identifier recovery may be required; non-rsID does not itself mean invalid.",
+    "Inspect whether assay-manifest-assisted identifier recovery may be required; non-rsID does not itself mean invalid.",
     saveFIGUREDATA("genotype_identifier_classes", identifierCLASS)
   )
 }

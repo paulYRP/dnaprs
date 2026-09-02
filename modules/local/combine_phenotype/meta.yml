@@ -10,7 +10,7 @@ tools:
       identifier: ""
       homepage: https://www.r-project.org/
   - data.table:
-      description: Software dependency reported by the `combine_phenotype` process
+      description: High-performance tabular data processing in R
       identifier: ""
       homepage: https://r-datatable.com/
 input:
@@ -34,7 +34,7 @@ input:
       description: Per-model participant phenotype and PRS tables.
   - combine_script:
       type: file
-      description: Executable script used to produce r implementation used to gather model outputs.
+      description: R script that validates and gathers phenotype results across model tasks.
 output:
   associations:
     - phenotype_associations.tsv:

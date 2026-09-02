@@ -64,7 +64,7 @@ docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
 
 `.github/workflows/containers.yml` builds each image once and verifies that exact local
 image before any registry login. Images are pushed only by a matching stable release
-or an explicitly requested manual publication. Pull requests run the build and tests,
+or a manually dispatched publication. Pull requests run the build and tests,
 but their publication conditions are false, so they do not log in or push. After the
 first publish, each package must be made public, tested by anonymous Docker and
 Apptainer/Singularity pulls, and its remote digest recorded in the process definitions

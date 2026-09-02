@@ -82,7 +82,7 @@ downloadBUTTON <- function(path, label) {
 #   label: Visible control text.
 #
 # Returns:
-#   HTML for the requested result download.
+#   HTML for the selected result download.
 fileBUTTON <- function(fileNAME, label = paste("Download", fileNAME)) {
   downloadBUTTON(resultPATH(fileNAME), label)
 }

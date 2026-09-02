@@ -135,7 +135,7 @@ if [[ "$input_stage" == "raw" ]]; then
         dbsnp_vcf="dbsnp.indexed.vcf.gz"
     fi
 
-    # First apply assay-manifest recovery and any explicit user marker map while
+    # First apply assay-manifest recovery and any explicit marker map while
     # retaining one row per original probe. dbSNP candidate selection follows below.
     perl "$adapter_script" annotate-pvar \
         "$cohort/${cohort}.pvar" "$assay_manifest" "$marker_map" \

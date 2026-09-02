@@ -17,16 +17,16 @@ tools:
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `genotype_eda` process.
+        description: Target cohort, source format, and source-path metadata.
     - target_files:
         type: list
-        description: Inputs required by the `genotype_eda` process.
+        description: Raw target genotype dataset and format-specific companion files.
   - genotype_eda_script:
       type: file
-      description: Executable script used to produce inputs required by the `genotype_eda` process.
+      description: Shell script that calculates raw genotype structure and missingness summaries.
   - adapter_script:
       type: file
-      description: Executable script used to produce inputs required by the `genotype_eda` process.
+      description: R script that parses GenomeStudio FinalReport data for raw EDA.
 output:
   tables:
     - - meta:

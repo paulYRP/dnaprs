@@ -10,31 +10,31 @@ tools:
       identifier: ""
       homepage: https://github.com/zhilizheng/SBayesRC
   - R:
-      description: Software dependency reported by the `sbayesrc_impute` process
+      description: Statistical computing environment used by the SBayesRC wrapper
       identifier: ""
       homepage: https://www.r-project.org/
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `sbayesrc_impute` process.
+        description: GWAS trait and PRS metadata.
     - tidy:
-        type: string
-        description: Inputs required by the `sbayesrc_impute` process.
+        type: file
+        description: Summary statistics emitted by the SBayesRC tidy stage.
     - tidy_qc:
         type: file
-        description: Inputs required by the `sbayesrc_impute` process.
+        description: QC summary from the SBayesRC tidy stage.
     - harmonisation_qc:
         type: file
-        description: Inputs required by the `sbayesrc_impute` process.
+        description: QC summary from GWAS harmonisation.
     - ld_reference:
-        type: file
-        description: Inputs required by the `sbayesrc_impute` process.
+        type: map
+        description: Prepared SBayesRC LD reference metadata.
     - ld_reference_files:
         type: list
-        description: Inputs required by the `sbayesrc_impute` process.
+        description: Prepared SBayesRC LD reference files.
   - sbayesrc_script:
       type: file
-      description: Executable script used to produce sbayesrc wrapper implementation.
+      description: R script that imputes summary statistics with SBayesRC and validates its outputs.
 output:
   imputed:
     - - meta:

@@ -1,0 +1,180 @@
+nextflow_process {
+
+    name "Test Process RESOLVE_INPUTS with real inputs"
+    script "../main.nf"
+    process "RESOLVE_INPUTS"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "resolve_inputs"
+
+    test("directory declarations - target, GWAS, and references with arbitrary names") {
+        when {
+            process {
+                """
+                target_dir = file("${projectDir}/tests/data/resolver inputs/target cohort", checkIfExists: true)
+                gwas_dir = file("${projectDir}/tests/data/resolver inputs/gwas summaries", checkIfExists: true)
+                reference_dir = file("${projectDir}/tests/data/reference", checkIfExists: true)
+                input[0] = groovy.json.JsonOutput.toJson(target_dir.toString()).getBytes('UTF-8').encodeBase64().toString()
+                input[1] = groovy.json.JsonOutput.toJson(gwas_dir.toString()).getBytes('UTF-8').encodeBase64().toString()
+                input[2] = groovy.json.JsonOutput.toJson(reference_dir.toString()).getBytes('UTF-8').encodeBase64().toString()
+                input[3] = 'W10='
+                input[4] = 'GRCh37'
+                input[5] = ['plink_ct']
+                input[6] = false
+                input[7] = 'prs'
+                input[8] = false
+                input[9] = 'auto'
+                input[10] = 'grch37-v1'
+                input[11] = ''
+                input[12] = ''
+                input[13] = ''
+                input[14] = ''
+                input[15] = ''
+                input[16] = ''
+                input[17] = ''
+                input[18] = ''
+                input[19] = ''
+                input[20] = ''
+                input[21] = target_dir
+                input[22] = gwas_dir
+                input[23] = reference_dir
+                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def targets = file(process.out.targets[0]).text
+            def gwas = file(process.out.gwas[0]).text
+            def references = file(process.out.references[0]).text
+            def plan = file(process.out.run_plan[0]).text
+            def checks = file(process.out.checks[0]).text
+
+            assert process.success
+            assertAll(
+                { assert targets.contains('cohort.vcf') },
+                { assert targets.contains('resolver inputs/target cohort/cohort.vcf') },
+                { assert gwas.contains('resolver inputs/gwas summaries/mdd.tsv') },
+                { assert references.contains('REFERENCE_FASTA_GRCh37') },
+                { assert references.contains('tests/data/reference/human_g1k_v37.fasta') },
+                { assert plan.contains('run_prs\ttrue') },
+                { assert plan.contains('run_phenotype\tfalse') },
+                { assert checks.readLines().tail().every { it.endsWith('\tdirectory') } },
+                { assert process.out.versions_r[0][2].toString() },
+                { assert process.out.versions_jsonlite[0][2].toString() },
+                { assert process.out.versions_openssl[0][2].toString() },
+                { assert process.out.versions_yaml[0][2].toString() }
+            )
+        }
+    }
+
+    test("explicit YAML records - file paths remain unchanged") {
+        when {
+            process {
+                """
+                target_path = file("${projectDir}/tests/data/target/test_target.vcf", checkIfExists: true).toString()
+                gwas_path = file("${projectDir}/tests/data/gwas/mdd.tsv", checkIfExists: true).toString()
+                reference_root = file("${projectDir}/tests/data/reference", checkIfExists: true).toString()
+                target_records = [[id: 'EXPLICIT', path: target_path, format: 'vcf', stage: 'raw', build: 'GRCh37']]
+                gwas_records = [[
+                    id: 'MDD', path: gwas_path, build: 'GRCh37', ancestry: 'European',
+                    effect_type: 'log_or', sample_size: 100000, prs_name: 'MDD_PRS',
+                    columns: [
+                        variant: 'SNP', chromosome: 'CHR', position: 'BP', effect_allele: 'A1',
+                        other_allele: 'A2', effect: 'BETA', standard_error: 'SE', p_value: 'P',
+                        frequency: 'EAF', sample_size: 'N'
+                    ]
+                ]]
+                reference_records = [root: reference_root, assets: [fasta: 'human_g1k_v37.fasta', fasta_index: 'human_g1k_v37.fasta.fai']]
+
+                input[0] = groovy.json.JsonOutput.toJson(target_records).getBytes('UTF-8').encodeBase64().toString()
+                input[1] = groovy.json.JsonOutput.toJson(gwas_records).getBytes('UTF-8').encodeBase64().toString()
+                input[2] = groovy.json.JsonOutput.toJson(reference_records).getBytes('UTF-8').encodeBase64().toString()
+                input[3] = 'W10='
+                input[4] = 'GRCh37'
+                input[5] = ['plink_ct']
+                input[6] = false
+                input[7] = 'prs'
+                input[8] = false
+                input[9] = 'local'
+                input[10] = 'grch37-v1'
+                input[11] = ''
+                input[12] = ''
+                input[13] = ''
+                input[14] = ''
+                input[15] = ''
+                input[16] = ''
+                input[17] = ''
+                input[18] = ''
+                input[19] = ''
+                input[20] = ''
+                input[21] = file("${projectDir}/assets/empty_input")
+                input[22] = file("${projectDir}/assets/empty_input")
+                input[23] = file("${projectDir}/assets/empty_input")
+                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            def targets = file(process.out.targets[0]).text
+            def gwas = file(process.out.gwas[0]).text
+            def references = file(process.out.references[0]).text
+            def checks = file(process.out.checks[0]).text
+
+            assert process.success
+            assertAll(
+                { assert targets.contains('\tEXPLICIT\t') },
+                { assert targets.contains('/tests/data/target/test_target.vcf') },
+                { assert gwas.contains('/tests/data/gwas/mdd.tsv') },
+                { assert references.contains('/tests/data/reference/human_g1k_v37.fasta') },
+                { assert checks.readLines().tail().every { it.endsWith('\tyaml') } }
+            )
+        }
+    }
+
+    test("target directory - optional GWAS and reference sources omitted") {
+        when {
+            process {
+                """
+                target_dir = file("${projectDir}/tests/data/resolver inputs/target cohort", checkIfExists: true)
+                empty_input = file("${projectDir}/assets/empty_input")
+                input[0] = groovy.json.JsonOutput.toJson(target_dir.toString()).getBytes('UTF-8').encodeBase64().toString()
+                input[1] = 'IiI='
+                input[2] = 'IiI='
+                input[3] = 'W10='
+                input[4] = 'GRCh37'
+                input[5] = ['plink_ct']
+                input[6] = false
+                input[7] = 'target_qc'
+                input[8] = false
+                input[9] = 'auto'
+                input[10] = 'grch37-v1'
+                input[11] = ''
+                input[12] = ''
+                input[13] = ''
+                input[14] = ''
+                input[15] = ''
+                input[16] = ''
+                input[17] = ''
+                input[18] = ''
+                input[19] = ''
+                input[20] = ''
+                input[21] = target_dir
+                input[22] = empty_input
+                input[23] = empty_input
+                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert file(process.out.targets[0]).text.contains('resolver inputs/target cohort/cohort.vcf')
+            assert file(process.out.gwas[0]).text.readLines().size() == 1
+            assert file(process.out.references[0]).text.readLines().size() == 1
+            assert file(process.out.run_plan[0]).text.contains('run_prs\tfalse')
+        }
+    }
+}

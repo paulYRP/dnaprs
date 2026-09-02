@@ -15,7 +15,7 @@
                     "type": ["string", "array"],
                     "mimetype": "application/octet-stream",
                     "default": "data/plink/raw",
-                    "description": "Raw target-genotype directory or advanced list of explicit target records.",
+                    "description": "Raw target-genotype directory or YAML list of explicit target records.",
                     "oneOf": [
                         { "type": "string", "format": "directory-path" },
                         {
@@ -53,7 +53,7 @@
                 "gwas": {
                     "type": ["string", "array"],
                     "default": "data/gwas/raw",
-                    "description": "Raw GWAS directory or advanced list of explicit GWAS records.",
+                    "description": "Raw GWAS directory or YAML list of explicit GWAS records.",
                     "oneOf": [
                         { "type": "string", "format": "directory-path" },
                         {
@@ -169,7 +169,7 @@
                 },
                 "models": {
                     "type": "array",
-                    "description": "One or more advanced phenotype model records supplied in params.yml.",
+                    "description": "One or more phenotype model records supplied in params.yml.",
                     "items": {
                         "type": "object",
                         "additionalProperties": false,

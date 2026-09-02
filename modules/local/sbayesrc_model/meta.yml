@@ -10,40 +10,40 @@ tools:
       identifier: ""
       homepage: https://github.com/zhilizheng/SBayesRC
   - R:
-      description: Software dependency reported by the `sbayesrc_model` process
+      description: Statistical computing environment used by the SBayesRC wrapper
       identifier: ""
       homepage: https://www.r-project.org/
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `sbayesrc_model` process.
+        description: GWAS trait and PRS metadata.
     - imputed:
-        type: string
-        description: Inputs required by the `sbayesrc_model` process.
+        type: file
+        description: Imputed summary statistics from the SBayesRC impute stage.
     - impute_qc:
         type: file
-        description: Inputs required by the `sbayesrc_model` process.
+        description: QC summary from the SBayesRC impute stage.
     - tidy_qc:
         type: file
-        description: Inputs required by the `sbayesrc_model` process.
+        description: QC summary from the SBayesRC tidy stage.
     - harmonisation_qc:
         type: file
-        description: Inputs required by the `sbayesrc_model` process.
+        description: QC summary from GWAS harmonisation.
     - ld_reference:
-        type: file
-        description: Inputs required by the `sbayesrc_model` process.
+        type: map
+        description: Prepared SBayesRC LD reference metadata.
     - ld_reference_files:
         type: list
-        description: Inputs required by the `sbayesrc_model` process.
+        description: Prepared SBayesRC LD reference files.
     - annotation_reference:
-        type: file
-        description: Inputs required by the `sbayesrc_model` process.
+        type: map
+        description: Prepared SBayesRC annotation reference metadata.
     - annotation_reference_files:
         type: list
-        description: Inputs required by the `sbayesrc_model` process.
+        description: Prepared SBayesRC annotation reference files.
   - sbayesrc_script:
       type: file
-      description: Executable script used to produce sbayesrc wrapper implementation.
+      description: R script that fits the SBayesRC model and validates its outputs.
   - seed:
       type: integer
       description: Reproducible model seed.

@@ -194,7 +194,7 @@ workflow DNAPRS {
 
     // Declare every path inspected by the validator as a real Nextflow input.
     // This lets Docker and Apptainer mount data outside projectDir while the
-    // manifests retain the user's stable source paths for provenance.
+    // generated records retain stable source paths for provenance.
     validation_target_assets = target_manifest
         .splitCsv(header: true, sep: '\t')
         .flatMap { row -> targetInputFiles(row)[1] }
@@ -254,7 +254,7 @@ workflow DNAPRS {
     if (run_prs) {
         HARMONISE_GWAS(gwas_rows, script_files.harmonise)
     }
-    // Describe the untouched user input before marker renaming, allele correction,
+    // Describe the untouched source genotypes before marker renaming, allele correction,
     // duplicate handling, or technical filtering. The EDA process performs only a
     // task-local format import and never edits the source files.
     GENOTYPE_EDA(target_inputs, script_files.genotype_eda, script_files.target_adapter)

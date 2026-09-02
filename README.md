@@ -33,7 +33,7 @@ The workflow publishes one run under `dnaprs/model1/` by default:
 - `logs/` — scientific and execution logs;
 - `reports/` — the portable HTML website, downloads, and provenance.
 
-## Beginner run
+## Minimal run
 
 Install Java 17 or newer, Nextflow 25.10.4 or newer, and Docker, Apptainer, or
 Singularity. With one raw target dataset in `data/plink/raw/` and raw GWAS files in
@@ -55,7 +55,7 @@ nextflow run . \
   -resume
 ```
 
-Add one phenotype model directly from the user-provided CSV:
+Add one phenotype model from a phenotype table:
 
 ```bash
 nextflow run . \
@@ -94,11 +94,14 @@ nextflow run . \
 To build or verify only the reusable reference cache, set `reference_only: true` in a
 small YAML parameter file and run with `-params-file`.
 
-## Advanced and HPC runs
+## Configured and HPC runs
 
-Advanced users declare paths, GWAS column roles, thresholds, selected methods, and
-multiple phenotype models in YAML; they never create target/GWAS/reference/model TSV
-manifests. See [the complete usage guide](docs/usage.md) and
+`--input` and `--gwas` each accept either a conventional raw-data directory or a YAML
+list of explicit records. The pipeline resolves both forms into validated TSV records
+for internal hand-off and provenance. A GenomeStudio assay manifest is an input file
+paired with a FinalReport and is distinct from these generated records. Paths, GWAS
+column roles, thresholds, selected methods, and multiple phenotype models can all be
+declared in YAML. See [the complete usage guide](docs/usage.md) and
 [`examples/params.yml`](examples/params.yml).
 
 Processes use standard nf-core-style resource labels and pass `task.cpus` and bounded
@@ -110,7 +113,7 @@ LSF, and other Nextflow executors. Site-specific launchers and module commands b
 outside the portable pipeline repository.
 
 SBayesRC is a high-memory, long-running method. Use `--methods plink_ct` for a smaller
-run; selecting fewer methods changes the scientific work requested, not the executor.
+run; selecting fewer methods changes the selected analysis, not the executor.
 
 ## Report and validation
 

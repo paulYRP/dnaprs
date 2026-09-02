@@ -13,19 +13,19 @@ tools:
 input:
   - - row:
         type: map
-        description: Metadata associated with inputs required by the `reference_asset` process.
+        description: Pinned asset URL, digest, size, role, and cache metadata.
     - cached:
-        type: string
-        description: Inputs required by the `reference_asset` process.
+        type: file
+        description: Existing cached asset, or the empty placeholder when acquisition is required.
     - cache_target:
         type: string
-        description: Inputs required by the `reference_asset` process.
+        description: Validated destination path in the persistent reference cache.
   - embedded_fasta_index:
       type: file
       description: Bundled FASTA index used only for the matching catalogue asset.
   - asset_script:
       type: file
-      description: Executable script used to produce atomic download, checksum, and cache implementation.
+      description: Shell script that downloads, verifies, and atomically caches one reference asset.
 output:
   asset:
     - - row:

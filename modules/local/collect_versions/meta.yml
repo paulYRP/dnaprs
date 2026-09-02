@@ -19,8 +19,7 @@ input:
       description: Process-level YAML software-version records.
   - collect_script:
       type: file
-      description: Executable script used to produce r implementation used to validate and order version
-        records.
+      description: R script that validates, deduplicates, and orders software-version records.
 output:
   versions:
     - software_versions.yml:

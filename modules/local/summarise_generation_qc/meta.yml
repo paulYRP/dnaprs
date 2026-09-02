@@ -22,8 +22,7 @@ input:
       description: Combined participant score QC.
   - generation_qc_script:
       type: file
-      description: Executable script used to produce r implementation used to construct the variant-flow
-        audit.
+      description: R script that constructs the ordered variant-flow and score QC summary.
 output:
   variant_flow:
     - variant_flow.tsv:

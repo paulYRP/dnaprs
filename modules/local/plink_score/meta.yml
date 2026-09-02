@@ -13,43 +13,43 @@ tools:
 input:
   - - target:
         type: map
-        description: Metadata associated with inputs required by the `plink_score` process.
+        description: Target cohort and scoring-stage metadata.
     - target_dir:
-        type: string
-        description: Inputs required by the `plink_score` process.
+        type: directory
+        description: Target PGEN dataset used for scoring.
     - target_qc:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: QC summary for the selected target checkpoint.
     - participant_decisions:
         type: list
-        description: Inputs required by the `plink_score` process.
+        description: Integrated participant eligibility decisions.
     - participant_keep:
-        type: string
-        description: Inputs required by the `plink_score` process.
+        type: file
+        description: PLINK keep file for score-eligible participants.
     - gwas:
         type: map
-        description: Metadata associated with inputs required by the `plink_score` process.
+        description: GWAS trait and PRS metadata.
     - weight:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: C+T score weight table.
     - weight_qc:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: QC summary for the score weights.
     - harmonisation_qc:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: GWAS harmonisation and reference-alignment QC summary.
     - clump_log:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: PLINK clumping execution log.
     - reference:
         type: map
-        description: Metadata associated with inputs required by the `plink_score` process.
+        description: LD reference identifier and build metadata.
     - reference_freq:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: LD reference allele-frequency table.
     - reference_log:
         type: file
-        description: Inputs required by the `plink_score` process.
+        description: LD reference frequency calculation log.
 output:
   raw:
     - - target:

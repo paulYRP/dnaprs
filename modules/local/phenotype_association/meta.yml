@@ -22,22 +22,22 @@ tools:
 input:
   - - score_job:
         type: map
-        description: Metadata associated with inputs required by the `phenotype_association` process.
+        description: Selected phenotype model, PRS, and target cohort metadata.
     - scores_long:
         type: file
-        description: Inputs required by the `phenotype_association` process.
+        description: Long-format participant PRS table.
     - phenotype_models:
         type: file
-        description: Inputs required by the `phenotype_association` process.
+        description: Validated phenotype-model records.
     - model_id:
         type: string
-        description: Inputs required by the `phenotype_association` process.
+        description: Identifier of the phenotype model fitted by this task.
   - phenotype_file:
       type: file
       description: User phenotype CSV or delimited phenotype table.
   - association_script:
       type: file
-      description: Executable script used to produce phenotype association and diagnostic implementation.
+      description: R script that fits phenotype associations and calculates diagnostics.
   - seed:
       type: integer
       description: Fixed random seed for reproducible permutation procedures.

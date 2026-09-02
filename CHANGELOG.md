@@ -6,9 +6,10 @@ All notable changes to dnaprs are recorded here.
 
 - Added a strict Nextflow DSL2 workflow with typed parameters and nf-schema
   validation.
-- Added beginner input discovery for raw genotype, GWAS, and optional phenotype
-  files, while retaining YAML configuration and parameter overrides for advanced
-  users.
+- Added directory discovery and explicit YAML records for raw genotype and GWAS
+  inputs, with optional phenotype files and parameter overrides.
+- Corrected namespaced staging for directory-based target, GWAS, and reference
+  inputs, including paths with spaces, and added resolver regression tests.
 - Added support for PLINK 1 BED, PLINK 2 PGEN, PED/MAP, BGEN, VCF, and Illumina
   GenomeStudio inputs without dataset-specific names.
 - Added validated local, cached, and downloaded reference modes, including pinned
@@ -33,7 +34,9 @@ All notable changes to dnaprs are recorded here.
 - Added an executor-independent PBS example that requests HPC CPU and memory once and
   lets Nextflow schedule the pipeline; Apptainer is loaded through Singularity for
   compatibility with the available module environment.
+- Kept trace, timeline, report, and DAG replacement independent from scientific
+  result replacement so resumed runs refresh their provenance files.
 - Organised published results under only `data/`, `figures/`, `logs/`, and `reports/`,
   rooted at `dnaprs/<run_name>` by default.
 - Reworked the README, workflow diagram, documentation, and operational test bundle;
-  removed unused template and Aqua-specific files.
+  removed unused template and site-specific files.

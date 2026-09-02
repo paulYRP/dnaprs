@@ -16,14 +16,13 @@ tools:
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `harmonise_gwas` process.
+        description: GWAS trait, build, effect scale, and source-column metadata.
     - gwas_file:
         type: file
-        description: Inputs required by the `harmonise_gwas` process.
+        description: Raw GWAS summary-statistic file.
   - harmonise_script:
       type: file
-      description: Executable script used to produce r implementation used to validate and harmonise the
-        gwas.
+      description: R script that validates and harmonises GWAS summary statistics.
 output:
   harmonised:
     - - meta:

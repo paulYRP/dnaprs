@@ -2,31 +2,32 @@
 
 ## Inputs
 
-dnaprs has one workflow and two levels of input. A beginner supplies directories; an
-advanced user may replace either directory with a YAML list of explicit records. Both
-routes are normalised to the same internal, provenance-bearing records. Users do not
-create TSV manifests.
+dnaprs accepts conventional raw-data directories or YAML lists of explicit records.
+Both forms are normalised to the same validated, provenance-bearing TSV records. The
+pipeline writes `targets.tsv`, `gwas.tsv`, `references.tsv`, and `models.tsv` for
+internal hand-off and provenance; these generated files are not launch parameters.
 
 ### Target genotypes
 
 `--input` defaults to `data/plink/raw`. The directory must resolve unambiguously to one
 coherent PGEN, BED, PED/MAP, BGEN, VCF/BCF, or GenomeStudio FinalReport dataset. PLINK
-sets require all companion files; GenomeStudio requires one assay manifest. Discovery
-never chooses alphabetically between several candidates. For multiple cohorts, use a
+sets require all companion files; GenomeStudio requires one assay manifest paired with
+the FinalReport. This vendor assay manifest is distinct from the generated TSV records.
+Discovery never chooses alphabetically between several candidates. For multiple cohorts, use a
 YAML `input` list with an `id`, `path`, `format`, and optional companions per cohort.
 
 ### GWAS summary statistics
 
 `--gwas` defaults to `data/gwas/raw`. Each supported text or compressed-text GWAS is
 inspected independently. Common column names are resolved only when their roles are
-unambiguous. An unfamiliar release must be described in the advanced YAML `gwas` list,
+unambiguous. An unfamiliar release must be described in a YAML `gwas` list,
 including effect scale, study size, build, and source-column mapping.
 
 The workflow validates numeric effects, uncertainty, P values, frequencies, alleles,
 coordinates, duplicate IDs, palindromic ambiguity, MAF, optional INFO, and orientation.
 It does not recognise a private cohort, trait, or filename.
 
-## Beginner commands
+## Minimal commands
 
 With the conventional folders and automatic references:
 
@@ -66,7 +67,7 @@ one CSV column cannot be matched unambiguously to target sample IDs. Binomial mo
 accept validated 0/1 data or explicit `--control_value` and `--case_value`; mixed
 models also require `--group_column`.
 
-## Advanced `params.yml`
+## Configured `params.yml`
 
 Run [`examples/params.yml`](../examples/params.yml) with:
 

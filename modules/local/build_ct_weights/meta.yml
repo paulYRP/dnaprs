@@ -10,28 +10,28 @@ tools:
       identifier: ""
       homepage: https://www.r-project.org/
   - data.table:
-      description: Software dependency reported by the `build_ct_weights` process
+      description: High-performance tabular data processing in R
       identifier: ""
       homepage: https://r-datatable.com/
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `build_ct_weights` process.
+        description: GWAS trait and PRS metadata.
     - cojo:
         type: file
-        description: Inputs required by the `build_ct_weights` process.
+        description: Reference-aligned GWAS table in COJO format.
     - clumps:
         type: file
-        description: Inputs required by the `build_ct_weights` process.
+        description: PLINK clump assignments for retained index variants.
     - harmonisation_qc:
         type: file
-        description: Inputs required by the `build_ct_weights` process.
+        description: QC summary from GWAS harmonisation and reference alignment.
     - clump_log:
         type: file
-        description: Inputs required by the `build_ct_weights` process.
+        description: PLINK clumping execution log.
   - weight_script:
       type: file
-      description: Executable script used to produce r implementation used to create score weights.
+      description: R script that creates C+T score weights from aligned clumps.
 output:
   weights:
     - - meta:

@@ -12,28 +12,28 @@ tools:
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `assemble_target_imputation` process.
+        description: Target cohort metadata.
     - chromosomes:
         type: list
-        description: Inputs required by the `assemble_target_imputation` process.
+        description: Expected chromosomes for the assembled imputed dataset.
     - chromosome_dirs:
-        type: string
-        description: Inputs required by the `assemble_target_imputation` process.
+        type: list
+        description: Per-chromosome imputed PGEN directories.
     - chromosome_manifests:
-        type: file
-        description: Inputs required by the `assemble_target_imputation` process.
+        type: list
+        description: Per-chromosome imputed target records.
     - chromosome_qc:
-        type: file
-        description: Inputs required by the `assemble_target_imputation` process.
+        type: list
+        description: Per-chromosome imputation QC summaries.
     - chromosome_dr2:
-        type: string
-        description: Inputs required by the `assemble_target_imputation` process.
+        type: list
+        description: Per-chromosome dosage quality tables.
     - chromosome_logs:
-        type: file
-        description: Inputs required by the `assemble_target_imputation` process.
+        type: list
+        description: Per-chromosome Beagle execution logs.
   - assembly_script:
       type: file
-      description: Executable script used to produce deterministic chromosome validation and gather implementation.
+      description: Shell script that validates and gathers imputed chromosomes.
 output:
   prepared:
     - - meta:

@@ -1,8 +1,8 @@
 name: validate_manifests
-description: Validate dnaprs manifests and resolve declared input paths before computation.
+description: Validate generated dnaprs input records and resolve declared source paths before computation.
 keywords:
   - prs
-  - manifest
+  - input-records
   - validation
 tools:
   - r:
@@ -15,19 +15,19 @@ input:
       description: Stable name used for this pipeline run.
   - target_manifest:
       type: file
-      description: Target-cohort manifest.
+      description: Generated target-cohort records from input resolution.
   - gwas_manifest:
       type: file
-      description: GWAS summary-statistic manifest.
+      description: Generated GWAS records from input resolution.
   - reference_manifest:
       type: file
-      description: Versioned manifest of immutable downloaded reference sources.
+      description: Generated records for declared or resolved reference sources.
   - phenotype_file:
       type: file
       description: Phenotype table or the pipeline empty placeholder.
   - phenotype_models:
       type: file
-      description: Phenotype-model manifest or the pipeline empty placeholder.
+      description: Generated phenotype-model records or the pipeline empty placeholder.
   - target_assets:
       type: list
       description: Target genotype files staged so the validator can inspect paths outside the pipeline directory.
@@ -39,48 +39,48 @@ input:
       description: Reference files and directories staged for integrity and content validation.
   - methods:
       type: list
-      description: Inputs required by the `validate_manifests` process.
+      description: PRS methods that determine method-specific validation requirements.
   - genome_build:
       type: string
-      description: Inputs required by the `validate_manifests` process.
+      description: Genome build required across targets, GWAS records, and references.
   - seed:
       type: integer
-      description: Inputs required by the `validate_manifests` process.
+      description: Random seed recorded in the validated run settings.
   - report_enabled:
       type: boolean
-      description: Inputs required by the `validate_manifests` process.
+      description: Whether the selected stage includes report generation.
   - target_imputation:
       type: boolean
       description: Whether chromosome-level target imputation is enabled.
   - launch_dir:
       type: string
-      description: Inputs required by the `validate_manifests` process.
+      description: Launch directory used to resolve relative target, GWAS, and phenotype paths.
   - reference_base:
       type: string
-      description: Base directory used to resolve relative paths in the reference manifest.
+      description: Base directory used to resolve relative paths in generated reference records.
   - run_plan:
       type: file
       description: Validated stage and reference-role plan.
   - validator_script:
       type: file
-      description: Executable script used to produce manifest validator implementation.
+      description: R script that validates records, paths, checksums, and run settings.
 output:
   target_manifest:
     - targets.tsv:
         type: file
-        description: Output emitted as `target_manifest` by the `validate_manifests` process.
+        description: Validated target-cohort records with resolved paths.
   gwas_manifest:
     - gwas.tsv:
         type: file
-        description: Output emitted as `gwas_manifest` by the `validate_manifests` process.
+        description: Validated GWAS records with resolved paths and source columns.
   reference_manifest:
     - references.tsv:
         type: file
-        description: Output emitted as `reference_manifest` by the `validate_manifests` process.
+        description: Validated reference records with integrity status.
   phenotype_models:
     - models.tsv:
         type: file
-        description: Output emitted as `phenotype_models` by the `validate_manifests` process.
+        description: Validated phenotype-model records.
   run_plan:
     - run_plan.tsv:
         type: file

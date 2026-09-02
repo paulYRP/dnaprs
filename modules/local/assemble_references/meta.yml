@@ -12,25 +12,25 @@ tools:
 input:
   - asset_rows:
       type: list
-      description: Inputs required by the `assemble_references` process.
+      description: Planned catalogue asset records to add to the reference bundle.
   - asset_files:
       type: list
-      description: Inputs required by the `assemble_references` process.
+      description: Validated files acquired for the planned catalogue assets.
   - provided_references:
       type: file
-      description: User-provided reference records to retain in the bundle.
+      description: Declared local reference records to retain in the bundle.
   - reference_bundle:
-      type: file
-      description: Inputs required by the `assemble_references` process.
+      type: string
+      description: Versioned identifier assigned to the assembled reference bundle.
   - genome_build:
       type: string
-      description: Inputs required by the `assemble_references` process.
+      description: Genome build shared by all reference records.
   - cache_root:
       type: string
-      description: Inputs required by the `assemble_references` process.
+      description: Persistent directory containing validated reference assets.
   - assemble_script:
       type: file
-      description: Executable script used to produce reference bundle assembly implementation.
+      description: R script that assembles and validates the reference bundle.
 output:
   references:
     - references.tsv:

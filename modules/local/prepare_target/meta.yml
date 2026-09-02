@@ -21,31 +21,31 @@ tools:
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `prepare_target` process.
+        description: Target cohort, format, build, role, and source-path metadata.
     - target_files:
         type: list
-        description: Inputs required by the `prepare_target` process.
+        description: Target genotype dataset and any format-specific companion files.
   - - dbsnp:
         type: map
-        description: Metadata associated with inputs required by the `prepare_target` process.
+        description: dbSNP reference metadata.
     - dbsnp_files:
         type: list
-        description: Inputs required by the `prepare_target` process.
+        description: dbSNP VCF and index files used for marker identifiers.
   - - reference_fasta:
         type: map
-        description: Metadata associated with inputs required by the `prepare_target` process.
+        description: Reference genome metadata.
     - reference_fasta_files:
         type: list
-        description: Inputs required by the `prepare_target` process.
+        description: Reference FASTA and index files used for allele validation.
   - prepare_script:
       type: file
-      description: Executable script used to produce inputs required by the `prepare_target` process.
+      description: Shell script that imports target formats and creates corrected PGEN datasets.
   - adapter_script:
       type: file
-      description: Executable script used to produce inputs required by the `prepare_target` process.
+      description: R script that converts GenomeStudio FinalReport data to PLINK input.
   - marker_resolver:
       type: file
-      description: Inputs required by the `prepare_target` process.
+      description: R script that resolves marker coordinates, identifiers, and alleles.
 output:
   prepared:
     - - meta:

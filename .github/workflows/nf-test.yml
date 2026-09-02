@@ -121,10 +121,20 @@ jobs:
             --log nf-test-results/modules-real.log \
             --junitxml nf-test-results/modules-real.junit.xml
 
+      - name: Run input resolver compatibility test
+        if: ${{ matrix.NXF_VER == 'latest-everything' }}
+        run: |
+          nf-test test modules/local/resolve_inputs/tests/real.nf.test \
+            --profile test,docker \
+            --ci \
+            --verbose \
+            --log nf-test-results/resolve-inputs.log \
+            --junitxml nf-test-results/resolve-inputs.junit.xml
+
       - name: Run focused stage and reference tests
         if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
-          nf-test test tests/stages.nf.test tests/reference.nf.test tests/formats.nf.test \
+          nf-test test tests/stages.nf.test tests/reference.nf.test tests/formats.nf.test tests/directory_inputs.nf.test \
             --profile test,docker \
             --ci \
             --verbose \

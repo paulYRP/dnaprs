@@ -12,7 +12,7 @@ tools:
 input:
   - provided_references:
       type: file
-      description: Normalised user-provided reference records.
+      description: Normalised local reference records.
   - catalogue:
       type: file
       description: Pinned automatic-reference catalogue.
@@ -20,11 +20,11 @@ input:
       type: file
       description: Stage-specific required reference roles.
   - reference_mode:
-      type: file
+      type: string
       description: Local, automatic, or download reference mode.
   - plan_script:
       type: file
-      description: Executable script used to produce reference planning implementation.
+      description: R script that resolves required reference roles against the pinned catalogue.
 output:
   assets:
     - reference_assets.tsv:

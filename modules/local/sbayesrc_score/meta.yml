@@ -15,49 +15,49 @@ tools:
       identifier: ""
       homepage: https://www.cog-genomics.org/plink/2.0/
   - R:
-      description: Software dependency reported by the `sbayesrc_score` process
+      description: Statistical computing environment used by the SBayesRC wrapper
       identifier: ""
       homepage: https://www.r-project.org/
 input:
   - - target:
         type: map
-        description: Metadata associated with inputs required by the `sbayesrc_score` process.
+        description: Target cohort and scoring-stage metadata.
     - target_dir:
-        type: string
-        description: Inputs required by the `sbayesrc_score` process.
+        type: directory
+        description: Target PGEN dataset used for SBayesRC scoring.
     - target_qc:
         type: file
-        description: Inputs required by the `sbayesrc_score` process.
+        description: QC summary for the selected target checkpoint.
     - participant_decisions:
         type: list
-        description: Inputs required by the `sbayesrc_score` process.
+        description: Integrated participant eligibility decisions.
     - participant_keep:
-        type: string
-        description: Inputs required by the `sbayesrc_score` process.
+        type: file
+        description: PLINK keep file for score-eligible participants.
     - gwas:
         type: map
-        description: Metadata associated with inputs required by the `sbayesrc_score` process.
+        description: GWAS trait and PRS metadata.
     - weight:
         type: file
-        description: Inputs required by the `sbayesrc_score` process.
+        description: Posterior SBayesRC variant weights.
     - parameter:
-        type: string
-        description: Inputs required by the `sbayesrc_score` process.
+        type: file
+        description: SBayesRC model parameter estimates.
     - model_qc:
         type: file
-        description: Inputs required by the `sbayesrc_score` process.
+        description: QC summary from SBayesRC model fitting.
     - impute_qc:
         type: file
-        description: Inputs required by the `sbayesrc_score` process.
+        description: QC summary from SBayesRC summary-statistic imputation.
     - tidy_qc:
         type: file
-        description: Inputs required by the `sbayesrc_score` process.
+        description: QC summary from SBayesRC summary-statistic preparation.
     - harmonisation_qc:
         type: file
-        description: Inputs required by the `sbayesrc_score` process.
+        description: QC summary from GWAS harmonisation.
   - sbayesrc_script:
       type: file
-      description: Executable script used to produce sbayesrc wrapper implementation.
+      description: R script that applies SBayesRC weights to the target and validates scores.
 output:
   scores:
     - - target:

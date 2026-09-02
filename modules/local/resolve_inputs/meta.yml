@@ -11,11 +11,15 @@ tools:
       identifier: ""
       homepage: https://www.r-project.org/
   - jsonlite:
-      description: Software dependency reported by the `resolve_inputs` process
+      description: JSON parsing for encoded Nextflow parameter values
       identifier: ""
       homepage: https://jeroen.r-universe.dev/jsonlite/
+  - openssl:
+      description: Base64 decoding for encoded Nextflow parameter values
+      identifier: ""
+      homepage: https://cran.r-project.org/package=openssl
   - yaml:
-      description: Software dependency reported by the `resolve_inputs` process
+      description: Serialisation of resolved reference settings
       identifier: ""
       homepage: https://cran.r-project.org/package=yaml
 input:
@@ -26,74 +30,74 @@ input:
       type: string
       description: Base64-encoded GWAS input declaration.
   - reference_spec:
-      type: file
+      type: string
       description: Base64-encoded reference declaration.
   - models_spec:
-      type: file
+      type: string
       description: Base64-encoded phenotype model declaration.
   - genome_build:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Genome build required for target, GWAS, and reference records.
   - methods:
       type: list
-      description: Inputs required by the `resolve_inputs` process.
+      description: PRS methods selected for the run.
   - target_imputation:
-      type: string
-      description: Inputs required by the `resolve_inputs` process.
+      type: boolean
+      description: Whether to plan chromosome-level target imputation.
   - stop_after:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Last workflow stage selected for the run.
   - reference_only:
       type: boolean
-      description: Inputs required by the `resolve_inputs` process.
+      description: Whether to prepare references without processing a target cohort.
   - reference_mode:
-      type: file
-      description: Inputs required by the `resolve_inputs` process.
+      type: string
+      description: Strategy for resolving local and downloadable reference assets.
   - reference_bundle:
-      type: file
-      description: Inputs required by the `resolve_inputs` process.
+      type: string
+      description: Versioned reference bundle identifier.
   - phenotype:
-      type: file
-      description: Inputs required by the `resolve_inputs` process.
+      type: string
+      description: Phenotype table path, or an empty value when phenotype analysis is disabled.
   - outcome:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Phenotype outcome column used by the single-model interface.
   - covariates:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Comma-separated covariate columns used by the single-model interface.
   - model_type:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Statistical model family used by the single-model interface.
   - participant_id:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Phenotype-table column containing target participant identifiers.
   - group_column:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Grouping column required by mixed models.
   - control_value:
-      type: integer
-      description: Inputs required by the `resolve_inputs` process.
+      type: string
+      description: Phenotype value mapped to the control class in binomial models.
   - case_value:
-      type: integer
-      description: Inputs required by the `resolve_inputs` process.
+      type: string
+      description: Phenotype value mapped to the case class in binomial models.
   - beagle_jar:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Optional explicit path to the Beagle JAR.
   - unbref3_jar:
       type: string
-      description: Inputs required by the `resolve_inputs` process.
+      description: Optional explicit path to the unbref3 JAR.
   - target_source:
-      type: string
-      description: Inputs required by the `resolve_inputs` process.
+      type: file
+      description: Staged target directory, or the empty placeholder for explicit records.
   - gwas_source:
-      type: string
-      description: Inputs required by the `resolve_inputs` process.
+      type: file
+      description: Staged GWAS directory, or the empty placeholder for explicit records.
   - reference_source:
       type: file
-      description: Inputs required by the `resolve_inputs` process.
+      description: Staged reference directory, or the empty placeholder for automatic references.
   - resolver_script:
       type: file
-      description: Executable script used to produce input resolver implementation.
+      description: R script that discovers inputs and writes validated internal records.
 output:
   targets:
     - targets.tsv:
@@ -143,6 +147,16 @@ output:
       - Rscript -e 'cat(as.character(packageVersion("jsonlite")))' 2>/dev/null || printf stub:
           type: eval
           description: The expression to obtain the version of the tool
+  versions_openssl:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - openssl:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("openssl")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
   versions_yaml:
     - - ${task.process}:
           type: string
@@ -171,6 +185,15 @@ topics:
           type: string
           description: The name of the tool
       - Rscript -e 'cat(as.character(packageVersion("jsonlite")))' 2>/dev/null || printf stub:
+          type: eval
+          description: The expression to obtain the version of the tool
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - openssl:
+          type: string
+          description: The name of the tool
+      - Rscript -e 'cat(as.character(packageVersion("openssl")))' 2>/dev/null || printf stub:
           type: eval
           description: The expression to obtain the version of the tool
     - - ${task.process}:

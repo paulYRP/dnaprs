@@ -1,0 +1,44 @@
+nextflow_pipeline {
+
+    name "Resolve a raw target directory in the pipeline"
+    script "../main.nf"
+    tag "pipeline"
+    tag "directory_inputs"
+    tag "real"
+
+    test("target directory with an arbitrary name and spaces") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "directory_inputs"
+                input = "${projectDir}/tests/data/resolver inputs/target cohort"
+                stop_after = "target_qc"
+                phenotype = null
+                outcome = null
+                covariates = null
+                model_type = null
+                participant_id = null
+                target_imputation = false
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/directory_inputs"
+            def targets = path("$runDir/data/inputs/targets.tsv")
+            def checks = path("$runDir/data/inputs/input_resolution.tsv")
+            def plan = path("$runDir/data/inputs/run_plan.tsv")
+
+            assert workflow.success
+            assertAll(
+                { assert targets.exists() },
+                { assert targets.text.contains('resolver inputs/target cohort/cohort.vcf') },
+                { assert checks.text.contains('target\tcohort') },
+                { assert checks.text.contains('\tdirectory') },
+                { assert plan.text.contains('run_prs\tfalse') },
+                { assert path("$runDir/data/target_qc/cohort/cohort.target_qc.tsv").exists() },
+                { assert path("$runDir/data/pipeline_info/software_versions.yml").exists() }
+            )
+        }
+    }
+}

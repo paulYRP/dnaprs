@@ -10,7 +10,7 @@ argumentVALUE <- argument[seq.int(2L, length(argument), 2L)]
 option <- stats::setNames(as.list(argumentVALUE), argumentNAME)
 if (is.null(option[["target-imputation"]])) option[["target-imputation"]] <- "false"
 
-# Define compact helpers for tabular manifests and clear failures.
+# Define compact helpers for generated tabular records and clear failures.
 readTABLE <- function(path) {
   utils::read.delim(
     path,
@@ -92,7 +92,7 @@ checkPATH <- function(path, label) {
 }
 
 # Nextflow may copy declared inputs into the task directory instead of bind-mounting
-# their original parent directories. Keep the original manifest paths for provenance,
+# their original parent directories. Keep the original record paths for provenance,
 # but use the staged copies for validation inside Docker or Apptainer.
 stagedMATCH <- new.env(parent = emptyenv())
 stagedPATH <- function(path, root) {
@@ -319,7 +319,7 @@ targetSAMPLEIDS <- function(target, nativePATH, stagedROOT = "") {
   unique(output[!is.na(output) & nzchar(trimws(output))])
 }
 
-# Read the four manifests and the run settings.
+# Read the four generated record tables and the run settings.
 target <- readTABLE(option[["target-manifest"]])
 gwas <- readTABLE(option[["gwas-manifest"]])
 reference <- readTABLE(option[["reference-manifest"]])
@@ -366,9 +366,9 @@ if (!"format" %in% names(target) && "source_format" %in% names(target)) {
 targetOPTIONAL <- c("sample", "keep", "dosage", "assay_manifest", "marker_map")
 for (column in setdiff(targetOPTIONAL, names(target))) target[[column]] <- ""
 targetREQUIRED <- c("cohort", "role", "source_format", "genotype", "build", "ancestry")
-requireCOLUMN(target, targetREQUIRED, "Target manifest")
+requireCOLUMN(target, targetREQUIRED, "Generated target records")
 for (column in targetREQUIRED) {
-  requireVALUE(target, column, "Target manifest")
+  requireVALUE(target, column, "Generated target records")
 }
 target$source_format <- tolower(target$source_format)
 target$format <- target$source_format
@@ -431,8 +431,8 @@ if (anyDuplicated(target$cohort)) {
   stop("Target cohort values must be unique.", call. = FALSE)
 }
 
-# Validate the GWAS contract and each explicitly mapped source column only when PRS
-# generation is part of the requested graph.
+# Validate the GWAS contract and each explicitly mapped source column when the selected
+# workflow stage includes PRS generation.
 gwasOPTIONAL <- c(
   "source_format", "freq_col", "case_freq_col", "control_freq_col",
   "case_n_col", "control_n_col", "n_col", "info_col", "info_min", "maf_min"
@@ -446,12 +446,12 @@ gwasREQUIRED <- c(
   "snp_col", "chr_col", "bp_col", "effect_allele_col", "other_allele_col", "beta_col",
   "se_col", "p_col", "freq_col", "n_col"
 )
-requireCOLUMN(gwas, gwasREQUIRED, "GWAS manifest")
+requireCOLUMN(gwas, gwasREQUIRED, "Generated GWAS records")
 gwasPATHNATIVE <- character()
 if (runPRS) {
-  if (nrow(gwas) == 0L) stop("The requested PRS stage requires at least one GWAS input.", call. = FALSE)
+  if (nrow(gwas) == 0L) stop("The selected PRS stage requires at least one GWAS input.", call. = FALSE)
   for (column in setdiff(gwasREQUIRED, c("freq_col", "n_col"))) {
-    requireVALUE(gwas, column, "GWAS manifest")
+    requireVALUE(gwas, column, "Generated GWAS records")
   }
   if (anyDuplicated(gwas$trait_id) || anyDuplicated(gwas$prs_name)) {
     stop("GWAS trait_id and prs_name values must each be unique.", call. = FALSE)
@@ -487,9 +487,9 @@ referenceREQUIRED <- c(
   "bundle_id", "bundle_version", "reference_id", "reference_type", "path",
   "build", "ancestry", "version", "checksum", "source_format", "reference_stage"
 )
-requireCOLUMN(reference, referenceREQUIRED, "Reference manifest")
+requireCOLUMN(reference, referenceREQUIRED, "Generated reference records")
 for (column in setdiff(referenceREQUIRED, "checksum")) {
-  requireVALUE(reference, column, "Reference manifest")
+  requireVALUE(reference, column, "Generated reference records")
 }
 if (anyDuplicated(reference$reference_id)) {
   stop("Reference identifiers must be unique.", call. = FALSE)
@@ -647,19 +647,19 @@ if (length(missingREFERENCE) > 0L) {
   stop(sprintf("Selected methods require reference type(s): %s", paste(missingREFERENCE, collapse = ", ")), call. = FALSE)
 }
 
-# Validate phenotype model declarations only when phenotype analysis is requested.
+# Validate phenotype model declarations when phenotype analysis is enabled.
 modelREQUIRED <- c(
   "model_id", "outcome", "prs_name", "family", "covariates", "participant_id",
   "group_id", "expected_direction", "primary"
 )
 if (nrow(phenotypeMODEL) > 0L) {
-  if (!runPHENOTYPE) stop("Phenotype models were resolved for a run that does not request phenotype analysis.", call. = FALSE)
+  if (!runPHENOTYPE) stop("Phenotype models were resolved for a run without phenotype analysis enabled.", call. = FALSE)
   for (column in setdiff(c("control_value", "case_value"), names(phenotypeMODEL))) {
     phenotypeMODEL[[column]] <- ""
   }
-  requireCOLUMN(phenotypeMODEL, modelREQUIRED, "Phenotype-model manifest")
+  requireCOLUMN(phenotypeMODEL, modelREQUIRED, "Generated phenotype-model records")
   for (column in c("model_id", "outcome", "prs_name", "family", "primary")) {
-    requireVALUE(phenotypeMODEL, column, "Phenotype-model manifest")
+    requireVALUE(phenotypeMODEL, column, "Generated phenotype-model records")
   }
   if (anyDuplicated(phenotypeMODEL$model_id)) {
     stop("Phenotype model identifiers must be unique.", call. = FALSE)
@@ -777,7 +777,7 @@ if (nrow(phenotypeMODEL) > 0L) {
   }
 }
 
-# Save resolved manifests and a concise input-check record.
+# Save validated record tables and a concise input-check record.
 writeTABLE(target, "targets.tsv")
 writeTABLE(gwas, "gwas.tsv")
 writeTABLE(reference, "references.tsv")

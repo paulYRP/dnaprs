@@ -26,9 +26,9 @@ process RESOLVE_INPUTS {
     val case_value
     val beagle_jar
     val unbref3_jar
-    path target_source, stageAs: 'target_source'
-    path gwas_source, stageAs: 'gwas_source'
-    path reference_source, stageAs: 'reference_source'
+    path target_source, stageAs: 'target_source/*'
+    path gwas_source, stageAs: 'gwas_source/*'
+    path reference_source, stageAs: 'reference_source/*'
     path resolver_script
 
     output:
@@ -41,6 +41,7 @@ process RESOLVE_INPUTS {
     path 'input_resolution.tsv', emit: checks
     tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     tuple val("${task.process}"), val('jsonlite'), eval("Rscript -e 'cat(as.character(packageVersion(\"jsonlite\")))' 2>/dev/null || printf stub"), emit: versions_jsonlite, topic: versions
+    tuple val("${task.process}"), val('openssl'), eval("Rscript -e 'cat(as.character(packageVersion(\"openssl\")))' 2>/dev/null || printf stub"), emit: versions_openssl, topic: versions
     tuple val("${task.process}"), val('yaml'), eval("Rscript -e 'cat(as.character(packageVersion(\"yaml\")))' 2>/dev/null || printf stub"), emit: versions_yaml, topic: versions
     script:
     method_arg = methods.join(',')
@@ -67,9 +68,9 @@ process RESOLVE_INPUTS {
         --case-value '${case_value}' \
         --beagle-jar '${beagle_jar}' \
         --unbref3-jar '${unbref3_jar}' \
-        --target-staged target_source \
-        --gwas-staged gwas_source \
-        --reference-staged reference_source
+        --target-staged ${target_source} \
+        --gwas-staged ${gwas_source} \
+        --reference-staged ${reference_source}
     """
 
     stub:

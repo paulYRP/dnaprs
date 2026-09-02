@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-# Convert the beginner directory interface or advanced YAML objects into the canonical
-# records consumed by the existing scientific modules. These TSV files are pipeline
-# provenance; they are never user inputs.
+# Convert conventional input directories or explicit YAML records into the canonical
+# TSV records consumed by the scientific modules. These generated files provide
+# internal hand-off and provenance; they are not launch parameters.
 argument <- commandArgs(trailingOnly = TRUE)
 if (length(argument) %% 2L != 0L || any(!startsWith(argument[seq.int(1L, length(argument), 2L)], "--"))) {
   stop("Arguments must be supplied as --name value pairs.", call. = FALSE)
@@ -115,7 +115,7 @@ listDEPTH <- function(root, maximum = 4L) {
 # Discover one coherent raw target dataset. Companion sets are treated as a unit and
 # ambiguity is a hard error rather than an alphabetical choice.
 discoverTARGET <- function(stagedROOT, originalROOT) {
-  if (!dir.exists(stagedROOT)) stop("--input must be a directory for beginner discovery.", call. = FALSE)
+  if (!dir.exists(stagedROOT)) stop("--input must be a directory for automatic discovery.", call. = FALSE)
   files <- listDEPTH(stagedROOT)
   lower <- tolower(files)
   candidates <- list()
@@ -192,12 +192,12 @@ discoverTARGET <- function(stagedROOT, originalROOT) {
 }
 
 explicitTARGET <- function(specification) {
-  if (!is.list(specification) || length(specification) == 0L) stop("Advanced input must be a non-empty YAML list.", call. = FALSE)
+  if (!is.list(specification) || length(specification) == 0L) stop("Explicit input must be a non-empty YAML list.", call. = FALSE)
   value <- lapply(specification, function(record) {
     path <- recordVALUE(record, c("path", "genotype"))
-    if (!nzchar(path)) stop("Every advanced target record requires path.", call. = FALSE)
+    if (!nzchar(path)) stop("Every explicit target record requires path.", call. = FALSE)
     format <- tolower(recordVALUE(record, c("format", "source_format")))
-    if (!nzchar(format)) stop("Every advanced target record requires format.", call. = FALSE)
+    if (!nzchar(format)) stop("Every explicit target record requires format.", call. = FALSE)
     id <- safeID(recordVALUE(record, c("id", "cohort"), withoutEXTENSION(path)), "target")
     data.frame(
       cohort = id,
@@ -343,7 +343,7 @@ discoverGWASRECORD <- function(path, stagedROOT, originalROOT) {
 }
 
 discoverGWAS <- function(stagedROOT, originalROOT) {
-  if (!dir.exists(stagedROOT)) stop("--gwas must be a directory for beginner discovery.", call. = FALSE)
+  if (!dir.exists(stagedROOT)) stop("--gwas must be a directory for automatic discovery.", call. = FALSE)
   files <- listDEPTH(stagedROOT)
   files <- files[grepl("\\.(tsv|txt|csv|vcf)(\\.gz|\\.bgz)?$", files, ignore.case = TRUE)]
   files <- files[!grepl("(^|[/\\\\])(readme|md5|sha|manifest|receipt)", files, ignore.case = TRUE)]
@@ -357,7 +357,7 @@ discoverGWAS <- function(stagedROOT, originalROOT) {
 }
 
 explicitGWAS <- function(specification) {
-  if (!is.list(specification) || length(specification) == 0L) stop("Advanced gwas must be a non-empty YAML list.", call. = FALSE)
+  if (!is.list(specification) || length(specification) == 0L) stop("Explicit gwas must be a non-empty YAML list.", call. = FALSE)
   value <- lapply(specification, function(record) {
     columns <- record[["columns"]]
     if (is.null(columns)) columns <- list()

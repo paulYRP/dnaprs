@@ -14,57 +14,57 @@ tools:
       homepage: https://samtools.github.io/bcftools/
       identifier: biotools:bcftools
   - plink2:
-      description: Software dependency reported by the `target_impute` process
+      description: Whole-genome association and genotype-processing toolset
       identifier: ""
       homepage: https://www.cog-genomics.org/plink/2.0/
 input:
   - - group_key:
         type: map
-        description: Metadata associated with inputs required by the `target_impute` process.
+        description: Target cohort metadata shared across chromosome tasks.
     - chromosome:
         type: string
-        description: Inputs required by the `target_impute` process.
+        description: Chromosome imputed by this task.
     - target_pgen:
         type: file
-        description: Inputs required by the `target_impute` process.
+        description: Target PGEN file for the selected chromosome.
     - target_pvar:
         type: file
-        description: Inputs required by the `target_impute` process.
+        description: Target PVAR file for the selected chromosome.
     - target_psam:
         type: file
-        description: Inputs required by the `target_impute` process.
+        description: Target PSAM file for the selected chromosome.
     - target_qc:
         type: file
-        description: Inputs required by the `target_impute` process.
+        description: Target QC summary associated with the imputation checkpoint.
     - panel:
         type: map
-        description: Metadata associated with inputs required by the `target_impute` process.
+        description: Imputation reference panel metadata for the selected chromosome.
     - panel_files:
         type: list
-        description: Inputs required by the `target_impute` process.
+        description: Imputation reference panel files for the selected chromosome.
     - genetic_map:
         type: map
-        description: Metadata associated with inputs required by the `target_impute` process.
+        description: Genetic map metadata for the selected chromosome.
     - genetic_map_files:
         type: list
-        description: Inputs required by the `target_impute` process.
+        description: Genetic map files for the selected chromosome.
     - beagle:
         type: map
-        description: Metadata associated with inputs required by the `target_impute` process.
+        description: Beagle tool reference metadata.
     - beagle_files:
         type: list
-        description: Inputs required by the `target_impute` process.
+        description: Pinned Beagle JAR.
     - reference_fasta:
         type: map
-        description: Metadata associated with inputs required by the `target_impute` process.
+        description: Reference genome metadata.
     - reference_fasta_files:
         type: list
-        description: Inputs required by the `target_impute` process.
+        description: Reference FASTA and index files.
   - impute_script:
       type: file
-      description: Executable script used to produce chromosome imputation implementation.
+      description: Shell script that phases, imputes, filters, and converts one chromosome.
   - imputation_dr2:
-      type: string
+      type: float
       description: Minimum imputation dosage quality retained.
 output:
   chromosomes:

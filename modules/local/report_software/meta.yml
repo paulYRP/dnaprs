@@ -18,23 +18,23 @@ tools:
       homepage: https://ggplot2.tidyverse.org/
       identifier: biotools:ggplot2
   - jsonlite:
-      description: Software dependency reported by the `report_software` process
+      description: JSON parsing and generation in R
       identifier: ""
       homepage: https://jeroen.r-universe.dev/jsonlite/
   - knitr:
-      description: Software dependency reported by the `report_software` process
+      description: Dynamic report generation in R
       identifier: ""
       homepage: https://yihui.org/knitr/
   - openxlsx:
-      description: Software dependency reported by the `report_software` process
+      description: XLSX workbook generation in R
       identifier: ""
       homepage: https://ycphs.github.io/openxlsx/
   - rmarkdown:
-      description: Software dependency reported by the `report_software` process
+      description: R Markdown document rendering
       identifier: ""
       homepage: https://rmarkdown.rstudio.com/
   - scales:
-      description: Software dependency reported by the `report_software` process
+      description: Scale and label functions for R visualisations
       identifier: ""
       homepage: https://scales.r-lib.org/
 input: []

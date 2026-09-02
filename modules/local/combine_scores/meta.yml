@@ -11,7 +11,7 @@ tools:
       identifier: ""
       homepage: https://www.r-project.org/
   - data.table:
-      description: Software dependency reported by the `combine_scores` process
+      description: High-performance tabular data processing in R
       identifier: ""
       homepage: https://r-datatable.com/
 input:
@@ -23,7 +23,7 @@ input:
       description: Cohort participant inclusion decisions.
   - combine_script:
       type: file
-      description: Executable script used to produce r implementation used to combine and standardise scores.
+      description: R script that combines and standardises participant scores across methods and traits.
 output:
   scores_long:
     - prs_scores_long.tsv:

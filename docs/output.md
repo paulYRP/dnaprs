@@ -46,7 +46,7 @@ analysis decision.
 
 This is a convenient copy of all report figures. The website retains its own copy under
 `reports/figures/` so the complete `reports/` directory remains portable. Every plot is
-generated from a published table and, when requested, is available as vector SVG and
+generated from a published table and, when enabled, is available as vector SVG and
 360 dpi PNG, TIFF, and JPEG. No plot is removed when a viewer has several figures.
 
 ## `logs/`

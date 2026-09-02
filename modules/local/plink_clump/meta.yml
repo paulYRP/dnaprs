@@ -12,22 +12,22 @@ tools:
 input:
   - - meta:
         type: map
-        description: Metadata associated with inputs required by the `plink_clump` process.
+        description: GWAS trait and PRS metadata.
     - cojo:
         type: file
-        description: Inputs required by the `plink_clump` process.
+        description: Reference-aligned GWAS table in COJO format.
     - clump_input:
         type: file
-        description: Inputs required by the `plink_clump` process.
+        description: Reference-aligned GWAS table prepared for PLINK clumping.
     - harmonisation_qc:
         type: file
-        description: Inputs required by the `plink_clump` process.
+        description: QC summary from GWAS harmonisation and reference alignment.
     - reference:
         type: map
-        description: Metadata associated with inputs required by the `plink_clump` process.
+        description: LD reference identifier, type, and source metadata.
     - reference_files:
         type: list
-        description: Inputs required by the `plink_clump` process.
+        description: LD reference genotype files used for clumping.
 output:
   clumped:
     - - meta:

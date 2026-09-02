@@ -21,31 +21,31 @@ tools:
 input:
   - - panel:
         type: map
-        description: Metadata associated with inputs required by the `prepare_plink_reference` process.
+        description: Population reference panel identifier, type, and source metadata.
     - panel_files:
         type: list
-        description: Inputs required by the `prepare_plink_reference` process.
+        description: Population reference panel files.
   - - population:
         type: map
-        description: Metadata associated with inputs required by the `prepare_plink_reference` process.
+        description: Population-label reference metadata.
     - population_files:
         type: list
-        description: Inputs required by the `prepare_plink_reference` process.
+        description: Sample population and ancestry label files.
   - - related:
         type: map
-        description: Metadata associated with inputs required by the `prepare_plink_reference` process.
+        description: Related-sample exclusion reference metadata.
     - related_files:
         type: list
-        description: Inputs required by the `prepare_plink_reference` process.
+        description: Related-sample exclusion files.
   - - unbref3:
-        type: string
-        description: Inputs required by the `prepare_plink_reference` process.
+        type: map
+        description: unbref3 tool reference metadata.
     - unbref3_files:
         type: list
-        description: Inputs required by the `prepare_plink_reference` process.
+        description: Pinned unbref3 JAR used to convert bref3 input.
   - prepare_script:
       type: file
-      description: Executable script used to produce reference preparation implementation.
+      description: Shell script that validates and converts the PLINK and ancestry reference panel.
   - genome_build:
       type: string
       description: Target genome build.
