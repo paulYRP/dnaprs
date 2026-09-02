@@ -46,6 +46,7 @@ nextflow_pipeline {
                 { assert targets.text.contains('\tbgen\t') },
                 { assert targets.text.contains('\tvcf\t') },
                 { assert targets.text.contains('\tgenomestudio\t') },
+                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() },
                 { assert cohorts.every { cohort -> path("$runDir/data/target_prep/${cohort}/${cohort}.target_prep_summary.tsv").exists() } },
                 { assert cohorts.every { cohort -> path("$runDir/data/target_qc/${cohort}/${cohort}.target_qc.tsv").exists() } },
                 { assert cohorts.every { cohort -> path("$runDir/data/target_qc/${cohort}/${cohort}.participant_decisions.tsv").exists() } },

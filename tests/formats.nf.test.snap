@@ -1,0 +1,12 @@
+{
+    "PGEN, BED, PED, BGEN, VCF, and GenomeStudio reach target QC": {
+        "content": [
+            "software_versions.yml:md5,2c77e71b08441dc62aaa6120e1962b66"
+        ],
+        "timestamp": "2026-09-02T15:22:04.378218543",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

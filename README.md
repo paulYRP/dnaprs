@@ -15,9 +15,7 @@
 ## Introduction
 
 **dnaprs** is a portable Nextflow DSL2 pipeline for generating and evaluating polygenic
-risk scores from raw target genotypes and raw GWAS summary statistics. It is derived
-from the nf-core template and follows nf-core practices, but it is maintained at
-`paulYRP/dnaprs` and is not an official `nf-core/*` pipeline.
+risk scores from raw target genotypes and raw GWAS summary statistics.
 
 The pipeline discovers PGEN, BED, PED/MAP, BGEN, VCF/BCF, or GenomeStudio FinalReport
 inputs; records raw genotype EDA; resolves markers against pinned GRCh37 references;
