@@ -16,6 +16,10 @@ module. The four dnaprs images are built from digest-pinned base images. Downloa
 installers are SHA-256 checked, and R dependencies resolve against the dated
 `2026-08-01` Posit Package Manager CRAN snapshot.
 
+Processes using the combined PLINK image pin version
+`2.0.0-a.6.12-plink1.90b6.21` to registry digest
+`sha256:ebdfdb952f083cd554811f9c8b9ab8b2669f92ec914b9566b0aa962d642b66e7`.
+
 The component audit retained these local environments because the active dnaprs
 processes produce pipeline-specific decision tables, QC records, or checkpoints that
 the generic nf-core modules do not provide. The standard PLINK 2 BioContainer also
