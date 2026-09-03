@@ -612,7 +612,18 @@ buildMODELS <- function(specification, gwas) {
       selected <- unlist(selected, use.names = FALSE)
       index <- which(gwas$trait_id %in% selected | gwas$prs_name %in% selected)
       missing <- setdiff(selected, c(gwas$trait_id, gwas$prs_name))
-      if (length(missing) > 0L) stop(sprintf("Model refers to unknown score ID(s): %s", paste(missing, collapse = ", ")), call. = FALSE)
+      if (length(missing) > 0L) {
+        available <- unique(c(gwas$trait_id, gwas$prs_name))
+        available <- available[nzchar(available)]
+        stop(
+          sprintf(
+            "Model refers to unknown score ID(s): %s. Available GWAS score IDs: %s.",
+            paste(missing, collapse = ", "),
+            if (length(available) > 0L) paste(available, collapse = ", ") else "none"
+          ),
+          call. = FALSE
+        )
+      }
     }
     baseID <- safeID(recordVALUE(record, c("id", "model_id"), outcome), "model")
     covariateVALUE <- asTEXT(record[["covariates"]])

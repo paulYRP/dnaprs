@@ -69,37 +69,52 @@ nextflow_process {
         }
     }
 
-    test("explicit YAML records - file paths remain unchanged") {
+    test("explicit YAML records - stable GWAS IDs resolve phenotype models") {
         when {
             process {
                 """
                 target_path = file("${projectDir}/tests/data/target/test_target.vcf", checkIfExists: true).toString()
-                gwas_path = file("${projectDir}/tests/data/gwas/mdd.tsv", checkIfExists: true).toString()
+                mdd_path = file("${projectDir}/tests/data/gwas/mdd.tsv", checkIfExists: true).toString()
+                gad_path = file("${projectDir}/tests/data/gwas/gad.tsv", checkIfExists: true).toString()
+                ptsd_path = file("${projectDir}/tests/data/gwas/ptsd.tsv", checkIfExists: true).toString()
+                phenotype_path = file("${projectDir}/tests/data/phenotype.tsv", checkIfExists: true).toString()
                 reference_root = file("${projectDir}/tests/data/reference", checkIfExists: true).toString()
                 target_records = [[id: 'EXPLICIT', path: target_path, format: 'vcf', stage: 'raw', build: 'GRCh37']]
-                gwas_records = [[
-                    id: 'MDD', path: gwas_path, build: 'GRCh37', ancestry: 'European',
-                    effect_type: 'log_or', sample_size: 100000, prs_name: 'MDD_PRS',
-                    columns: [
-                        variant: 'SNP', chromosome: 'CHR', position: 'BP', effect_allele: 'A1',
-                        other_allele: 'A2', effect: 'BETA', standard_error: 'SE', p_value: 'P',
-                        frequency: 'EAF', sample_size: 'N'
-                    ]
-                ]]
+                common_columns = [
+                    variant: 'SNP', chromosome: 'CHR', position: 'BP', effect_allele: 'A1',
+                    other_allele: 'A2', effect: 'BETA', standard_error: 'SE', p_value: 'P',
+                    frequency: 'EAF', sample_size: 'N'
+                ]
+                gwas_records = [
+                    [id: 'mdd', path: mdd_path, build: 'GRCh37', ancestry: 'European',
+                     effect_type: 'log_or', sample_size: 100000, prs_name: 'MDD_PRS', columns: common_columns],
+                    [id: 'gad', path: gad_path, build: 'GRCh37', ancestry: 'European',
+                     effect_type: 'beta', sample_size: 90000, prs_name: 'GAD_PRS', columns: common_columns],
+                    [id: 'ptsd', path: ptsd_path, build: 'GRCh37', ancestry: 'European',
+                     effect_type: 'log_or', sample_size: 80000, prs_name: 'PTSD_PRS', columns: common_columns]
+                ]
+                model_records = [
+                    [id: 'mdd_wellbeing', outcome: 'MHC_TOTAL', covariates: 'Age,Sex', model_type: 'mixed',
+                     group_column: 'IID', score_ids: ['mdd'], expected_direction: 'negative', primary: true],
+                    [id: 'gad_wellbeing', outcome: 'MHC_TOTAL', covariates: 'Age,Sex', model_type: 'mixed',
+                     group_column: 'IID', score_ids: ['gad'], expected_direction: 'negative', primary: false],
+                    [id: 'ptsd_wellbeing', outcome: 'MHC_TOTAL', covariates: 'Age,Sex', model_type: 'mixed',
+                     group_column: 'IID', score_ids: ['ptsd'], expected_direction: 'negative', primary: false]
+                ]
                 reference_records = [root: reference_root, assets: [fasta: 'human_g1k_v37.fasta', fasta_index: 'human_g1k_v37.fasta.fai']]
 
                 input[0] = groovy.json.JsonOutput.toJson(target_records).getBytes('UTF-8').encodeBase64().toString()
                 input[1] = groovy.json.JsonOutput.toJson(gwas_records).getBytes('UTF-8').encodeBase64().toString()
                 input[2] = groovy.json.JsonOutput.toJson(reference_records).getBytes('UTF-8').encodeBase64().toString()
-                input[3] = 'W10='
+                input[3] = groovy.json.JsonOutput.toJson(model_records).getBytes('UTF-8').encodeBase64().toString()
                 input[4] = 'GRCh37'
                 input[5] = ['plink_ct']
                 input[6] = false
-                input[7] = 'prs'
+                input[7] = 'phenotype'
                 input[8] = false
                 input[9] = 'local'
                 input[10] = 'grch37-v1'
-                input[11] = ''
+                input[11] = phenotype_path
                 input[12] = ''
                 input[13] = ''
                 input[14] = ''
@@ -121,6 +136,7 @@ nextflow_process {
             def targets = file(process.out.targets[0]).text
             def gwas = file(process.out.gwas[0]).text
             def references = file(process.out.references[0]).text
+            def models = file(process.out.models[0]).text
             def checks = file(process.out.checks[0]).text
 
             assert process.success
@@ -128,8 +144,75 @@ nextflow_process {
                 { assert targets.contains('\tEXPLICIT\t') },
                 { assert targets.contains('/tests/data/target/test_target.vcf') },
                 { assert gwas.contains('/tests/data/gwas/mdd.tsv') },
+                { assert gwas.contains('/tests/data/gwas/gad.tsv') },
+                { assert gwas.contains('/tests/data/gwas/ptsd.tsv') },
+                { assert gwas.readLines().tail()*.split('\t')*.first() == ['mdd', 'gad', 'ptsd'] },
+                { assert models.contains('mdd_wellbeing\tMHC_TOTAL\tMDD_PRS') },
+                { assert models.contains('gad_wellbeing\tMHC_TOTAL\tGAD_PRS') },
+                { assert models.contains('ptsd_wellbeing\tMHC_TOTAL\tPTSD_PRS') },
                 { assert references.contains('/tests/data/reference/human_g1k_v37.fasta') },
                 { assert checks.readLines().tail().every { it.endsWith('\tyaml') } }
+            )
+        }
+    }
+
+    test("unknown model score ID reports the available GWAS IDs") {
+        when {
+            process {
+                """
+                target_path = file("${projectDir}/tests/data/target/test_target.vcf", checkIfExists: true).toString()
+                gwas_path = file("${projectDir}/tests/data/gwas/mdd.tsv", checkIfExists: true).toString()
+                phenotype_path = file("${projectDir}/tests/data/phenotype.tsv", checkIfExists: true).toString()
+                reference_root = file("${projectDir}/tests/data/reference", checkIfExists: true).toString()
+                target_records = [[id: 'EXPLICIT', path: target_path, format: 'vcf', stage: 'raw', build: 'GRCh37']]
+                gwas_records = [[
+                    id: 'mdd', path: gwas_path, build: 'GRCh37', ancestry: 'European',
+                    effect_type: 'log_or', sample_size: 100000, prs_name: 'MDD_PRS',
+                    columns: [
+                        variant: 'SNP', chromosome: 'CHR', position: 'BP', effect_allele: 'A1',
+                        other_allele: 'A2', effect: 'BETA', standard_error: 'SE', p_value: 'P',
+                        frequency: 'EAF', sample_size: 'N'
+                    ]
+                ]]
+                model_records = [[
+                    id: 'unknown_score', outcome: 'MHC_TOTAL', covariates: 'Age,Sex',
+                    model_type: 'gaussian', score_ids: ['gad'], primary: true
+                ]]
+                reference_records = [root: reference_root, assets: [fasta: 'human_g1k_v37.fasta', fasta_index: 'human_g1k_v37.fasta.fai']]
+
+                input[0] = groovy.json.JsonOutput.toJson(target_records).getBytes('UTF-8').encodeBase64().toString()
+                input[1] = groovy.json.JsonOutput.toJson(gwas_records).getBytes('UTF-8').encodeBase64().toString()
+                input[2] = groovy.json.JsonOutput.toJson(reference_records).getBytes('UTF-8').encodeBase64().toString()
+                input[3] = groovy.json.JsonOutput.toJson(model_records).getBytes('UTF-8').encodeBase64().toString()
+                input[4] = 'GRCh37'
+                input[5] = ['plink_ct']
+                input[6] = false
+                input[7] = 'phenotype'
+                input[8] = false
+                input[9] = 'local'
+                input[10] = 'grch37-v1'
+                input[11] = phenotype_path
+                input[12] = ''
+                input[13] = ''
+                input[14] = ''
+                input[15] = 'IID'
+                input[16] = ''
+                input[17] = ''
+                input[18] = ''
+                input[19] = ''
+                input[20] = ''
+                input[21] = file("${projectDir}/assets/empty_input")
+                input[22] = file("${projectDir}/assets/empty_input")
+                input[23] = file("${projectDir}/assets/empty_input")
+                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains(
+                'Model refers to unknown score ID(s): gad. Available GWAS score IDs: mdd, MDD_PRS.'
             )
         }
     }
