@@ -479,7 +479,8 @@ if (nrow(sampleMISSING) && "F_MISS" %in% names(sampleMISSING)) {
 if (nrow(variantMISSING) && "F_MISS" %in% names(variantMISSING)) {
   variantMissingPLOT <- ggplot(variantMISSING, aes(x = F_MISS)) +
     geom_histogram(binwidth = .01, boundary = 0, fill = "#111111", colour = "white") +
-    geom_vline(xintercept = c(.01, .10), linetype = c(1, 2), colour = "#777777") +
+    geom_vline(xintercept = .01, linetype = 1, colour = "#777777") +
+    geom_vline(xintercept = .10, linetype = 2, colour = "#777777") +
     facet_wrap(~cohort, scales = "free_y") +
     scale_x_continuous(labels = percent) +
     labs(x = "Missing genotype proportion", y = "Variants") +
@@ -555,40 +556,40 @@ if (nrow(sexCHECK) && "x_inbreeding_coefficient" %in% names(sexCHECK)) {
   )
 }
 
-if (nrow(relatedness) && "kinship" %in% names(relatedness)) {
-  relatedness[, kinship_numeric := suppressWarnings(as.numeric(kinship))]
-  relatednessPLOT <- ggplot(relatedness[is.finite(kinship_numeric)], aes(x = kinship_numeric)) +
+if (nrow(relatedness) && "pi_hat" %in% names(relatedness)) {
+  relatedness[, pi_hat_numeric := suppressWarnings(as.numeric(pi_hat))]
+  relatednessPLOT <- ggplot(relatedness[is.finite(pi_hat_numeric)], aes(x = pi_hat_numeric)) +
     geom_histogram(bins = 40, fill = "#111111", colour = "white") +
-    geom_vline(xintercept = c(.0442, .0884, .177, .354), linetype = 2, colour = "#777777") +
+    geom_vline(xintercept = .1875, linetype = 2, colour = "#777777") +
     facet_wrap(~cohort, scales = "free_y") +
-    labs(x = "KING-robust kinship", y = "Participant pairs") +
+    labs(x = "PLINK PI_HAT", y = "Participant pairs") +
     theme_minimal(base_size = 11)
   savePLOT(
     "genotype_relatedness_distribution", relatednessPLOT, 10, 6,
     "Genotype EDA", "Relatedness", "Pairwise relatedness distribution",
-    "KING-robust kinship estimates from the exploratory LD-pruned marker set.",
-    "Inspect second-degree-or-closer pairs and unresolved estimates; participants remain in the EDA results.",
+    "PLINK 1.9 PI_HAT estimates from the linkage-disequilibrium-pruned marker set.",
+    "Pairs with PI_HAT at least 0.1875 are flagged; both participants are excluded from the primary analysis.",
     saveFIGUREDATA("genotype_relatedness_distribution", relatedness)
   )
 
   relationshipMATRIX <- rbindlist(list(
-    relatedness[is.finite(kinship_numeric), .(cohort, participant_1 = IID1, participant_2 = IID2, kinship = kinship_numeric)],
-    relatedness[is.finite(kinship_numeric), .(cohort, participant_1 = IID2, participant_2 = IID1, kinship = kinship_numeric)]
+    relatedness[is.finite(pi_hat_numeric), .(cohort, participant_1 = IID1, participant_2 = IID2, pi_hat = pi_hat_numeric)],
+    relatedness[is.finite(pi_hat_numeric), .(cohort, participant_1 = IID2, participant_2 = IID1, pi_hat = pi_hat_numeric)]
   ))
   diagonal <- unique(rbindlist(list(
     relatedness[, .(cohort, participant = IID1)],
     relatedness[, .(cohort, participant = IID2)]
-  )))[, .(cohort, participant_1 = participant, participant_2 = participant, kinship = .5)]
+  )))[, .(cohort, participant_1 = participant, participant_2 = participant, pi_hat = 1)]
   relationshipMATRIX <- rbind(relationshipMATRIX, diagonal, fill = TRUE)
   relatednessHeatmapPLOT <- ggplot(
     relationshipMATRIX,
-    aes(x = participant_1, y = participant_2, fill = kinship)
+    aes(x = participant_1, y = participant_2, fill = pi_hat)
   ) +
     geom_tile() +
-    scale_fill_gradient(low = "white", high = "#111111", limits = c(0, .5), oob = squish) +
+    scale_fill_gradient(low = "white", high = "#111111", limits = c(0, 1), oob = squish) +
     coord_equal() +
     facet_wrap(~cohort, scales = "free") +
-    labs(x = "Participant", y = "Participant", fill = "Kinship") +
+    labs(x = "Participant", y = "Participant", fill = "PI_HAT") +
     theme_minimal(base_size = 9) +
     theme(
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5),
@@ -597,8 +598,8 @@ if (nrow(relatedness) && "kinship" %in% names(relatedness)) {
   savePLOT(
     "genotype_relatedness_heatmap", relatednessHeatmapPLOT, 9, 8,
     "Genotype EDA", "Relatedness", "Relatedness heatmap",
-    "Symmetric participant-by-participant view of KING-robust kinship.",
-    "Inspect clusters of related participants while remembering that small exploratory marker sets can be unstable.",
+    "Symmetric participant-by-participant view of PLINK 1.9 PI_HAT.",
+    "Inspect flagged pairs while recognising that estimates from small marker sets can be unstable.",
     saveFIGUREDATA("genotype_relatedness_heatmap", relationshipMATRIX)
   )
 }
@@ -1613,6 +1614,13 @@ columnMEANING <- c(
   se = "Standard error of the PRS coefficient.",
   ci_low = "Lower 95 percent confidence limit.",
   ci_high = "Upper 95 percent confidence limit.",
+  parametric_p = "Parametric P value for the PRS coefficient.",
+  permutation_p = "Freedman-Lane residual-permutation P value.",
+  permutation_holm = "Permutation P value after Holm correction within cohort and method.",
+  r2_base = "R-squared for the model without PRS.",
+  r2_full = "R-squared for the model with PRS.",
+  delta_r2 = "Difference between full-model and base-model R-squared.",
+  partial_r2 = "Delta R-squared divided by one minus base-model R-squared.",
   p_value = "PRS coefficient P value.",
   incremental_fit = "Change in the declared model-fit measure after adding PRS.",
   fit_metric = "Model-fit measure used for incremental_fit.",

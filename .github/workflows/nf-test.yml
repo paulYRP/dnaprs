@@ -68,7 +68,7 @@ jobs:
             .
           docker build --pull \
             --file containers/plink2/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+            --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
             .
           docker build --pull \
             --file containers/report/Dockerfile \

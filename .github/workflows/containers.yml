@@ -44,7 +44,7 @@ jobs:
             --build-arg VCS_REF="${GITHUB_SHA}" \
             --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             --file containers/plink2/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+            --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
             .
 
       - name: Build report image
@@ -69,8 +69,10 @@ jobs:
         run: |
           docker run --rm ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
             Rscript -e "stopifnot(as.character(getRversion()) == '4.4.1', as.character(packageVersion('data.table')) == '1.18.0', as.character(packageVersion('glm2')) == '1.2.1', as.character(packageVersion('lme4')) == '2.0.1')"
-          docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+          docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
             plink2 --version | grep 'v2.0.0-a.6.12'
+          docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
+            plink --version | grep 'v1.90b6.21'
           docker run --rm --entrypoint Rscript \
             docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb \
             -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
@@ -99,6 +101,6 @@ jobs:
           (github.event_name == 'workflow_dispatch' && inputs.publish_images))
         run: |
           docker push ghcr.io/paulyrp/dnaprs-analysis:1.0.0
-          docker push ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12
+          docker push ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21
           docker push ghcr.io/paulyrp/dnaprs-report:1.0.0
           docker push ghcr.io/paulyrp/dnaprs-imputation:1.1.0

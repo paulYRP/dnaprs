@@ -20,6 +20,7 @@ decision <- data.table::rbindlist(
 )
 decisionREQUIRED <- c(
   "cohort", "FID", "IID", "technical_pass", "score_eligible", "related_flag",
+  "sample_missingness_pass", "heterozygosity_z", "heterozygosity_pass", "sex_check_pass",
   "ancestry_flag", "ancestry_distance", "primary_analysis"
 )
 if (!all(decisionREQUIRED %in% names(decision))) stop("A participant-decision table is invalid.", call. = FALSE)
@@ -56,7 +57,8 @@ wide <- merge(wideZ, wideRAW, by = c("cohort", "role", "FID", "IID"), all = TRUE
 wide <- merge(
   wide,
   unique(score[, .(
-    cohort, FID, IID, technical_pass, score_eligible, related_flag,
+    cohort, FID, IID, sample_missingness_pass, heterozygosity_z, heterozygosity_pass,
+    sex_check_pass, technical_pass, score_eligible, related_flag,
     ancestry_flag, ancestry_distance, primary_analysis
   )]),
   by = c("cohort", "FID", "IID"), all.x = TRUE, sort = FALSE

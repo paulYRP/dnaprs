@@ -1,2 +1,2 @@
-model_id	outcome	prs_name	family	covariates	participant_id	group_id	expected_direction	primary	control_value	case_value
-depression	depression	MDD_PRS	binomial		IID		positive	TRUE	0	1
+model_id	outcome	prs_name	family	model_type	covariates	participant_id	timepoint_column	timepoint_values	group_id	expected_direction	primary	control_value	case_value
+depression	depression	MDD_PRS	binomial	binomial		IID				positive	TRUE	0	1

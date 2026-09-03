@@ -31,14 +31,16 @@ nextflow_process {
                 input[14] = ''
                 input[15] = ''
                 input[16] = ''
-                input[17] = ''
+                input[17] = 'W10='
                 input[18] = ''
                 input[19] = ''
                 input[20] = ''
-                input[21] = file("${projectDir}/assets/empty_input")
-                input[22] = file("${projectDir}/assets/empty_input")
+                input[21] = ''
+                input[22] = ''
                 input[23] = file("${projectDir}/assets/empty_input")
-                input[24] = file("${projectDir}/bin/resolve_inputs.R")
+                input[24] = file("${projectDir}/assets/empty_input")
+                input[25] = file("${projectDir}/assets/empty_input")
+                input[26] = file("${projectDir}/bin/resolve_inputs.R")
                 """
             }
         }

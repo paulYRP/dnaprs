@@ -9,6 +9,7 @@ include { ASSEMBLE_TARGET_IMPUTATION } from '../modules/local/assemble_target_im
 include { PREPARE_PLINK_REFERENCE } from '../modules/local/prepare_plink_reference/main'
 include { PREPARE_SBAYESRC_REFERENCE } from '../modules/local/prepare_sbayesrc_reference/main'
 include { GENOTYPE_EDA } from '../modules/local/genotype_eda/main'
+include { GENOTYPE_EDA as TARGET_QC_REVIEW } from '../modules/local/genotype_eda/main'
 include { PLINK_REFERENCE_FREQ } from '../modules/local/plink_reference_freq/main'
 include { ALIGN_PLINK_GWAS } from '../modules/local/align_plink_gwas/main'
 include { PLINK_CLUMP } from '../modules/local/plink_clump/main'
@@ -275,6 +276,19 @@ workflow DNAPRS {
         target_maf,
         target_hwe,
     )
+    target_qc_review_inputs = TARGET_QC.out.imputation_ready.map { meta, target_dir, _qc ->
+        def review_meta = meta + [
+            source_cohort: meta.cohort,
+            cohort: "${meta.cohort}_qc_review",
+            format: 'pgen',
+            genotype: "${target_dir.name}/${meta.cohort}",
+            sample: '',
+            dosage: 'DS',
+            input_stage: 'qc_completed',
+        ]
+        tuple(review_meta, target_dir)
+    }
+    TARGET_QC_REVIEW(target_qc_review_inputs, script_files.genotype_eda, script_files.target_adapter)
     plink_panel_source = reference_inputs
         .filter { row, _files -> row.reference_type == 'imputation_panel' }
         .first()
@@ -315,9 +329,12 @@ workflow DNAPRS {
     )
     participant_decision_inputs = TARGET_QC.out.sample_decisions
         .map { meta, decisions -> tuple(meta.cohort, meta, decisions) }
+        .join(TARGET_QC_REVIEW.out.tables.map { meta, tables -> tuple(meta.source_cohort, tables) }, failOnDuplicate: true, failOnMismatch: true)
         .join(GENOTYPE_EDA.out.tables.map { meta, tables -> tuple(meta.cohort, tables) }, failOnDuplicate: true, failOnMismatch: true)
         .join(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple(meta.cohort, ancestry) }, failOnDuplicate: true, failOnMismatch: true)
-        .map { _cohort, meta, decisions, tables, ancestry -> tuple(meta, decisions, tables, ancestry) }
+        .map { _cohort, meta, decisions, review_tables, raw_tables, ancestry ->
+            tuple(meta, decisions, review_tables + raw_tables, ancestry)
+        }
     PARTICIPANT_DECISIONS(participant_decision_inputs, script_files.participant_decisions)
 
     checkpoint_files = PREPARE_TARGET.out.checkpoint
@@ -351,6 +368,8 @@ workflow DNAPRS {
         .mix(input_checks.map { result_file -> tuple('inputs', result_file) })
         .mix(GENOTYPE_EDA.out.tables.flatMap { meta, tables -> tables.collect { result_file -> tuple("genotype_eda/${meta.cohort}", result_file) } })
         .mix(GENOTYPE_EDA.out.logs.map { meta, stage_log -> tuple("logs/genotype_eda/${meta.cohort}", stage_log) })
+        .mix(TARGET_QC_REVIEW.out.tables.flatMap { meta, tables -> tables.collect { result_file -> tuple("target_qc/${meta.source_cohort}/sample_review", result_file) } })
+        .mix(TARGET_QC_REVIEW.out.logs.map { meta, stage_log -> tuple("logs/target_qc/${meta.source_cohort}/sample_review", stage_log) })
         .mix(PREPARE_TARGET.out.prep.map { meta, prep_qc -> tuple("target_prep/${meta.cohort}", prep_qc) })
         .mix(PREPARE_TARGET.out.marker_decisions.map { meta, marker_decisions -> tuple("target_prep/${meta.cohort}", marker_decisions) })
         .mix(PREPARE_TARGET.out.checkpoint
@@ -647,6 +666,9 @@ workflow DNAPRS {
                 PHENOTYPE_ASSOCIATION.out.permutations.collect(),
                 PHENOTYPE_ASSOCIATION.out.influence.collect(),
                 PHENOTYPE_ASSOCIATION.out.phenotype_prs.collect(),
+                PHENOTYPE_ASSOCIATION.out.phenotype_with_prs.collect(),
+                PHENOTYPE_ASSOCIATION.out.participant_level.collect(),
+                PHENOTYPE_ASSOCIATION.out.timepoint_completeness.collect(),
                 script_files.combine_phenotype,
             )
             result_files = result_files
@@ -656,6 +678,9 @@ workflow DNAPRS {
                 .mix(COMBINE_PHENOTYPE.out.permutations.map { result_file -> tuple('phenotype', result_file) })
                 .mix(COMBINE_PHENOTYPE.out.influence.map { result_file -> tuple('phenotype', result_file) })
                 .mix(COMBINE_PHENOTYPE.out.phenotype_prs.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.phenotype_with_prs.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.participant_level.map { result_file -> tuple('phenotype', result_file) })
+                .mix(COMBINE_PHENOTYPE.out.timepoint_completeness.map { result_file -> tuple('phenotype', result_file) })
         }
     }
 

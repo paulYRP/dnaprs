@@ -1,0 +1,2 @@
+model_id	cohort	trait_id	method	primary	permutation_p	permutation_holm
+m4	TEST	GAD	plink_ct	TRUE	0.04	NA

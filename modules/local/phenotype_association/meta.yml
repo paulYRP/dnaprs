@@ -22,7 +22,7 @@ tools:
 input:
   - - score_job:
         type: map
-        description: Selected phenotype model, PRS, and target cohort metadata.
+        description: PRS method, trait, and target cohort metadata.
     - scores_long:
         type: file
         description: Long-format participant PRS table.
@@ -34,7 +34,7 @@ input:
         description: Identifier of the phenotype model fitted by this task.
   - phenotype_file:
       type: file
-      description: User phenotype CSV or delimited phenotype table.
+      description: Submitted phenotype CSV or delimited phenotype table.
   - association_script:
       type: file
       description: R script that fits phenotype associations and calculates diagnostics.
@@ -65,7 +65,19 @@ output:
   phenotype_prs:
     - "*.phenoPRS.csv":
         type: file
-        description: Phenotype rows joined to the selected standardized PRS values.
+        description: Legacy CSV copy of phenotype rows joined to participant PRSs.
+  phenotype_with_prs:
+    - "*.phenotype_with_prs.tsv":
+        type: file
+        description: All source phenotype rows, participant decisions, and raw and standardised PRSs in source order.
+  participant_level:
+    - "*.phenotype_participant_level.tsv":
+        type: file
+        description: One selected analysis record per participant and requested timepoint.
+  timepoint_completeness:
+    - "*.phenotype_timepoint_completeness.tsv":
+        type: file
+        description: Availability and selected source row for every participant and requested timepoint.
   versions_r:
     - - ${task.process}:
           type: string

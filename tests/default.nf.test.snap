@@ -1,9 +1,9 @@
 {
     "raw VCF through PLINK C+T, Gaussian phenotype model, and report": {
         "content": [
-            "software_versions.yml:md5,160fd914ddea9a39f14315d978aac280"
+            "software_versions.yml:md5,f65ab47035b8b9d96be62e3e54f44883"
         ],
-        "timestamp": "2026-09-02T23:19:10.567298219",
+        "timestamp": "2026-09-03T15:50:50.948965602",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

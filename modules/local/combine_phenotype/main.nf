@@ -11,6 +11,9 @@ process COMBINE_PHENOTYPE {
     path permutations
     path influence
     path phenotype_prs
+    path phenotype_with_prs
+    path participant_level
+    path timepoint_completeness
     path combine_script
 
     output:
@@ -20,6 +23,9 @@ process COMBINE_PHENOTYPE {
     path 'phenotype_permutations.tsv', emit: permutations
     path 'phenotype_influence.tsv', emit: influence
     path 'phenoPRS.csv', emit: phenotype_prs
+    path 'phenotype_with_prs.tsv', emit: phenotype_with_prs
+    path 'phenotype_participant_level.tsv', emit: participant_level
+    path 'phenotype_timepoint_completeness.tsv', emit: timepoint_completeness
     tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
     script:
@@ -35,5 +41,8 @@ process COMBINE_PHENOTYPE {
     cp ${permutations[0]} phenotype_permutations.tsv
     cp ${influence[0]} phenotype_influence.tsv
     cp ${phenotype_prs[0]} phenoPRS.csv
+    cp ${phenotype_with_prs[0]} phenotype_with_prs.tsv
+    cp ${participant_level[0]} phenotype_participant_level.tsv
+    cp ${timepoint_completeness[0]} phenotype_timepoint_completeness.tsv
     """
 }

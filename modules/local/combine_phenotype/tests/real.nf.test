@@ -1,0 +1,50 @@
+nextflow_process {
+
+    name "Test Process COMBINE_PHENOTYPE with real software"
+    script "../main.nf"
+    process "COMBINE_PHENOTYPE"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "combine_phenotype"
+
+    test("Holm correction is calculated across primary models - real") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    file("${projectDir}/tests/data/phenotype_combine/m1.phenotype_associations.tsv"),
+                    file("${projectDir}/tests/data/phenotype_combine/m2.phenotype_associations.tsv"),
+                    file("${projectDir}/tests/data/phenotype_combine/m3.phenotype_associations.tsv"),
+                    file("${projectDir}/tests/data/phenotype_combine/m4.phenotype_associations.tsv")
+                ]
+                input[1] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_models_fitted.tsv")]
+                input[2] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_plot_data.tsv")]
+                input[3] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_permutations.tsv")]
+                input[4] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_influence.tsv")]
+                input[5] = [file("${projectDir}/tests/data/phenotype_combine/one.phenoPRS.csv")]
+                input[6] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_with_prs.tsv")]
+                input[7] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_participant_level.tsv")]
+                input[8] = [file("${projectDir}/tests/data/phenotype_combine/one.phenotype_timepoint_completeness.tsv")]
+                input[9] = file("${projectDir}/bin/combine_phenotype.R")
+                """
+            }
+        }
+
+        then {
+            def lines = file(process.out.associations[0]).text.readLines()
+            def header = lines[0].split('\t', -1)
+            def rows = lines.tail().collect { line ->
+                [header, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            assertAll(
+                { assert process.success },
+                { assert rows.collect { it.permutation_holm as Double } == [0.04d, 0.06d, 0.06d, 0.06d] },
+                { assert process.out.phenotype_with_prs.size() == 1 },
+                { assert process.out.participant_level.size() == 1 },
+                { assert process.out.timepoint_completeness.size() == 1 }
+            )
+        }
+    }
+}

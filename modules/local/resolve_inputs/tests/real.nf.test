@@ -32,14 +32,16 @@ nextflow_process {
                 input[14] = ''
                 input[15] = ''
                 input[16] = ''
-                input[17] = ''
+                input[17] = 'W10='
                 input[18] = ''
                 input[19] = ''
                 input[20] = ''
-                input[21] = target_dir
-                input[22] = gwas_dir
-                input[23] = reference_dir
-                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                input[21] = ''
+                input[22] = ''
+                input[23] = target_dir
+                input[24] = gwas_dir
+                input[25] = reference_dir
+                input[26] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
                 """
             }
         }
@@ -119,15 +121,17 @@ nextflow_process {
                 input[13] = ''
                 input[14] = ''
                 input[15] = ''
-                input[16] = ''
-                input[17] = ''
+                input[16] = 'Timepoint'
+                input[17] = 'WzFd'
                 input[18] = ''
                 input[19] = ''
                 input[20] = ''
-                input[21] = file("${projectDir}/assets/empty_input")
-                input[22] = file("${projectDir}/assets/empty_input")
+                input[21] = ''
+                input[22] = ''
                 input[23] = file("${projectDir}/assets/empty_input")
-                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                input[24] = file("${projectDir}/assets/empty_input")
+                input[25] = file("${projectDir}/assets/empty_input")
+                input[26] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
                 """
             }
         }
@@ -150,6 +154,7 @@ nextflow_process {
                 { assert models.contains('mdd_wellbeing\tMHC_TOTAL\tMDD_PRS') },
                 { assert models.contains('gad_wellbeing\tMHC_TOTAL\tGAD_PRS') },
                 { assert models.contains('ptsd_wellbeing\tMHC_TOTAL\tPTSD_PRS') },
+                { assert models.contains('\tTimepoint\t1\t') },
                 { assert references.contains('/tests/data/reference/human_g1k_v37.fasta') },
                 { assert checks.readLines().tail().every { it.endsWith('\tyaml') } }
             )
@@ -197,14 +202,16 @@ nextflow_process {
                 input[14] = ''
                 input[15] = 'IID'
                 input[16] = ''
-                input[17] = ''
+                input[17] = 'W10='
                 input[18] = ''
                 input[19] = ''
                 input[20] = ''
-                input[21] = file("${projectDir}/assets/empty_input")
-                input[22] = file("${projectDir}/assets/empty_input")
+                input[21] = ''
+                input[22] = ''
                 input[23] = file("${projectDir}/assets/empty_input")
-                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                input[24] = file("${projectDir}/assets/empty_input")
+                input[25] = file("${projectDir}/assets/empty_input")
+                input[26] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
                 """
             }
         }
@@ -240,14 +247,16 @@ nextflow_process {
                 input[14] = ''
                 input[15] = ''
                 input[16] = ''
-                input[17] = ''
+                input[17] = 'W10='
                 input[18] = ''
                 input[19] = ''
                 input[20] = ''
-                input[21] = target_dir
-                input[22] = empty_input
-                input[23] = empty_input
-                input[24] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
+                input[21] = ''
+                input[22] = ''
+                input[23] = target_dir
+                input[24] = empty_input
+                input[25] = empty_input
+                input[26] = file("${projectDir}/bin/resolve_inputs.R", checkIfExists: true)
                 """
             }
         }

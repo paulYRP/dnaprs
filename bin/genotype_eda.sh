@@ -30,6 +30,13 @@ run_plink() {
     plink2 "$@" >> "$stage_log" 2>&1
 }
 
+run_plink1() {
+    local label="$1"
+    shift
+    log_message "$label: plink $*"
+    plink "$@" >> "$stage_log" 2>&1
+}
+
 import_target() {
     local source_path="$1"
     local output_prefix="$2"
@@ -320,13 +327,33 @@ awk -v cohort="$cohort" '
     }
 ' "${analysis_prefix}.afreq" > "${cohort}.allele_frequency_bins.tsv"
 
+pruned_count=0
+if [[ "$sample_count" -ge 2 && "$autosomal_variants" -ge 2 ]]; then
+    bad_ld=()
+    if [[ "$sample_count" -lt 50 ]]; then bad_ld=(--bad-ld); fi
+    if run_plink "LD pruning for heterozygosity, relatedness, and internal PCA" \
+        --pfile "$raw_prefix" --maf 0.05 --indep-pairwise 200kb 0.2 \
+        "${bad_ld[@]}" --threads "$threads" --out "${analysis_prefix}_prune"; then
+        if [[ ! -s "${analysis_prefix}_prune.prune.in" ]]; then
+            if run_plink "Retain eligible autosomal markers when no LD pairs are present" \
+                --pfile "$raw_prefix" --autosome --maf 0.05 --write-snplist \
+                --threads "$threads" --out "${analysis_prefix}_prune_unpaired"; then
+                cp "${analysis_prefix}_prune_unpaired.snplist" "${analysis_prefix}_prune.prune.in"
+            fi
+        fi
+        if [[ -s "${analysis_prefix}_prune.prune.in" ]]; then
+            pruned_count=$(awk 'NF>0 {n++} END{print n+0}' "${analysis_prefix}_prune.prune.in")
+        fi
+    fi
+fi
+
 heterozygosity_status="NOT_RUN"
-heterozygosity_reason="No autosomal variants were available."
+heterozygosity_reason="Fewer than two LD-pruned autosomal variants were available."
 printf 'cohort\tFID\tIID\tobserved_homozygotes\texpected_homozygotes\tobservations\tinbreeding_coefficient\theterozygosity_rate\tmissingness\theterozygosity_z\tstatus\n' \
     > "${cohort}.heterozygosity.tsv"
-if [[ "$autosomal_variants" -gt 0 ]]; then
+if [[ "$pruned_count" -ge 2 ]]; then
     if run_plink "Autosomal heterozygosity" \
-        --pfile "$raw_prefix" --read-freq "${analysis_prefix}.afreq" --het \
+        --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" --het \
         --threads "$threads" --out "${analysis_prefix}_heterozygosity"; then
         awk -v cohort="$cohort" '
             BEGIN { FS=OFS="\t" }
@@ -369,7 +396,7 @@ if [[ "$autosomal_variants" -gt 0 ]]; then
             }
         ' "${analysis_prefix}.smiss" "${analysis_prefix}_heterozygosity.het" > "${cohort}.heterozygosity.tsv"
         heterozygosity_status="PASS"
-        heterozygosity_reason="Autosomal heterozygosity was calculated."
+        heterozygosity_reason="Autosomal heterozygosity was calculated from the LD-pruned marker set."
     else
         heterozygosity_reason="PLINK could not calculate autosomal heterozygosity; inspect the stage log."
     fi
@@ -409,9 +436,9 @@ if [[ "$x_variants" -gt 0 && "$recorded_sex_count" -gt 0 ]]; then
     fi
 fi
 
-printf 'cohort\tFID1\tIID1\tFID2\tIID2\tvariants\tkinship\trelationship_category\treview_status\n' \
+printf 'cohort\tFID1\tIID1\tFID2\tIID2\tvariants\tpi_hat\tz0\tz1\tz2\trelationship_category\treview_status\n' \
     > "${cohort}.relatedness.tsv"
-printf 'cohort\tkinship_bin\tpairs\tpercent\n' > "${cohort}.relatedness_bins.tsv"
+printf 'cohort\tpi_hat_bin\tpairs\tpercent\n' > "${cohort}.relatedness_bins.tsv"
 printf 'cohort\tFID\tIID\tPC1\tPC2\tPC3\tPC4\tPC5\tPC6\tPC7\tPC8\tPC9\tPC10\n' \
     > "${cohort}.internal_pca.tsv"
 printf 'cohort\tcomponent\teigenvalue\tpercent_of_reported_eigenvalues\n' \
@@ -421,51 +448,42 @@ relatedness_status="NOT_RUN"
 relatedness_reason="At least two participants and two informative autosomal variants are required."
 pca_status="NOT_RUN"
 pca_reason="$relatedness_reason"
-pruned_count=0
-if [[ "$sample_count" -ge 2 && "$autosomal_variants" -ge 2 ]]; then
-    bad_ld=()
-    if [[ "$sample_count" -lt 50 ]]; then bad_ld=(--bad-ld); fi
-    if run_plink "LD pruning for relatedness and internal PCA" \
-        --pfile "$raw_prefix" --maf 0.05 --indep-pairwise 200kb 0.2 \
-        "${bad_ld[@]}" --threads "$threads" --out "${analysis_prefix}_prune"; then
-        pruned_count=$(awk 'NF>0 {n++} END{print n+0}' "${analysis_prefix}_prune.prune.in")
-    fi
-fi
-
 if [[ "$pruned_count" -ge 2 ]]; then
-    if run_plink "Pairwise KING relatedness" \
+    if run_plink "Prepare PLINK 1 relatedness input" \
         --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" \
-        --make-king-table --king-table-filter -1 --threads "$threads" \
+        --make-bed --threads "$threads" --out "${analysis_prefix}_relatedness_input" \
+        && run_plink1 "Pairwise PLINK 1 identity by descent" \
+        --bfile "${analysis_prefix}_relatedness_input" --genome full --threads "$threads" \
         --out "${analysis_prefix}_relatedness"; then
-        awk -v cohort="$cohort" '
-            BEGIN { FS=OFS="\t" }
+        awk -v cohort="$cohort" -v variants="$pruned_count" '
+            BEGIN { OFS="\t" }
             NR == 1 {
                 for (i=1; i<=NF; i++) { name=$i; sub(/^#/, "", name); column_index[name]=i }
-                print "cohort", "FID1", "IID1", "FID2", "IID2", "variants", "kinship", "relationship_category", "review_status"
+                print "cohort", "FID1", "IID1", "FID2", "IID2", "variants", "pi_hat", "z0", "z1", "z2", "relationship_category", "review_status"
                 next
             }
             {
-                kinship=$(column_index["KINSHIP"])
-                if (tolower(kinship) == "nan" || kinship == "") category="unresolved"
-                else if (kinship >= .354) category="duplicate_or_monozygotic"
-                else if (kinship >= .177) category="first_degree"
-                else if (kinship >= .0884) category="second_degree"
-                else if (kinship >= .0442) category="third_degree"
+                pi_hat=$(column_index["PI_HAT"])
+                if (tolower(pi_hat) == "nan" || pi_hat == "") category="unresolved"
+                else if (pi_hat >= .9) category="duplicate_or_monozygotic"
+                else if (pi_hat >= .375) category="first_degree"
+                else if (pi_hat >= .1875) category="second_degree"
+                else if (pi_hat >= .0884) category="third_degree"
                 else category="unrelated"
-                status=(category ~ /duplicate|first_degree|second_degree|unresolved/ ? "REVIEW" : "PASS")
-                print cohort, $(column_index["FID1"]), $(column_index["IID1"]), $(column_index["FID2"]), $(column_index["IID2"]), $(column_index["NSNP"]), kinship, category, status
+                status=(pi_hat >= .1875 || category == "unresolved" ? "REVIEW" : "PASS")
+                print cohort, $(column_index["FID1"]), $(column_index["IID1"]), $(column_index["FID2"]), $(column_index["IID2"]), variants, pi_hat, $(column_index["Z0"]), $(column_index["Z1"]), $(column_index["Z2"]), category, status
             }
-        ' "${analysis_prefix}_relatedness.kin0" > "${cohort}.relatedness.tsv"
+        ' "${analysis_prefix}_relatedness.genome" > "${cohort}.relatedness.tsv"
         awk -v cohort="$cohort" '
-            BEGIN { FS=OFS="\t"; print "cohort", "kinship_bin", "pairs", "percent" }
+            BEGIN { FS=OFS="\t"; print "cohort", "pi_hat_bin", "pairs", "percent" }
             NR > 1 {
                 value=$7
                 if (tolower(value) == "nan" || value == "") bin="unresolved"
                 else if (value < 0) bin="negative"
-                else if (value < .0442) bin="[0,third_degree)"
-                else if (value < .0884) bin="[third_degree,second_degree)"
-                else if (value < .177) bin="[second_degree,first_degree)"
-                else if (value < .354) bin="[first_degree,duplicate)"
+                else if (value < .0884) bin="[0,third_degree)"
+                else if (value < .1875) bin="[third_degree,second_degree)"
+                else if (value < .375) bin="[second_degree,first_degree)"
+                else if (value < .9) bin="[first_degree,duplicate)"
                 else bin="duplicate_or_monozygotic"
                 count[bin]++
                 total++
@@ -475,11 +493,11 @@ if [[ "$pruned_count" -ge 2 ]]; then
                 for (i=1; i<=7; i++) { bin=order[i]; print cohort, bin, count[bin]+0, (total ? 100*(count[bin]+0)/total : 0) }
             }
         ' "${cohort}.relatedness.tsv" > "${cohort}.relatedness_bins.tsv"
-        related_problem_count=$(awk -F '\t' 'NR > 1 && $9 != "PASS" {n++} END{print n+0}' "${cohort}.relatedness.tsv")
+        related_problem_count=$(awk -F '\t' 'NR > 1 && $12 != "PASS" {n++} END{print n+0}' "${cohort}.relatedness.tsv")
         relatedness_status=$([[ "$related_problem_count" -gt 0 ]] && printf 'REVIEW' || printf 'PASS')
-        relatedness_reason="KING-robust kinship was calculated from the LD-pruned exploratory marker set."
+        relatedness_reason="PLINK 1 identity by descent was calculated from the LD-pruned exploratory marker set; PI_HAT >= 0.1875 was flagged."
     else
-        relatedness_reason="PLINK could not calculate KING relatedness; inspect the stage log."
+        relatedness_reason="PLINK could not calculate identity by descent; inspect the stage log."
     fi
 
     pc_count=10

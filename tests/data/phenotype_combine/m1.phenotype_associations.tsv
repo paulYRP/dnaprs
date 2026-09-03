@@ -1,0 +1,2 @@
+model_id	cohort	trait_id	method	primary	permutation_p	permutation_holm
+m1	TEST	MDD	plink_ct	TRUE	0.01	NA

@@ -1,0 +1,2 @@
+model_id	participant_id	requested_timepoint	source_row	status	reason
+m1	TEST01	1	1	SELECTED	Selected

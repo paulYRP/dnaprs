@@ -1,9 +1,9 @@
 {
     "raw VCF stops after target QC without PRS or phenotype work": {
         "content": [
-            "software_versions.yml:md5,7ecb51e9946f8a53ef4093456ef3c0ff"
+            "software_versions.yml:md5,fd9e35406bb4200fb6f5cf4da93f89b3"
         ],
-        "timestamp": "2026-09-02T23:20:57.594831756",
+        "timestamp": "2026-09-03T16:23:47.182525774",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.6"

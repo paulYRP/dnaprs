@@ -2,7 +2,7 @@ process PLINK_SCORE {
     tag "${target.cohort}:${gwas.trait_id}"
     label 'process_high'
 
-    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
+    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21'
 
     input:
     tuple val(target), path(target_dir), path(target_qc), path(participant_decisions), path(participant_keep), val(gwas), path(weight), path(weight_qc), path(harmonisation_qc), path(clump_log), val(reference), path(reference_freq), path(reference_log)

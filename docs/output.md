@@ -37,10 +37,19 @@ model1/
 Large public source references remain in `--reference_dir`; the run records their
 validated receipt rather than publishing a second source copy.
 
-`participant_decisions.tsv` contains `technical_pass`, `score_eligible`,
-`related_flag`, `ancestry_flag`, `ancestry_distance`, `primary_analysis`, and a reason.
-Scoring uses score-eligible participants; phenotype models use the integrated primary
-analysis decision.
+`participant_decisions.tsv` reports sample missingness, heterozygosity, sex-check,
+relatedness, and ancestry results separately. `score_eligible` requires the technical
+checks. `primary_analysis` also requires compatible ancestry and no PLINK 1 pair with
+`PI_HAT >= 0.1875`; both members of a flagged pair are excluded.
+
+`phenotype_with_prs.tsv` retains every phenotype row in source order and attaches the
+participant decisions plus raw and standardised scores. `phenotype_participant_level.tsv`
+contains the records selected for each model after timepoint and technical-record checks.
+`phenotype_timepoint_completeness.tsv` reports selected and missing requested visits.
+`phenotype_associations.tsv` includes Student-t confidence intervals for fixed Gaussian
+models, parametric and permutation P values, Holm-adjusted permutation P values, base and
+full R-squared, delta R-squared, and partial R-squared. `phenoPRS.csv` remains as a legacy
+CSV copy of the row-level integration table.
 
 ## `figures/`
 

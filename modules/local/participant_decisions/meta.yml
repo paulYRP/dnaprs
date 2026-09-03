@@ -23,7 +23,7 @@ input:
         description: Sample-level decisions from target QC checkpoints.
     - eda_tables:
         type: list
-        description: Raw genotype participant summaries used to retain traceable exclusions.
+        description: Post-QC heterozygosity and PLINK 1 identity-by-descent tables plus the raw sex-check table.
     - target_ancestry:
         type: file
         description: Projected ancestry assignments and distance flags for target participants.
@@ -37,10 +37,10 @@ output:
           description: Metadata associated with participant decisions and score-eligible plink keep file.
       - ${meta.cohort}.participant_decisions.tsv:
           type: file
-          description: Participant decisions and score-eligible PLINK keep file.
+          description: Technical, relatedness, ancestry, scoring, and primary-analysis decisions for each participant.
       - ${meta.cohort}.score_eligible.keep:
           type: file
-          description: Participant decisions and score-eligible PLINK keep file.
+          description: Two-column PLINK keep file for score-eligible participants.
   versions_r:
     - - ${task.process}:
           type: string

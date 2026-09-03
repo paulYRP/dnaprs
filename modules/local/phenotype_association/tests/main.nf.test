@@ -30,6 +30,9 @@ nextflow_process {
             assert process.out.permutations.size() == 1
             assert process.out.influence.size() == 1
             assert process.out.phenotype_prs.size() == 1
+            assert process.out.phenotype_with_prs.size() == 1
+            assert process.out.participant_level.size() == 1
+            assert process.out.timepoint_completeness.size() == 1
             assert process.out.findAll { key, value -> key.startsWith("versions_") }.size() == 3
             assert process.out.versions_r[0][2].toString()
         }

@@ -1,0 +1,7 @@
+cohort	role	trait_id	prs_name	method	FID	IID	raw_prs	used_variants	score_name	prs_z	sample_missingness_pass	heterozygosity_z	heterozygosity_pass	sex_check_pass	technical_pass	score_eligible	related_flag	ancestry_flag	ancestry_distance	primary_analysis
+TEST	target	MDD	MDD_PRS	plink_ct	TEST01	TEST01	-1.50	2	MDD_PRS	-1.50	TRUE	0	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.2	TRUE
+TEST	target	MDD	MDD_PRS	plink_ct	TEST02	TEST02	-0.90	2	MDD_PRS	-0.90	TRUE	0	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.3	TRUE
+TEST	target	MDD	MDD_PRS	plink_ct	TEST03	TEST03	-0.30	2	MDD_PRS	-0.30	TRUE	0	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.4	TRUE
+TEST	target	MDD	MDD_PRS	plink_ct	TEST04	TEST04	0.30	2	MDD_PRS	0.30	TRUE	0	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.5	TRUE
+TEST	target	MDD	MDD_PRS	plink_ct	TEST05	TEST05	0.90	2	MDD_PRS	0.90	TRUE	0	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.6	TRUE
+TEST	target	MDD	MDD_PRS	plink_ct	TEST06	TEST06	1.50	2	MDD_PRS	1.50	TRUE	0	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.7	TRUE

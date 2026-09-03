@@ -4,6 +4,15 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Added explicit `timepoint_column` and `timepoint_values` handling for repeated
+  phenotype records, with deterministic technical-record selection and completeness
+  reporting.
+- Aligned primary participant decisions with the R Markdown workflow by combining
+  missingness, LD-pruned heterozygosity, sex checks, ancestry, and PLINK 1 `PI_HAT`
+  relatedness; both members of a pair at or above 0.1875 are excluded.
+- Added row-level and selected participant-level phenotype outputs, Student-t intervals,
+  partial R-squared, exact small-sample permutation checks, and within-method Holm
+  correction.
 - Added a strict Nextflow DSL2 workflow with typed parameters and nf-schema
   validation.
 - Added directory discovery and explicit YAML records for raw genotype and GWAS

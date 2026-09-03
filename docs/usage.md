@@ -67,6 +67,20 @@ one CSV column cannot be matched unambiguously to target sample IDs. Binomial mo
 accept validated 0/1 data or explicit `--control_value` and `--case_value`; mixed
 models also require `--group_column`.
 
+For repeated phenotype records, declare the visit column and retained values together:
+
+```yaml
+participant_id: Sample_Name
+timepoint_column: Timepoint
+timepoint_values: [1]
+```
+
+A fixed model requires one value. The pipeline checks agreeing outcome and covariate
+values within each participant and requested timepoint, then selects the first source
+record. It reports a participant who lacks the requested value. Mixed models may select
+several values and retain one agreeing record per participant and value; the declared
+covariates still determine whether time is included in the model.
+
 ## Configured `params.yml`
 
 Run [`examples/params.yml`](../examples/params.yml) with:

@@ -649,8 +649,9 @@ if (length(missingREFERENCE) > 0L) {
 
 # Validate phenotype model declarations when phenotype analysis is enabled.
 modelREQUIRED <- c(
-  "model_id", "outcome", "prs_name", "family", "covariates", "participant_id",
-  "group_id", "expected_direction", "primary"
+  "model_id", "outcome", "prs_name", "family", "model_type", "covariates",
+  "participant_id", "timepoint_column", "timepoint_values", "group_id",
+  "expected_direction", "primary"
 )
 if (nrow(phenotypeMODEL) > 0L) {
   if (!runPHENOTYPE) stop("Phenotype models were resolved for a run without phenotype analysis enabled.", call. = FALSE)
@@ -687,7 +688,7 @@ if (nrow(phenotypeMODEL) > 0L) {
       value <- as.character(value)
       value <- value[!is.na(value) & nzchar(trimws(value))]
       overlap <- length(intersect(unique(value), targetID))
-      overlap >= minimumMATCH && overlap / length(targetID) >= 0.8 && !anyDuplicated(value)
+      overlap >= minimumMATCH && overlap / length(targetID) >= 0.8
     }, logical(1L))]
     if (length(candidate) != 1L) {
       detail <- if (length(candidate) == 0L) "none matched" else paste(candidate, collapse = ", ")
@@ -705,6 +706,7 @@ if (nrow(phenotypeMODEL) > 0L) {
   modelCOLUMN <- unique(c(
     phenotypeMODEL$outcome,
     phenotypeMODEL$participant_id,
+    phenotypeMODEL$timepoint_column[!is.na(phenotypeMODEL$timepoint_column) & phenotypeMODEL$timepoint_column != ""],
     phenotypeMODEL$group_id[!is.na(phenotypeMODEL$group_id) & phenotypeMODEL$group_id != ""],
     trimws(unlist(strsplit(phenotypeMODEL$covariates, ",", fixed = TRUE)))
   ))
@@ -722,19 +724,94 @@ if (nrow(phenotypeMODEL) > 0L) {
   if (anyNA(participantVALUE) || any(!nzchar(trimws(as.character(participantVALUE))))) {
     stop(sprintf("Phenotype participant-ID column '%s' contains missing values.", declaredPARTICIPANT[[1L]]), call. = FALSE)
   }
-  if (anyDuplicated(as.character(participantVALUE))) {
-    stop(sprintf("Phenotype participant-ID column '%s' contains duplicates.", declaredPARTICIPANT[[1L]]), call. = FALSE)
-  }
-
   allowedFAMILY <- c("gaussian", "binomial")
   phenotypeMODEL$family <- tolower(trimws(phenotypeMODEL$family))
   if (any(!phenotypeMODEL$family %in% allowedFAMILY)) {
     stop("Phenotype model family must be gaussian or binomial after input resolution.", call. = FALSE)
   }
+  phenotypeMODEL$model_type <- tolower(trimws(phenotypeMODEL$model_type))
+  if (any(!phenotypeMODEL$model_type %in% c("gaussian", "binomial", "mixed"))) {
+    stop("Phenotype model_type must be gaussian, binomial, or mixed.", call. = FALSE)
+  }
   for (row in seq_len(nrow(phenotypeMODEL))) {
     modelID <- phenotypeMODEL$model_id[[row]]
     outcome <- phenotypeMODEL$outcome[[row]]
-    outcomeVALUE <- phenotypeDATA[[outcome]]
+    participantCOLUMN <- phenotypeMODEL$participant_id[[row]]
+    group <- trimws(as.character(phenotypeMODEL$group_id[[row]]))
+    if (is.na(group)) group <- ""
+    modelTYPE <- tolower(trimws(as.character(phenotypeMODEL$model_type[[row]])))
+    grouped <- identical(modelTYPE, "mixed") || nzchar(group)
+    timepointCOLUMN <- trimws(as.character(phenotypeMODEL$timepoint_column[[row]]))
+    if (is.na(timepointCOLUMN)) timepointCOLUMN <- ""
+    timepointTEXT <- as.character(phenotypeMODEL$timepoint_values[[row]])
+    if (is.na(timepointTEXT)) timepointTEXT <- ""
+    timepointVALUE <- if (nzchar(trimws(timepointTEXT))) {
+      trimws(strsplit(timepointTEXT, "|", fixed = TRUE)[[1L]])
+    } else {
+      character()
+    }
+    timepointVALUE <- timepointVALUE[!is.na(timepointVALUE) & nzchar(timepointVALUE)]
+    modelDATA <- phenotypeDATA
+
+    if (length(timepointVALUE) > 0L) {
+      if (!nzchar(timepointCOLUMN)) {
+        stop(sprintf("Model '%s' supplies timepoint_values but no timepoint_column.", modelID), call. = FALSE)
+      }
+      availableTIMEPOINT <- unique(as.character(phenotypeDATA[[timepointCOLUMN]]))
+      availableTIMEPOINT <- availableTIMEPOINT[!is.na(availableTIMEPOINT) & nzchar(availableTIMEPOINT)]
+      missingTIMEPOINT <- setdiff(timepointVALUE, availableTIMEPOINT)
+      if (length(missingTIMEPOINT) > 0L) {
+        stop(
+          sprintf(
+            "Model '%s' selects timepoint value(s) %s, but column '%s' contains %s. Select available values in timepoint_values.",
+            modelID,
+            paste(missingTIMEPOINT, collapse = ", "),
+            timepointCOLUMN,
+            if (length(availableTIMEPOINT) > 0L) paste(availableTIMEPOINT, collapse = ", ") else "no non-missing values"
+          ),
+          call. = FALSE
+        )
+      }
+      if (!grouped && length(timepointVALUE) != 1L) {
+        stop(sprintf("Fixed model '%s' requires exactly one timepoint_values entry.", modelID), call. = FALSE)
+      }
+      modelDATA <- phenotypeDATA[as.character(phenotypeDATA[[timepointCOLUMN]]) %in% timepointVALUE, , drop = FALSE]
+      recordKEY <- paste(modelDATA[[participantCOLUMN]], modelDATA[[timepointCOLUMN]], sep = "\r")
+      analysisCOLUMN <- unique(c(
+        outcome,
+        trimws(strsplit(phenotypeMODEL$covariates[[row]], ",", fixed = TRUE)[[1L]])
+      ))
+      analysisCOLUMN <- analysisCOLUMN[nzchar(analysisCOLUMN)]
+      duplicatedKEY <- unique(recordKEY[duplicated(recordKEY) | duplicated(recordKEY, fromLast = TRUE)])
+      for (key in duplicatedKEY) {
+        index <- which(recordKEY == key)
+        for (column in analysisCOLUMN) {
+          observedVALUE <- unique(as.character(modelDATA[[column]][index]))
+          observedVALUE <- observedVALUE[!is.na(observedVALUE)]
+          if (length(observedVALUE) > 1L) {
+            stop(
+              sprintf(
+                "Model '%s' has conflicting values for participant '%s', field '%s', timepoint '%s': %s. Correct the technical records or timepoint selection.",
+                modelID, as.character(modelDATA[[participantCOLUMN]][index[[1L]]]), column,
+                as.character(modelDATA[[timepointCOLUMN]][index[[1L]]]), paste(observedVALUE, collapse = ", ")
+              ),
+              call. = FALSE
+            )
+          }
+        }
+      }
+      modelDATA <- modelDATA[!duplicated(recordKEY), , drop = FALSE]
+    } else if (!grouped && anyDuplicated(as.character(modelDATA[[participantCOLUMN]]))) {
+      stop(
+        sprintf(
+          "Fixed model '%s' has repeated participant IDs. Supply timepoint_column and one timepoint_values entry.",
+          modelID
+        ),
+        call. = FALSE
+      )
+    }
+
+    outcomeVALUE <- modelDATA[[outcome]]
     observed <- outcomeVALUE[!is.na(outcomeVALUE)]
     if (length(unique(observed)) < 2L) {
       stop(sprintf("Outcome '%s' for model '%s' has fewer than two observed values.", outcome, modelID), call. = FALSE)
@@ -764,15 +841,31 @@ if (nrow(phenotypeMODEL) > 0L) {
     covariate <- trimws(strsplit(phenotypeMODEL$covariates[[row]], ",", fixed = TRUE)[[1L]])
     covariate <- covariate[nzchar(covariate)]
     constantCOVARIATE <- covariate[vapply(covariate, function(column) {
-      length(unique(phenotypeDATA[[column]][!is.na(phenotypeDATA[[column]])])) < 2L
+      length(unique(modelDATA[[column]][!is.na(modelDATA[[column]])])) < 2L
     }, logical(1L))]
     if (length(constantCOVARIATE) > 0L) {
       stop(sprintf("Model '%s' has constant or empty covariate(s): %s", modelID, paste(constantCOVARIATE, collapse = ", ")), call. = FALSE)
     }
-    group <- trimws(as.character(phenotypeMODEL$group_id[[row]]))
-    if (is.na(group)) group <- ""
-    if (nzchar(group) && length(unique(phenotypeDATA[[group]][!is.na(phenotypeDATA[[group]])])) < 2L) {
-      stop(sprintf("Grouping column '%s' for model '%s' has fewer than two groups.", group, modelID), call. = FALSE)
+    if (nzchar(group)) {
+      participantGROUP <- as.character(modelDATA[[participantCOLUMN]])
+      groupVALUE <- as.character(modelDATA[[group]])
+      missingGROUP <- is.na(groupVALUE) | !nzchar(trimws(groupVALUE))
+      if (any(missingGROUP)) {
+        stop(sprintf("Grouping column '%s' for model '%s' contains missing values. Use the participant grouping field.", group, modelID), call. = FALSE)
+      }
+      groupingMAP <- unique(data.frame(participant = participantGROUP, group = groupVALUE, stringsAsFactors = FALSE))
+      if (anyDuplicated(groupingMAP$participant) || anyDuplicated(groupingMAP$group)) {
+        stop(
+          sprintf(
+            "Grouping column '%s' for model '%s' does not identify the same participants as '%s'. Set group_column to the participant grouping field.",
+            group, modelID, participantCOLUMN
+          ),
+          call. = FALSE
+        )
+      }
+      if (length(unique(groupVALUE)) < 2L) {
+        stop(sprintf("Grouping column '%s' for model '%s' has fewer than two groups.", group, modelID), call. = FALSE)
+      }
     }
   }
 }

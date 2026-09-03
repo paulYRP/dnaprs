@@ -2,7 +2,7 @@ process PLINK_CLUMP {
     tag "${meta.trait_id}"
     label 'process_high'
 
-    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
+    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21'
 
     input:
     tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)

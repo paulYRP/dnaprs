@@ -1,2 +1,2 @@
-model_id	outcome	prs_name	family	covariates	participant_id	group_id	expected_direction	primary
-repeated_score	REPEATED_SCORE	MDD_PRS	gaussian	Age,Timepoint	IID	IID	positive	TRUE
+model_id	outcome	prs_name	family	model_type	covariates	participant_id	timepoint_column	timepoint_values	group_id	expected_direction	primary	control_value	case_value
+repeated_score	REPEATED_SCORE	MDD_PRS	gaussian	mixed	Age,Timepoint	IID	Timepoint	0|1	IID	positive	TRUE	NA	NA

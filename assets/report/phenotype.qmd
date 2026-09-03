@@ -38,15 +38,17 @@ tableVIEW(
     model_id,
     cohort,
     method = method_label,
-    n,
+    participants,
     beta,
     ci_low,
     ci_high,
-    p_value,
-    empirical_p,
+    parametric_p,
+    permutation_p,
+    permutation_holm,
     permutation_scheme,
     permutations,
-    incremental_fit,
+    delta_r2,
+    partial_r2,
     fit_metric,
     status
   )],
@@ -80,7 +82,10 @@ restricted result directory.
 ```{r}
 # Provide the association, fitted-model, and plot-data files.
 buttonROW(
-  fileBUTTON("phenoPRS.csv", "Download phenoPRS.csv"),
+  fileBUTTON("phenotype_with_prs.tsv", "Download row-level phenotype and PRSs"),
+  fileBUTTON("phenotype_participant_level.tsv", "Download selected model records"),
+  fileBUTTON("phenotype_timepoint_completeness.tsv", "Download timepoint completeness"),
+  fileBUTTON("phenoPRS.csv", "Download legacy CSV"),
   fileBUTTON("phenotype_associations.tsv", "Download associations"),
   fileBUTTON("phenotype_models_fitted.tsv", "Download fitted formulas"),
   fileBUTTON("phenotype_plot_data.tsv", "Download plot data"),

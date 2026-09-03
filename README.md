@@ -74,6 +74,11 @@ participant-ID column cannot be matched uniquely to target IDs, also supply
 `--participant_id <column>`. Without phenotype parameters, PRS generation and the
 genetic report still complete.
 
+Repeated phenotype rows are supported through an explicit timepoint selection in
+`params.yml`, such as `timepoint_column: Timepoint` and `timepoint_values: [1]`. The input
+rows remain unchanged; the model uses one agreeing record per participant at the
+requested value.
+
 ## References
 
 `--reference_mode auto` is the default. The pipeline downloads only the required assets

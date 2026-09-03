@@ -2,7 +2,7 @@ process TARGET_QC {
     tag "${meta.cohort}"
     label 'process_high'
 
-    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12'
+    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21'
 
     input:
     tuple val(meta), path(target_dir), path(prep_qc)

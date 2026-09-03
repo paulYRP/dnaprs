@@ -1,0 +1,41 @@
+nextflow_process {
+
+    name "Test Process COMBINE_SCORES with real software"
+    script "../main.nf"
+    process "COMBINE_SCORES"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "combine_scores"
+
+    test("scores are standardised before primary-analysis exclusions - real") {
+
+        when {
+            process {
+                """
+                input[0] = [file("${projectDir}/tests/data/scores/standardisation.score.tsv")]
+                input[1] = [file("${projectDir}/tests/data/participant_decisions/TEST.participant_decisions.tsv")]
+                input[2] = file("${projectDir}/bin/combine_scores.R")
+                """
+            }
+        }
+
+        then {
+            def lines = file(process.out.scores_long[0]).text.readLines()
+            def header = lines[0].replace('"', '').split('\t', -1)
+            def rows = lines.tail().collect { line ->
+                [header, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            def allZ = rows.collect { it.prs_z as Double }
+            def primaryZ = rows.findAll { it.primary_analysis == 'TRUE' }.collect { it.prs_z as Double }
+            assertAll(
+                { assert process.success },
+                { assert rows.size() == 4 },
+                { assert Math.abs(allZ.sum() / allZ.size()) < 1e-12 },
+                { assert Math.abs(primaryZ.sum() / primaryZ.size()) > 0.5 },
+                { assert rows.every { it.score_eligible == 'TRUE' } },
+                { assert file(process.out.score_qc[0]).text.contains('\t5.5\t') }
+            )
+        }
+    }
+}

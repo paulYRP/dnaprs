@@ -9,7 +9,7 @@ Di Tommaso P, Chatzou M, Floden EW, Barja PP, Palumbo E, Notredame C. Nextflow e
 reproducible computational workflows. _Nature Biotechnology_. 2017;35:316–319.
 doi: [10.1038/nbt.3820](https://doi.org/10.1038/nbt.3820).
 
-## PLINK 2
+## PLINK 1.9 and PLINK 2
 
 Chang CC, Chow CC, Tellier LCAM, Vattikuti S, Purcell SM, Lee JJ. Second-generation PLINK:
 rising to the challenge of larger and richer datasets. _GigaScience_. 2015;4:7.

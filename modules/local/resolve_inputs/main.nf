@@ -21,6 +21,8 @@ process RESOLVE_INPUTS {
     val covariates
     val model_type
     val participant_id
+    val timepoint_column
+    val timepoint_values_spec
     val group_column
     val control_value
     val case_value
@@ -63,6 +65,8 @@ process RESOLVE_INPUTS {
         --covariates '${covariates}' \
         --model-type '${model_type}' \
         --participant-id '${participant_id}' \
+        --timepoint-column '${timepoint_column}' \
+        --timepoint-values-spec '${timepoint_values_spec}' \
         --group-column '${group_column}' \
         --control-value '${control_value}' \
         --case-value '${case_value}' \

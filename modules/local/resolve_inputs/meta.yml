@@ -71,6 +71,12 @@ input:
   - participant_id:
       type: string
       description: Phenotype-table column containing target participant identifiers.
+  - timepoint_column:
+      type: string
+      description: Phenotype-table column containing declared timepoint values.
+  - timepoint_values_spec:
+      type: string
+      description: Base64-encoded list of timepoint values retained for phenotype models.
   - group_column:
       type: string
       description: Grouping column required by mixed models.

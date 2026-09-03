@@ -1,0 +1,2 @@
+model_id	cohort	trait_id	method	primary	permutation_p	permutation_holm
+m3	TEST	PTSD	plink_ct	TRUE	0.03	NA

@@ -1,0 +1,5 @@
+cohort	FID	IID	missingness	sample_missingness_pass	heterozygosity_z	heterozygosity_pass	sex_check_pass	technical_pass	score_eligible	related_flag	ancestry_flag	ancestry_distance	primary_analysis	reason
+TEST	TEST01	TEST01	0.001	TRUE	0.1	TRUE	TRUE	TRUE	TRUE	TRUE	PASS	0.1	FALSE	Related pair
+TEST	TEST02	TEST02	0.002	TRUE	-0.1	TRUE	TRUE	TRUE	TRUE	TRUE	PASS	0.2	FALSE	Related pair
+TEST	TEST03	TEST03	0.003	TRUE	0.2	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.3	TRUE	Eligible
+TEST	TEST04	TEST04	0.004	TRUE	-0.2	TRUE	TRUE	TRUE	TRUE	FALSE	PASS	0.4	TRUE	Eligible

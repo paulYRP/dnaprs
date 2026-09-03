@@ -3,13 +3,13 @@
 dnaprs assigns a versioned container to each process. Reference panels, GWAS files,
 target data, and phenotype data are not stored in these images.
 
-| Image                        | Processes                                                                        | Fixed software                                                                                            |
-| ---------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `dnaprs-analysis:1.0.0`      | Input validation, GWAS harmonisation, score processing, QC, and phenotype models | R 4.4.1 and the R packages in `analysis/R-packages.tsv`                                                   |
-| `dnaprs-plink2:2.0.0-a.6.12` | Target conversion and PLINK C+T operations                                       | PLINK 2.0 alpha 6.12                                                                                      |
-| `dnaprs-imputation:1.1.0`    | Target marker resolution, reference preparation, QC, and imputation              | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, PLINK 2.0 alpha 6.12, R 4.4.1, and data.table 1.18.0 |
-| `zhiliz/sbayesrc:0.2.6`      | SBayesRC preparation, modelling, and scoring                                     | The authors' SBayesRC 0.2.6 environment                                                                   |
-| `dnaprs-report:1.0.0`        | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv`                      |
+| Image                                       | Processes                                                                        | Fixed software                                                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `dnaprs-analysis:1.0.0`                     | Input validation, GWAS harmonisation, score processing, QC, and phenotype models | R 4.4.1 and the R packages in `analysis/R-packages.tsv`                                                   |
+| `dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21` | Target QC, identity by descent, and PLINK C+T operations                         | PLINK 1.90b6.21 and PLINK 2.0 alpha 6.12                                                                  |
+| `dnaprs-imputation:1.1.0`                   | Target marker resolution, reference preparation, QC, and imputation              | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, PLINK 2.0 alpha 6.12, R 4.4.1, and data.table 1.18.0 |
+| `zhiliz/sbayesrc:0.2.6`                     | SBayesRC preparation, modelling, and scoring                                     | The authors' SBayesRC 0.2.6 environment                                                                   |
+| `dnaprs-report:1.0.0`                       | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv`                      |
 
 The SBayesRC image is pinned to the authors' published image digest in each SBayesRC
 module. The four dnaprs images are built from digest-pinned base images. Downloaded
@@ -35,7 +35,7 @@ docker build \
 
 docker build \
   --file containers/plink2/Dockerfile \
-  --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 \
+  --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
   .
 
 docker build \
@@ -54,7 +54,8 @@ Verify the environments before a pipeline test:
 ```bash
 docker run --rm ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
   Rscript -e "stopifnot(as.character(getRversion()) == '4.4.1')"
-docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 plink2 --version
+docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 plink2 --version
+docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 plink --version
 docker run --rm --entrypoint Rscript docker.io/zhiliz/sbayesrc:0.2.6 \
   -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
 docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.0 quarto --version

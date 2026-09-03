@@ -30,6 +30,21 @@ inputSPEC <- decodeJSON(option[["input-spec"]])
 gwasSPEC <- decodeJSON(option[["gwas-spec"]])
 referenceSPEC <- decodeJSON(option[["reference-spec"]])
 modelSPEC <- decodeJSON(option[["models-spec"]])
+timepointVALUE <- unlist(decodeJSON(option[["timepoint-values-spec"]]), use.names = FALSE)
+timepointVALUE <- as.character(timepointVALUE)
+timepointVALUE <- trimws(timepointVALUE)
+timepointCOLUMN <- trimws(option[["timepoint-column"]])
+if (length(timepointVALUE) > 0L && (!nzchar(timepointCOLUMN) || any(!nzchar(timepointVALUE)))) {
+  stop("timepoint_values requires timepoint_column and non-empty values.", call. = FALSE)
+}
+if (nzchar(timepointCOLUMN) && length(timepointVALUE) == 0L) {
+  stop("timepoint_column requires a non-empty timepoint_values list.", call. = FALSE)
+}
+if (anyDuplicated(timepointVALUE)) stop("timepoint_values must contain unique values.", call. = FALSE)
+if (any(grepl("|", timepointVALUE, fixed = TRUE))) {
+  stop("timepoint_values cannot contain vertical bars.", call. = FALSE)
+}
+timepointTEXT <- paste(timepointVALUE, collapse = "|")
 genomeBUILD <- option[["genome-build"]]
 method <- strsplit(option[["methods"]], ",", fixed = TRUE)[[1L]]
 method <- unique(trimws(method[nzchar(trimws(method))]))
@@ -564,7 +579,8 @@ explicitREFERENCES <- function(specification) {
 
 emptyMODELS <- function() data.frame(
   model_id = character(), outcome = character(), prs_name = character(), family = character(),
-  covariates = character(), participant_id = character(), group_id = character(),
+  model_type = character(), covariates = character(), participant_id = character(),
+  timepoint_column = character(), timepoint_values = character(), group_id = character(),
   expected_direction = character(), primary = logical(), control_value = character(),
   case_value = character(), stringsAsFactors = FALSE
 )
@@ -599,11 +615,15 @@ buildMODELS <- function(specification, gwas) {
   rows <- list()
   for (record in declarations) {
     outcome <- recordVALUE(record, "outcome")
-    family <- tolower(recordVALUE(record, c("model_type", "family"), "gaussian"))
+    modelTYPE <- tolower(recordVALUE(record, c("model_type", "family"), "gaussian"))
+    family <- modelTYPE
     group <- recordVALUE(record, c("group_column", "group_id"))
     if (family == "mixed") {
       if (!nzchar(group)) stop(sprintf("Mixed model '%s' requires group_column.", recordVALUE(record, "id", outcome)), call. = FALSE)
       family <- "gaussian"
+    }
+    if (length(timepointVALUE) > 1L && modelTYPE != "mixed") {
+      stop(sprintf("Fixed model '%s' requires exactly one timepoint_values entry.", recordVALUE(record, "id", outcome)), call. = FALSE)
     }
     selected <- record[["score_ids"]]
     if (is.null(selected) || identical(selected, "all") || identical(unlist(selected), "all")) {
@@ -634,8 +654,11 @@ buildMODELS <- function(specification, gwas) {
         outcome = outcome,
         prs_name = gwas$prs_name[[item]],
         family = family,
+        model_type = modelTYPE,
         covariates = covariateVALUE,
         participant_id = recordVALUE(record, "participant_id", option[["participant-id"]]),
+        timepoint_column = timepointCOLUMN,
+        timepoint_values = timepointTEXT,
         group_id = group,
         expected_direction = recordVALUE(record, "expected_direction"),
         primary = as.logical(recordVALUE(record, "primary", TRUE)),

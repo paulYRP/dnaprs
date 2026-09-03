@@ -1,0 +1,44 @@
+nextflow_process {
+
+    name "Test Process GENOTYPE_EDA with real software"
+    script "../main.nf"
+    process "GENOTYPE_EDA"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "genotype_eda"
+
+    test("PLINK 1 PI_HAT flags a duplicated participant pair - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST', role: 'target', format: 'vcf', genotype: 'relatedness_target.vcf', dosage: 'DS', input_stage: 'raw'], [file("${projectDir}/tests/data/target/relatedness_target.vcf")]]
+                input[1] = file("${projectDir}/bin/genotype_eda.sh")
+                input[2] = file("${projectDir}/bin/target_adapter.pl")
+                """
+            }
+        }
+
+        then {
+            def relatednessFile = process.out.tables[0][1].find { table -> table.toString().endsWith('.relatedness.tsv') }
+            def lines = file(relatednessFile).text.readLines()
+            def header = lines[0].split('\t', -1)
+            def rows = lines.tail().collect { line ->
+                [header, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            def duplicatedPair = rows.find {
+                [it.IID1, it.IID2].toSet() == ['TEST01', 'TEST02'].toSet()
+            }
+            assertAll(
+                { assert process.success },
+                { assert header.contains('pi_hat') },
+                { assert duplicatedPair != null },
+                { assert (duplicatedPair.pi_hat as Double) >= 0.1875d },
+                { assert duplicatedPair.review_status == 'REVIEW' },
+                { assert process.out.versions_plink[0][2] == '1.90b6.21' },
+                { assert process.out.versions_plink2[0][2].startsWith('2.0.0-a.6.12') }
+            )
+        }
+    }
+}

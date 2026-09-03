@@ -1,0 +1,41 @@
+nextflow_process {
+
+    name "Test Process PARTICIPANT_DECISIONS with real software"
+    script "../main.nf"
+    process "PARTICIPANT_DECISIONS"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "participant_decisions"
+
+    test("both members of a flagged related pair are excluded - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST'], file("${projectDir}/tests/data/participant_decisions/TEST.sample_decisions.tsv"), [
+                    file("${projectDir}/tests/data/participant_decisions/TEST.heterozygosity.tsv"),
+                    file("${projectDir}/tests/data/participant_decisions/TEST.sex_check.tsv"),
+                    file("${projectDir}/tests/data/participant_decisions/TEST.relatedness.tsv")
+                ], file("${projectDir}/tests/data/participant_decisions/TEST.target_ancestry.tsv")]
+                input[1] = file("${projectDir}/bin/participant_decisions.R")
+                """
+            }
+        }
+
+        then {
+            def lines = file(process.out.decisions[0][1]).text.readLines()
+            def header = lines[0].split('\t', -1)
+            def rows = lines.tail().collect { line ->
+                [header, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            def related = rows.findAll { it.IID in ['TEST01', 'TEST02'] }
+            assertAll(
+                { assert process.success },
+                { assert related.every { it.related_flag == 'TRUE' } },
+                { assert related.every { it.primary_analysis == 'FALSE' } },
+                { assert rows.findAll { it.IID in ['TEST03', 'TEST04'] }.every { it.primary_analysis == 'TRUE' } }
+            )
+        }
+    }
+}

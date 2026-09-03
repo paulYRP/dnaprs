@@ -155,6 +155,17 @@
                     "type": ["string", "null"],
                     "description": "Participant-ID column; inferred only when one column matches target IDs unambiguously."
                 },
+                "timepoint_column": {
+                    "type": ["string", "null"],
+                    "description": "Phenotype column containing visit or timepoint values. Required with timepoint_values."
+                },
+                "timepoint_values": {
+                    "type": ["array", "null"],
+                    "description": "Visit or timepoint values retained for phenotype models. Fixed models require one value; mixed models may use several.",
+                    "items": { "type": ["string", "number"] },
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
                 "group_column": {
                     "type": ["string", "null"],
                     "description": "Grouping column required by a mixed model."
@@ -212,7 +223,29 @@
                     }
                 },
                 "model_id": { "type": ["string", "null"], "description": "Run one selected model from models." }
-            }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "required": ["timepoint_values"],
+                        "properties": { "timepoint_values": { "type": "array" } }
+                    },
+                    "then": {
+                        "required": ["timepoint_column"],
+                        "properties": { "timepoint_column": { "type": "string", "minLength": 1 } }
+                    }
+                },
+                {
+                    "if": {
+                        "required": ["timepoint_column"],
+                        "properties": { "timepoint_column": { "type": "string" } }
+                    },
+                    "then": {
+                        "required": ["timepoint_values"],
+                        "properties": { "timepoint_values": { "type": "array" } }
+                    }
+                }
+            ]
         },
         "reference_options": {
             "title": "Reference options",

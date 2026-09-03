@@ -1,0 +1,3 @@
+cohort	FID1	IID1	FID2	IID2	variants	pi_hat	z0	z1	z2	relationship_category	review_status
+TEST	TEST01	TEST01	TEST02	TEST02	100	0.25	0.5	0.5	0	second_degree	REVIEW
+TEST	TEST03	TEST03	TEST04	TEST04	100	0.05	0.9	0.1	0	unrelated	PASS

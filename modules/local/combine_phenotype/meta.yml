@@ -31,7 +31,16 @@ input:
       description: Per-model influence diagnostics.
   - phenotype_prs:
       type: file
-      description: Per-model participant phenotype and PRS tables.
+      description: Per-model legacy phenotype and PRS tables.
+  - phenotype_with_prs:
+      type: file
+      description: Per-model row-level phenotype and PRS tables.
+  - participant_level:
+      type: file
+      description: Per-model selected participant and timepoint records.
+  - timepoint_completeness:
+      type: file
+      description: Per-model requested-timepoint completeness records.
   - combine_script:
       type: file
       description: R script that validates and gathers phenotype results across model tasks.
@@ -59,7 +68,19 @@ output:
   phenotype_prs:
     - phenoPRS.csv:
         type: file
-        description: Combined participant phenotype and PRS data.
+        description: Legacy CSV copy of combined row-level phenotype and PRS data.
+  phenotype_with_prs:
+    - phenotype_with_prs.tsv:
+        type: file
+        description: All phenotype rows with participant decisions and raw and standardised PRSs.
+  participant_level:
+    - phenotype_participant_level.tsv:
+        type: file
+        description: Selected participant-level records used to prepare phenotype models.
+  timepoint_completeness:
+    - phenotype_timepoint_completeness.tsv:
+        type: file
+        description: Requested-timepoint availability and selected source rows.
   versions_r:
     - - ${task.process}:
           type: string

@@ -23,15 +23,143 @@ nextflow_process {
 
         then {
             def result = file(process.out.associations[0]).text
-            def fields = result.readLines()[1].replace('"', '').split('\t', -1)
+            def lines = result.readLines()
+            def header = lines[0].split('\t', -1)
+            def fields = lines[1].replace('"', '').split('\t', -1)
+            def row = [header, fields].transpose().collectEntries()
             assert process.success
-            assert fields[6] == 'binomial'
-            assert fields[7] == '6'
-            assert Double.isFinite(fields[8] as Double)
-            assert fields[25] == 'PASS'
-            assert fields[27] == 'PASS'
-            assert fields[29] in ['ESTIMATED', 'REVIEW_DIAGNOSTICS']
+            assert row.family == 'binomial'
+            assert row.participants == '6'
+            assert Double.isFinite(row.beta as Double)
+            assert row.convergence == 'PASS'
+            assert row.separation == 'PASS'
+            assert row.status in ['ESTIMATED', 'REVIEW_DIAGNOSTICS']
             assert file(process.out.fitted_models[0]).text.contains('glm2::glm2')
+        }
+    }
+
+    test("repeated phenotype selects one declared timepoint - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST', role: 'target', trait_id: 'MDD', prs_name: 'MDD_PRS', method: 'plink_ct'], file("${projectDir}/tests/data/scores/test_timepoint.score.tsv"), file("${projectDir}/tests/data/phenotype_models_timepoint.tsv"), 'baseline']
+                input[1] = file("${projectDir}/tests/data/phenotype_repeated.tsv")
+                input[2] = file("${projectDir}/bin/phenotype_association.R")
+                input[3] = 22
+                """
+            }
+        }
+
+        then {
+            def associationLines = file(process.out.associations[0]).text.readLines()
+            def association = [
+                associationLines[0].split('\t', -1),
+                associationLines[1].replace('"', '').split('\t', -1)
+            ].transpose().collectEntries()
+            def selectedLines = file(process.out.participant_level[0]).text.readLines()
+            def selectedHeader = selectedLines[0].replace('"', '').split('\t', -1)
+            def selected = selectedLines.tail().collect { line ->
+                [selectedHeader, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            def rowLevelLines = file(process.out.phenotype_with_prs[0]).text.readLines()
+            def rowLevelHeader = rowLevelLines[0].replace('"', '').split('\t', -1)
+            def rowLevel = rowLevelLines.tail().collect { line ->
+                [rowLevelHeader, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            assertAll(
+                { assert process.success },
+                { assert association.participants == '6' },
+                { assert association.permutation_scheme == 'Freedman-Lane exact' },
+                { assert Double.isFinite(association.partial_r2 as Double) },
+                { assert Math.abs((association.beta as Double) - 0.860965829846583d) < 1e-12 },
+                { assert selected.size() == 6 },
+                { assert rowLevel.size() == 13 },
+                { assert rowLevel*.source_row == (1..13)*.toString() },
+                { assert rowLevel.findAll { it.IID == 'TEST01' }.every { it.MDD_PRS == '-1.5' } },
+                { assert selected.find { it.IID == 'TEST01' }.source_row == '1' },
+                { assert selected.find { it.IID == 'TEST01' }.technical_record_count == '2' },
+                { assert selected.any { it.selection_reason == 'selected_first_of_identical_technical_records' } }
+            )
+        }
+    }
+
+    test("conflicting technical records report the participant and field - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST', role: 'target', trait_id: 'MDD', prs_name: 'MDD_PRS', method: 'plink_ct'], file("${projectDir}/tests/data/scores/test_timepoint.score.tsv"), file("${projectDir}/tests/data/phenotype_models_timepoint.tsv"), 'baseline']
+                input[1] = file("${projectDir}/tests/data/phenotype_repeated_conflict.tsv")
+                input[2] = file("${projectDir}/bin/phenotype_association.R")
+                input[3] = 22
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains(
+                "Model 'baseline' has conflicting values for participant 'TEST01', field 'OUTCOME', timepoint '1': 4, 4.5."
+            )
+        }
+    }
+
+    test("an unavailable requested timepoint reports available values - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST', role: 'target', trait_id: 'MDD', prs_name: 'MDD_PRS', method: 'plink_ct'], file("${projectDir}/tests/data/scores/test_timepoint.score.tsv"), file("${projectDir}/tests/data/phenotype_models_timepoint_absent.tsv"), 'absent_visit']
+                input[1] = file("${projectDir}/tests/data/phenotype_repeated.tsv")
+                input[2] = file("${projectDir}/bin/phenotype_association.R")
+                input[3] = 22
+                """
+            }
+        }
+
+        then {
+            assert process.failed
+            assert process.errorReport.contains(
+                "Model 'absent_visit' selects timepoint value(s) 3, but column 'Timepoint' contains 1, 2. Select available values in timepoint_values."
+            )
+        }
+    }
+
+    test("an unbalanced mixed model retains requested visits and reports the missing visit - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'TEST', role: 'target', trait_id: 'MDD', prs_name: 'MDD_PRS', method: 'plink_ct'], file("${projectDir}/tests/data/scores/test_timepoint.score.tsv"), file("${projectDir}/tests/data/phenotype_models_lme.tsv"), 'repeated_score']
+                input[1] = file("${projectDir}/tests/data/phenotype_lme_unbalanced.tsv")
+                input[2] = file("${projectDir}/bin/phenotype_association.R")
+                input[3] = 22
+                """
+            }
+        }
+
+        then {
+            def associationLines = file(process.out.associations[0]).text.readLines()
+            def association = [
+                associationLines[0].split('\t', -1),
+                associationLines[1].replace('"', '').split('\t', -1)
+            ].transpose().collectEntries()
+            def selected = file(process.out.participant_level[0]).text.readLines()
+            def completenessLines = file(process.out.timepoint_completeness[0]).text.readLines()
+            def completenessHeader = completenessLines[0].replace('"', '').split('\t', -1)
+            def completeness = completenessLines.tail().collect { line ->
+                [completenessHeader, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            assertAll(
+                { assert process.success },
+                { assert association.participants == '6' },
+                { assert association.n == '11' },
+                { assert selected.size() == 12 },
+                { assert completeness.size() == 12 },
+                { assert completeness.find { it.participant_id == 'TEST06' && it.requested_timepoint == '1' }.status == 'MISSING' },
+                { assert file(process.out.fitted_models[0]).text.contains('lme4::lmer') }
+            )
         }
     }
 }

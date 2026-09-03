@@ -167,6 +167,7 @@ workflow {
         }
     }
     models_spec = groovy.json.JsonOutput.toJson(selected_models).getBytes('UTF-8').encodeBase64().toString()
+    timepoint_values_spec = groovy.json.JsonOutput.toJson(params.timepoint_values ?: []).getBytes('UTF-8').encodeBase64().toString()
 
     PIPELINE_INITIALISATION(
         params.version,
@@ -196,6 +197,8 @@ workflow {
         params.covariates ?: '',
         params.model_type ?: '',
         params.participant_id ?: '',
+        params.timepoint_column ?: '',
+        timepoint_values_spec,
         params.group_column ?: '',
         params.control_value ?: '',
         params.case_value ?: '',

@@ -29,7 +29,10 @@ nextflow_pipeline {
                 def fields = line.replace('"', '').split('\t', -1)
                 [(fields[2]): fields[7] as Double]
             }
-            def associationFields = association.text.readLines()[1].replace('"', '').split('\t', -1)
+            def associationLines = association.text.readLines()
+            def associationHeader = associationLines[0].replace('"', '').split('\t', -1)
+            def associationFields = associationLines[1].replace('"', '').split('\t', -1)
+            def associationRecord = [associationHeader, associationFields].transpose().collectEntries()
             def coverageFields = coverage.text.readLines()[1].split('\t', -1)
 
             assert workflow.success
@@ -44,6 +47,9 @@ nextflow_pipeline {
                 { assert path("$runDir/data/gwas/MDD/MDD.cojo.ma").exists() },
                 { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
                 { assert path("$runDir/data/scores/combined/prs_scores_long.tsv").exists() },
+                { assert path("$runDir/data/phenotype/phenotype_with_prs.tsv").exists() },
+                { assert path("$runDir/data/phenotype/phenotype_participant_level.tsv").exists() },
+                { assert path("$runDir/data/phenotype/phenotype_timepoint_completeness.tsv").exists() },
                 { assert coverage.exists() },
                 { assert coverageFields[4..6] == ['2', '2', '2'] },
                 { assert coverageFields[9] == 'PASS' },
@@ -53,10 +59,10 @@ nextflow_pipeline {
                 { assert variants.text.readLines().tail().size() == 2 },
                 { assert variants.text.readLines().tail().every { it.endsWith('\tRETAIN\tVariant passes both technical checkpoints') } },
                 { assert association.exists() },
-                { assert associationFields[6] == 'gaussian' },
-                { assert associationFields[7] == '6' },
-                { assert Math.abs((associationFields[8] as Double) - (-3.06747624096187d)) < 1e-10 },
-                { assert associationFields[29] == 'ESTIMATED' },
+                { assert associationRecord.family == 'gaussian' },
+                { assert associationRecord.participants == '6' },
+                { assert Math.abs((associationRecord.beta as Double) - (-3.06747624096187d)) < 1e-10 },
+                { assert associationRecord.status == 'ESTIMATED' },
                 { assert report.exists() },
                 { assert report.text.contains('aria-label="Open the dnaprs GitHub repository"') },
                 { assert !report.text.contains('target="_blank"') },

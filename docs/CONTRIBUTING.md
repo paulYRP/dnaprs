@@ -49,7 +49,7 @@ nf-test test tests/stages.nf.test tests/reference.nf.test --profile +docker --ci
 docker build --file containers/analysis/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 .
 docker build --file containers/plink2/Dockerfile \
-  --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12 .
+  --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 .
 docker build --file containers/report/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 .
 ```

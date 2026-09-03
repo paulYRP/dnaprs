@@ -1,0 +1,5 @@
+cohort	FID	IID	missingness	decision	reason
+TEST	TEST01	TEST01	0.001	RETAIN	Within threshold
+TEST	TEST02	TEST02	0.002	RETAIN	Within threshold
+TEST	TEST03	TEST03	0.003	RETAIN	Within threshold
+TEST	TEST04	TEST04	0.004	RETAIN	Within threshold

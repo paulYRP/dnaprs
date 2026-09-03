@@ -1,0 +1,2 @@
+model_id	outcome	prs_name	family	model_type	covariates	participant_id	timepoint_column	timepoint_values	group_id	expected_direction	primary	control_value	case_value
+absent_visit	OUTCOME	MDD_PRS	gaussian	gaussian	Age	IID	Timepoint	3		positive	TRUE	NA	NA

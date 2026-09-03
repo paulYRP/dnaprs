@@ -1,0 +1,5 @@
+cohort	role	trait_id	prs_name	method	FID	IID	raw_prs	used_variants
+TEST	target	MDD	MDD_PRS	plink_ct	TEST01	TEST01	0	10
+TEST	target	MDD	MDD_PRS	plink_ct	TEST02	TEST02	1	10
+TEST	target	MDD	MDD_PRS	plink_ct	TEST03	TEST03	10	10
+TEST	target	MDD	MDD_PRS	plink_ct	TEST04	TEST04	11	10

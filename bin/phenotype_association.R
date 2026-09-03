@@ -9,16 +9,22 @@ if (!requireNamespace("data.table", quietly = TRUE)) stop("The data.table packag
 for (item in c("cohort", "trait-id", "method")) if (is.null(option[[item]])) option[[item]] <- ""
 
 score <- data.table::fread(option[["scores"]], colClasses = list(character = c("FID", "IID")))
-if ("primary_analysis" %in% names(score)) {
-  score <- score[primary_analysis %in% TRUE]
-  if (nrow(score) == 0L) stop("No participant is eligible for a primary phenotype analysis.", call. = FALSE)
-}
 phenotype <- data.table::fread(option[["phenotype"]])
+if ("source_row" %in% names(phenotype)) {
+  stop("Phenotype input cannot contain the reserved column 'source_row'.", call. = FALSE)
+}
+phenotype[, source_row := .I]
 modelSPEC <- data.table::fread(option[["models"]])
 if (is.null(option[["model-id"]]) || !nzchar(option[["model-id"]])) stop("--model-id is required.", call. = FALSE)
 modelSPEC <- modelSPEC[model_id == option[["model-id"]]]
 if (nrow(modelSPEC) != 1L) stop("--model-id must select exactly one resolved phenotype model.", call. = FALSE)
 for (column in setdiff(c("control_value", "case_value"), names(modelSPEC))) {
+  modelSPEC[[column]] <- ""
+}
+if (!"model_type" %in% names(modelSPEC)) {
+  modelSPEC[, model_type := data.table::fifelse(!is.na(group_id) & group_id != "", "mixed", family)]
+}
+for (column in setdiff(c("timepoint_column", "timepoint_values"), names(modelSPEC))) {
   modelSPEC[[column]] <- ""
 }
 
@@ -34,11 +40,32 @@ if (length(participantCOLUMN) > 1L) {
 if (length(participantCOLUMN) == 1L) {
   participantCOLUMN <- participantCOLUMN[[1L]]
   phenotype[[participantCOLUMN]] <- as.character(phenotype[[participantCOLUMN]])
-  scoreWIDE <- data.table::dcast(
+  scoreWIDEZ <- data.table::dcast(
     score,
     cohort + IID ~ score_name,
     value.var = "prs_z"
   )
+  score[, raw_score_name := paste0(score_name, "_RAW")]
+  scoreWIDERAW <- data.table::dcast(
+    score,
+    cohort + IID ~ raw_score_name,
+    value.var = "raw_prs"
+  )
+  decisionCOLUMN <- intersect(
+    c(
+      "cohort", "FID", "IID", "technical_pass", "score_eligible", "related_flag",
+      "sample_missingness_pass", "heterozygosity_z", "heterozygosity_pass", "sex_check_pass",
+      "ancestry_flag", "ancestry_distance", "primary_analysis"
+    ),
+    names(score)
+  )
+  decision <- unique(score[, ..decisionCOLUMN])
+  if (anyDuplicated(decision[, .(cohort, IID)])) {
+    stop("Participant decisions are inconsistent across score records.", call. = FALSE)
+  }
+  if ("FID" %in% names(decision)) data.table::setnames(decision, "FID", "genotype_fid")
+  scoreWIDE <- merge(scoreWIDEZ, scoreWIDERAW, by = c("cohort", "IID"), all = TRUE, sort = FALSE)
+  scoreWIDE <- merge(scoreWIDE, decision, by = c("cohort", "IID"), all.x = TRUE, sort = FALSE)
   if (data.table::uniqueN(scoreWIDE$cohort) > 1L && !"cohort" %in% names(phenotype)) {
     stop("Phenotype data must contain a cohort column when scores contain multiple cohorts.", call. = FALSE)
   }
@@ -52,6 +79,14 @@ if (length(participantCOLUMN) == 1L) {
     data.table::setnames(phenotype, column, archivedCOLUMN)
   }
   if (length(scoreCOLUMN) > 0L) {
+    collision <- intersect(scoreCOLUMN, names(phenotype))
+    for (column in collision) {
+      archivedCOLUMN <- paste0(column, "_INPUT")
+      if (archivedCOLUMN %in% names(phenotype)) {
+        stop(sprintf("Phenotype data already contain both '%s' and '%s'.", column, archivedCOLUMN), call. = FALSE)
+      }
+      data.table::setnames(phenotype, column, archivedCOLUMN)
+    }
     if ("cohort" %in% names(phenotype)) {
       scoreKEY <- paste(scoreWIDE$cohort, scoreWIDE$IID, sep = "\r")
       phenotypeKEY <- paste(phenotype$cohort, phenotype[[participantCOLUMN]], sep = "\r")
@@ -69,16 +104,148 @@ if (length(participantCOLUMN) == 1L) {
   }
 }
 data.table::fwrite(phenotype, "phenoPRS.csv", sep = ",", na = "NA")
+data.table::fwrite(phenotype, "phenotype_with_prs.tsv", sep = "\t", na = "NA")
+
+splitVALUES <- function(value, delimiter = ",") {
+  value <- as.character(value)
+  if (length(value) == 0L || is.na(value) || !nzchar(trimws(value))) return(character())
+  result <- trimws(strsplit(value, delimiter, fixed = TRUE)[[1L]])
+  result[nzchar(result)]
+}
+
+specification <- modelSPEC[1L]
+groupedMODEL <- identical(tolower(as.character(specification$model_type)), "mixed") ||
+  (!is.na(specification$group_id) && nzchar(as.character(specification$group_id)))
+timepointCOLUMN <- as.character(specification$timepoint_column)
+if (is.na(timepointCOLUMN)) timepointCOLUMN <- ""
+timepointVALUE <- splitVALUES(specification$timepoint_values, "|")
+covariateVALUE <- as.character(specification$covariates)
+if (is.na(covariateVALUE)) covariateVALUE <- ""
+agreementCOLUMN <- unique(c(
+  as.character(specification$outcome),
+  splitVALUES(covariateVALUE),
+  if (option[["method"]] == "plink_ct") as.character(specification$prs_name) else
+    paste0(as.character(specification$prs_name), "_", toupper(option[["method"]]))
+))
+agreementCOLUMN <- intersect(agreementCOLUMN, names(phenotype))
+
+if (length(timepointVALUE) > 0L) {
+  if (!nzchar(timepointCOLUMN) || !timepointCOLUMN %in% names(phenotype)) {
+    stop(sprintf("Model '%s' requires phenotype timepoint column '%s'.", specification$model_id, timepointCOLUMN), call. = FALSE)
+  }
+  availableTIMEPOINT <- unique(as.character(phenotype[[timepointCOLUMN]]))
+  availableTIMEPOINT <- availableTIMEPOINT[!is.na(availableTIMEPOINT) & nzchar(availableTIMEPOINT)]
+  missingTIMEPOINT <- setdiff(timepointVALUE, availableTIMEPOINT)
+  if (length(missingTIMEPOINT) > 0L) {
+    stop(
+      sprintf(
+        "Model '%s' selects timepoint value(s) %s, but column '%s' contains %s. Select available values in timepoint_values.",
+        specification$model_id,
+        paste(missingTIMEPOINT, collapse = ", "),
+        timepointCOLUMN,
+        if (length(availableTIMEPOINT) > 0L) paste(availableTIMEPOINT, collapse = ", ") else "no non-missing values"
+      ),
+      call. = FALSE
+    )
+  }
+  selectedCANDIDATE <- phenotype[as.character(get(timepointCOLUMN)) %in% timepointVALUE]
+  recordKEY <- paste(selectedCANDIDATE[[participantCOLUMN]], selectedCANDIDATE[[timepointCOLUMN]], sep = "\r")
+  duplicateKEY <- unique(recordKEY[duplicated(recordKEY) | duplicated(recordKEY, fromLast = TRUE)])
+  for (key in duplicateKEY) {
+    index <- which(recordKEY == key)
+    for (column in agreementCOLUMN) {
+      observedVALUE <- unique(as.character(selectedCANDIDATE[[column]][index]))
+      observedVALUE <- observedVALUE[!is.na(observedVALUE)]
+      if (length(observedVALUE) > 1L) {
+        stop(
+          sprintf(
+            "Model '%s' has conflicting values for participant '%s', field '%s', timepoint '%s': %s. Correct the technical records or timepoint selection.",
+            specification$model_id, selectedCANDIDATE[[participantCOLUMN]][index[[1L]]], column,
+            selectedCANDIDATE[[timepointCOLUMN]][index[[1L]]], paste(observedVALUE, collapse = ", ")
+          ),
+          call. = FALSE
+        )
+      }
+    }
+  }
+  selectedCANDIDATE[, technical_record_count := .N, by = c(participantCOLUMN, timepointCOLUMN)]
+  data.table::setorderv(selectedCANDIDATE, "source_row")
+  selectedPhenotype <- selectedCANDIDATE[!duplicated(recordKEY)]
+  selectedPhenotype[, `:=`(
+    selection_model_id = as.character(specification$model_id),
+    requested_timepoint = paste(timepointVALUE, collapse = ","),
+    selected_timepoint = as.character(get(timepointCOLUMN)),
+    selection_reason = data.table::fifelse(
+      technical_record_count > 1L,
+      "selected_first_of_identical_technical_records",
+      "selected_requested_timepoint"
+    )
+  )]
+
+  participantORDER <- unique(phenotype[[participantCOLUMN]])
+  completeness <- data.table::CJ(
+    participant_index = seq_along(participantORDER),
+    timepoint_index = seq_along(timepointVALUE),
+    sorted = FALSE
+  )
+  completeness[, `:=`(
+    model_id = as.character(specification$model_id),
+    participant_id = participantORDER[participant_index],
+    requested_timepoint = timepointVALUE[timepoint_index]
+  )]
+  selectedKEY <- paste(selectedPhenotype[[participantCOLUMN]], selectedPhenotype[[timepointCOLUMN]], sep = "\r")
+  completenessKEY <- paste(completeness$participant_id, completeness$requested_timepoint, sep = "\r")
+  selectedROW <- match(completenessKEY, selectedKEY)
+  completeness[, `:=`(
+    source_row = selectedPhenotype$source_row[selectedROW],
+    status = data.table::fifelse(is.na(selectedROW), "MISSING", "SELECTED"),
+    reason = data.table::fifelse(
+      is.na(selectedROW),
+      "Participant has no record at the requested timepoint.",
+      "The first agreeing source record was selected."
+    )
+  )]
+  completeness[, c("participant_index", "timepoint_index") := NULL]
+} else {
+  if (!groupedMODEL && anyDuplicated(phenotype[[participantCOLUMN]])) {
+    stop(
+      sprintf(
+        "Fixed model '%s' has repeated participant IDs. Supply timepoint_column and one timepoint_values entry.",
+        specification$model_id
+      ),
+      call. = FALSE
+    )
+  }
+  selectedPhenotype <- data.table::copy(phenotype)
+  selectedPhenotype[, `:=`(
+    technical_record_count = 1L,
+    selection_model_id = as.character(specification$model_id),
+    requested_timepoint = "",
+    selected_timepoint = "",
+    selection_reason = "selected_without_timepoint_filter"
+  )]
+  completeness <- data.table::data.table(
+    model_id = character(), participant_id = character(), requested_timepoint = character(),
+    source_row = integer(), status = character(), reason = character()
+  )
+}
+data.table::setorderv(selectedPhenotype, "source_row")
+data.table::fwrite(selectedPhenotype, "phenotype_participant_level.tsv", sep = "\t", na = "NA")
+data.table::fwrite(completeness, "phenotype_timepoint_completeness.tsv", sep = "\t", na = "NA")
 
 emptyRESULT <- data.table::data.table(
   model_id = character(), cohort = character(), role = character(), trait_id = character(),
-  prs_name = character(), method = character(), family = character(), n = integer(), beta = numeric(),
-  std_error = numeric(), ci_low = numeric(), ci_high = numeric(), p_value = numeric(),
-  null_fit = numeric(), full_fit = numeric(), incremental_fit = numeric(), fit_metric = character(),
-  permutation_scheme = character(), permutations = integer(), empirical_p = numeric(),
+  prs_name = character(), outcome = character(), method = character(), family = character(),
+  primary = logical(), participants = integer(), n = integer(), beta = numeric(),
+  std_error = numeric(), ci_low = numeric(), ci_high = numeric(), parametric_p = numeric(),
+  p_value = numeric(), r2_base = numeric(), r2_full = numeric(), delta_r2 = numeric(),
+  partial_r2 = numeric(), null_fit = numeric(), full_fit = numeric(), incremental_fit = numeric(),
+  fit_metric = character(), permutation_scheme = character(), permutations = integer(),
+  permutation_p = numeric(), permutation_holm = numeric(), empirical_p = numeric(),
   expected_direction = character(), direction_match = character(), input_rows = integer(),
-  complete_cases = integer(), excluded_missing = integer(), convergence = character(),
-  singular = character(), separation = character(), diagnostics = character(), status = character()
+  primary_rows = integer(), complete_cases = integer(), excluded_non_primary = integer(),
+  excluded_missing = integer(), convergence = character(), singular = character(),
+  separation = character(), diagnostics = character(), status = character()
 )
 emptyMODEL <- data.table::data.table(
   model_id = character(), cohort = character(), method = character(), formula = character(),
@@ -153,19 +320,26 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       (!nzchar(option[["trait-id"]]) | trait_id == option[["trait-id"]]) &
       (!nzchar(option[["method"]]) | method == option[["method"]])
   ]
-  phenotype[[specification$participant_id]] <- as.character(phenotype[[specification$participant_id]])
+  selectedPhenotype[[specification$participant_id]] <- as.character(selectedPhenotype[[specification$participant_id]])
 
   for (cohortVALUE in unique(scoreSUBSET$cohort)) {
     for (methodVALUE in unique(scoreSUBSET[cohort == cohortVALUE, method])) {
       genetic <- scoreSUBSET[cohort == cohortVALUE & method == methodVALUE]
       genetic$IID <- as.character(genetic$IID)
-      analysis <- merge(
-        phenotype,
-        genetic[, .(IID, .PRS_Z = prs_z, trait_id, role)],
-        by.x = specification$participant_id,
-        by.y = "IID",
-        all = FALSE
-      )
+      if (anyDuplicated(genetic$IID)) stop("A participant has more than one matching score for a model task.", call. = FALSE)
+      analysis <- data.table::copy(selectedPhenotype)
+      scoreROW <- match(analysis[[specification$participant_id]], genetic$IID)
+      analysis[, `:=`(
+        .PRS_Z = genetic$prs_z[scoreROW],
+        .PRIMARY_ANALYSIS = genetic$primary_analysis[scoreROW],
+        trait_id = genetic$trait_id[scoreROW],
+        role = genetic$role[scoreROW]
+      )]
+      analysis <- analysis[!is.na(.PRS_Z)]
+      inputROWS <- nrow(analysis)
+      primaryROWS <- sum(analysis$.PRIMARY_ANALYSIS %in% TRUE)
+      analysis <- analysis[.PRIMARY_ANALYSIS %in% TRUE]
+      if (nrow(analysis) == 0L) stop("No participant is eligible for a primary phenotype analysis.", call. = FALSE)
       if (familyVALUE == "binomial") {
         observed <- as.character(analysis[[specification$outcome]])
         control <- as.character(specification$control_value)
@@ -184,22 +358,38 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       }
       needed <- unique(c(specification$outcome, ".PRS_Z", covariate, specification$group_id))
       needed <- needed[!is.na(needed) & needed != ""]
-      inputROWS <- nrow(analysis)
       analysis <- analysis[stats::complete.cases(analysis[, ..needed])]
+      modelCOVARIATE <- covariate
+      for (index in seq_along(covariate)) {
+        column <- covariate[[index]]
+        if (is.numeric(analysis[[column]])) {
+          centredCOLUMN <- paste0(column, "_centered")
+          if (centredCOLUMN %in% names(analysis) && centredCOLUMN != column) {
+            stop(sprintf("Cannot create centred covariate '%s' because that column already exists.", centredCOLUMN), call. = FALSE)
+          }
+          analysis[[centredCOLUMN]] <- analysis[[column]] - mean(analysis[[column]])
+          modelCOVARIATE[[index]] <- centredCOLUMN
+        }
+      }
       parameterN <- length(covariate) + 2L
       resultN <- resultN + 1L
 
       if (nrow(analysis) <= parameterN) {
         resultLIST[[resultN]] <- data.table::data.table(
           model_id = specification$model_id, cohort = cohortVALUE, role = unique(genetic$role),
-          trait_id = unique(genetic$trait_id), prs_name = specification$prs_name, method = methodVALUE,
-          family = specification$family, n = nrow(analysis), beta = NA_real_, std_error = NA_real_,
-          ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_, null_fit = NA_real_,
-          full_fit = NA_real_, incremental_fit = NA_real_, fit_metric = NA_character_,
-          permutation_scheme = "NOT_RUN", permutations = 0L, empirical_p = NA_real_,
+          trait_id = unique(genetic$trait_id), prs_name = specification$prs_name,
+          outcome = specification$outcome, method = methodVALUE, family = specification$family,
+          primary = as.logical(specification$primary),
+          participants = data.table::uniqueN(analysis[[specification$participant_id]]), n = nrow(analysis),
+          beta = NA_real_, std_error = NA_real_, ci_low = NA_real_, ci_high = NA_real_,
+          parametric_p = NA_real_, p_value = NA_real_, r2_base = NA_real_, r2_full = NA_real_,
+          delta_r2 = NA_real_, partial_r2 = NA_real_, null_fit = NA_real_, full_fit = NA_real_,
+          incremental_fit = NA_real_, fit_metric = NA_character_, permutation_scheme = "NOT_RUN",
+          permutations = 0L, permutation_p = NA_real_, permutation_holm = NA_real_, empirical_p = NA_real_,
           expected_direction = specification$expected_direction, direction_match = "NOT_ESTIMATED",
-          input_rows = inputROWS, complete_cases = nrow(analysis),
-          excluded_missing = inputROWS - nrow(analysis), convergence = "NOT_ESTIMATED",
+          input_rows = inputROWS, primary_rows = primaryROWS, complete_cases = nrow(analysis),
+          excluded_non_primary = inputROWS - primaryROWS, excluded_missing = primaryROWS - nrow(analysis),
+          convergence = "NOT_ESTIMATED",
           singular = "NOT_ESTIMATED", separation = "NOT_ESTIMATED",
           diagnostics = "Too few complete cases for the declared model.",
           status = "INSUFFICIENT_COMPLETE_CASES"
@@ -207,8 +397,8 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         next
       }
 
-      rhsNULL <- if (length(covariate) == 0L) "1" else paste(quoteNAME(covariate), collapse = " + ")
-      rhsFULL <- paste(c(".PRS_Z", if (length(covariate) > 0L) quoteNAME(covariate)), collapse = " + ")
+      rhsNULL <- if (length(modelCOVARIATE) == 0L) "1" else paste(quoteNAME(modelCOVARIATE), collapse = " + ")
+      rhsFULL <- paste(c(if (length(modelCOVARIATE) > 0L) quoteNAME(modelCOVARIATE), ".PRS_Z"), collapse = " + ")
       grouped <- !is.na(specification$group_id) && specification$group_id != ""
       if (grouped) {
         rhsNULL <- paste(rhsNULL, paste0("(1 | ", quoteNAME(specification$group_id), ")"), sep = " + ")
@@ -219,14 +409,19 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       if (grouped && data.table::uniqueN(analysis[[specification$group_id]]) < 2L) {
         resultLIST[[resultN]] <- data.table::data.table(
           model_id = specification$model_id, cohort = cohortVALUE, role = unique(genetic$role),
-          trait_id = unique(genetic$trait_id), prs_name = specification$prs_name, method = methodVALUE,
-          family = specification$family, n = nrow(analysis), beta = NA_real_, std_error = NA_real_,
-          ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_, null_fit = NA_real_,
-          full_fit = NA_real_, incremental_fit = NA_real_, fit_metric = NA_character_,
-          permutation_scheme = "NOT_RUN", permutations = 0L, empirical_p = NA_real_,
+          trait_id = unique(genetic$trait_id), prs_name = specification$prs_name,
+          outcome = specification$outcome, method = methodVALUE, family = specification$family,
+          primary = as.logical(specification$primary),
+          participants = data.table::uniqueN(analysis[[specification$participant_id]]), n = nrow(analysis),
+          beta = NA_real_, std_error = NA_real_, ci_low = NA_real_, ci_high = NA_real_,
+          parametric_p = NA_real_, p_value = NA_real_, r2_base = NA_real_, r2_full = NA_real_,
+          delta_r2 = NA_real_, partial_r2 = NA_real_, null_fit = NA_real_, full_fit = NA_real_,
+          incremental_fit = NA_real_, fit_metric = NA_character_, permutation_scheme = "NOT_RUN",
+          permutations = 0L, permutation_p = NA_real_, permutation_holm = NA_real_, empirical_p = NA_real_,
           expected_direction = specification$expected_direction, direction_match = "NOT_ESTIMATED",
-          input_rows = inputROWS, complete_cases = nrow(analysis),
-          excluded_missing = inputROWS - nrow(analysis), convergence = "NOT_ESTIMATED",
+          input_rows = inputROWS, primary_rows = primaryROWS, complete_cases = nrow(analysis),
+          excluded_non_primary = inputROWS - primaryROWS, excluded_missing = primaryROWS - nrow(analysis),
+          convergence = "NOT_ESTIMATED",
           singular = "NOT_ESTIMATED", separation = "NOT_ESTIMATED",
           diagnostics = "A grouped model requires at least two observed groups.",
           status = "INSUFFICIENT_GROUPS"
@@ -235,6 +430,8 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       }
 
       fitWARNINGS <- character()
+      confidenceLOW <- NA_real_
+      confidenceHIGH <- NA_real_
       withCallingHandlers({
       if (grouped) {
         if (!requireNamespace("lme4", quietly = TRUE)) stop("lme4 is required for declared grouped models.", call. = FALSE)
@@ -248,6 +445,8 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         }
         beta <- unname(lme4::fixef(fullFIT)[".PRS_Z"])
         standardERROR <- unname(sqrt(diag(as.matrix(stats::vcov(fullFIT))))[".PRS_Z"])
+        confidenceLOW <- beta - 1.96 * standardERROR
+        confidenceHIGH <- beta + 1.96 * standardERROR
         pVALUE <- 2 * stats::pnorm(abs(beta / standardERROR), lower.tail = FALSE)
         nullVALUE <- stats::AIC(nullFIT)
         fullVALUE <- stats::AIC(fullFIT)
@@ -261,6 +460,9 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         beta <- unname(coefficient["Estimate"])
         standardERROR <- unname(coefficient["Std. Error"])
         pVALUE <- unname(coefficient["Pr(>|t|)"])
+        interval <- stats::confint(fullFIT, ".PRS_Z", level = 0.95)
+        confidenceLOW <- unname(interval[[1L]])
+        confidenceHIGH <- unname(interval[[2L]])
         nullVALUE <- summary(nullFIT)$r.squared
         fullVALUE <- summary(fullFIT)$r.squared
         incremental <- fullVALUE - nullVALUE
@@ -275,6 +477,8 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         beta <- unname(coefficient["Estimate"])
         standardERROR <- unname(coefficient["Std. Error"])
         pVALUE <- unname(coefficient[ncol(summary(fullFIT)$coefficients)])
+        confidenceLOW <- beta - 1.96 * standardERROR
+        confidenceHIGH <- beta + 1.96 * standardERROR
         nullVALUE <- 1 - nullFIT$deviance / nullFIT$null.deviance
         fullVALUE <- 1 - fullFIT$deviance / fullFIT$null.deviance
         incremental <- fullVALUE - nullVALUE
@@ -285,6 +489,11 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         fitWARNINGS <<- unique(c(fitWARNINGS, conditionMessage(condition)))
         invokeRestart("muffleWarning")
       })
+      partialR2 <- if (!grouped && familyVALUE == "gaussian" && is.finite(nullVALUE) && nullVALUE < 1) {
+        incremental / (1 - nullVALUE)
+      } else {
+        NA_real_
+      }
 
       convergenceSTATUS <- "PASS"
       singularSTATUS <- "NOT_APPLICABLE"
@@ -372,7 +581,7 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
         finitePERMUTATION <- is.finite(permutedBETA)
         validN <- sum(finitePERMUTATION)
         if (validN > 0L) {
-          exceedN <- sum(abs(permutedBETA[finitePERMUTATION]) >= abs(beta))
+          exceedN <- sum(abs(permutedBETA[finitePERMUTATION]) >= abs(beta) - 1e-12)
           empiricalP <- if (identical(permutationSCHEME, "Freedman-Lane exact")) {
             exceedN / validN
           } else {
@@ -424,15 +633,19 @@ for (modelROW in seq_len(nrow(modelSPEC))) {
       }
       resultLIST[[resultN]] <- data.table::data.table(
         model_id = specification$model_id, cohort = cohortVALUE, role = unique(genetic$role),
-        trait_id = unique(genetic$trait_id), prs_name = specification$prs_name, method = methodVALUE,
-        family = familyVALUE, n = nrow(analysis), beta, std_error = standardERROR,
-        ci_low = beta - 1.96 * standardERROR, ci_high = beta + 1.96 * standardERROR,
-        p_value = pVALUE, null_fit = nullVALUE, full_fit = fullVALUE,
-        incremental_fit = incremental, fit_metric = fitMETRIC,
+        trait_id = unique(genetic$trait_id), prs_name = specification$prs_name,
+        outcome = specification$outcome, method = methodVALUE, family = familyVALUE,
+        primary = as.logical(specification$primary),
+        participants = data.table::uniqueN(analysis[[specification$participant_id]]), n = nrow(analysis),
+        beta, std_error = standardERROR, ci_low = confidenceLOW, ci_high = confidenceHIGH,
+        parametric_p = pVALUE, p_value = pVALUE, r2_base = nullVALUE, r2_full = fullVALUE,
+        delta_r2 = incremental, partial_r2 = partialR2, null_fit = nullVALUE,
+        full_fit = fullVALUE, incremental_fit = incremental, fit_metric = fitMETRIC,
         permutation_scheme = permutationSCHEME, permutations = permutationN,
-        empirical_p = empiricalP, expected_direction = expectedDIRECTION,
-        direction_match = directionMATCH, input_rows = inputROWS,
-        complete_cases = nrow(analysis), excluded_missing = inputROWS - nrow(analysis),
+        permutation_p = empiricalP, permutation_holm = NA_real_, empirical_p = empiricalP,
+        expected_direction = expectedDIRECTION, direction_match = directionMATCH,
+        input_rows = inputROWS, primary_rows = primaryROWS, complete_cases = nrow(analysis),
+        excluded_non_primary = inputROWS - primaryROWS, excluded_missing = primaryROWS - nrow(analysis),
         convergence = convergenceSTATUS, singular = singularSTATUS,
         separation = separationSTATUS, diagnostics = diagnosticMESSAGE, status = resultSTATUS
       )
