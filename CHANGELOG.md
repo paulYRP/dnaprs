@@ -20,6 +20,8 @@ All notable changes to dnaprs are recorded here.
 - Corrected namespaced staging and symlinked PLINK-prefix resolution for
   directory-based target, GWAS, and reference inputs, including paths with spaces,
   and added resolver regression tests.
+- Resolved relative paths in structured target, GWAS, and reference records from the
+  workflow launch directory, including PLINK companion files.
 - Improved phenotype-model validation errors so unknown score IDs are reported
   alongside the GWAS IDs and PRS names available to the model.
 - Added support for PLINK 1 BED, PLINK 2 PGEN, PED/MAP, BGEN, VCF, and Illumina

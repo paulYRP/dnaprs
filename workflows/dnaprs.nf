@@ -39,31 +39,52 @@ def targetBaseName(value) {
     value.toString().replace('\\', '/').tokenize('/').last()
 }
 
-def addTargetInput(sourceFiles, value) {
-    sourceFiles << file(value, checkIfExists: true)
+// User paths are relative to the directory from which Nextflow was launched. Resolve
+// them explicitly because this workflow can be loaded from a remote project cache.
+def userInputPath(value, launchDir) {
+    def declared = value.toString()
+    if (declared ==~ /^[A-Za-z][A-Za-z0-9+.-]*:\/\/.*/) return file(declared)
+
+    def candidate = java.nio.file.Paths.get(declared)
+    candidate.isAbsolute() ? candidate.normalize() : launchDir.resolve(candidate).normalize()
 }
 
-def addTargetGenotype(sourceFiles, value, format) {
-    if (format == 'pgen') {
-        def prefix = value.replaceFirst(/(?i)\.pgen$/, '')
-        addTargetInput(sourceFiles, "${prefix}.pgen")
-        addTargetInput(sourceFiles, "${prefix}.pvar")
-        addTargetInput(sourceFiles, "${prefix}.psam")
-    } else if (format == 'bed') {
-        def prefix = value.replaceFirst(/(?i)\.bed$/, '')
-        addTargetInput(sourceFiles, "${prefix}.bed")
-        addTargetInput(sourceFiles, "${prefix}.bim")
-        addTargetInput(sourceFiles, "${prefix}.fam")
-    } else if (format == 'ped') {
-        def prefix = value.replaceFirst(/(?i)\.ped$/, '')
-        addTargetInput(sourceFiles, "${prefix}.ped")
-        addTargetInput(sourceFiles, "${prefix}.map")
-    } else {
-        addTargetInput(sourceFiles, value)
+def requiredUserInput(value, launchDir, description) {
+    def resolved = userInputPath(value, launchDir)
+    try {
+        file(resolved, checkIfExists: true)
+    } catch (Exception _cause) {
+        def message = "${description} cannot be accessed: '${value}' (resolved to '${resolved}')"
+        log.error(message)
+        error message
     }
 }
 
-def targetInputFiles(row) {
+def addTargetInput(sourceFiles, value, launchDir, description) {
+    sourceFiles << requiredUserInput(value, launchDir, description)
+}
+
+def addTargetGenotype(sourceFiles, value, format, launchDir, cohort) {
+    if (format == 'pgen') {
+        def prefix = value.replaceFirst(/(?i)\.pgen$/, '')
+        addTargetInput(sourceFiles, "${prefix}.pgen", launchDir, "Target '${cohort}' PGEN file")
+        addTargetInput(sourceFiles, "${prefix}.pvar", launchDir, "Target '${cohort}' PVAR companion")
+        addTargetInput(sourceFiles, "${prefix}.psam", launchDir, "Target '${cohort}' PSAM companion")
+    } else if (format == 'bed') {
+        def prefix = value.replaceFirst(/(?i)\.bed$/, '')
+        addTargetInput(sourceFiles, "${prefix}.bed", launchDir, "Target '${cohort}' BED file")
+        addTargetInput(sourceFiles, "${prefix}.bim", launchDir, "Target '${cohort}' BIM companion")
+        addTargetInput(sourceFiles, "${prefix}.fam", launchDir, "Target '${cohort}' FAM companion")
+    } else if (format == 'ped') {
+        def prefix = value.replaceFirst(/(?i)\.ped$/, '')
+        addTargetInput(sourceFiles, "${prefix}.ped", launchDir, "Target '${cohort}' PED file")
+        addTargetInput(sourceFiles, "${prefix}.map", launchDir, "Target '${cohort}' MAP companion")
+    } else {
+        addTargetInput(sourceFiles, value, launchDir, "Target '${cohort}' genotype")
+    }
+}
+
+def targetInputFiles(row, launchDir) {
     def sourceGenotype = row.genotype.toString()
     def sourceSample = row.sample?.toString() ?: ''
     def sourceKeep = row.keep?.toString() ?: ''
@@ -89,16 +110,18 @@ def targetInputFiles(row) {
                 .replace('#', chromosome.toString())
             def primary = format == 'pgen' ? "${value.replaceFirst(/(?i)\.pgen$/, '')}.pgen" :
                 format == 'bed' ? "${value.replaceFirst(/(?i)\.bed$/, '')}.bed" : value
-            if (java.nio.file.Files.exists(file(primary))) addTargetGenotype(sourceFiles, value, format)
+            if (java.nio.file.Files.exists(userInputPath(primary, launchDir))) {
+                addTargetGenotype(sourceFiles, value, format, launchDir, row.cohort)
+            }
         }
         if (!sourceFiles) error "Target '${row.cohort}' chromosome placeholder matched no genotype files."
     } else {
-        addTargetGenotype(sourceFiles, sourceGenotype, format)
+        addTargetGenotype(sourceFiles, sourceGenotype, format, launchDir, row.cohort)
     }
-    if (sourceSample) addTargetInput(sourceFiles, sourceSample)
-    if (sourceKeep) addTargetInput(sourceFiles, sourceKeep)
-    if (sourceAssayManifest) addTargetInput(sourceFiles, sourceAssayManifest)
-    if (sourceMarkerMap) addTargetInput(sourceFiles, sourceMarkerMap)
+    if (sourceSample) addTargetInput(sourceFiles, sourceSample, launchDir, "Target '${row.cohort}' sample file")
+    if (sourceKeep) addTargetInput(sourceFiles, sourceKeep, launchDir, "Target '${row.cohort}' keep file")
+    if (sourceAssayManifest) addTargetInput(sourceFiles, sourceAssayManifest, launchDir, "Target '${row.cohort}' assay manifest")
+    if (sourceMarkerMap) addTargetInput(sourceFiles, sourceMarkerMap, launchDir, "Target '${row.cohort}' marker map")
 
     def stagedMeta = row + [
         source_genotype: sourceGenotype,
@@ -117,7 +140,7 @@ def targetInputFiles(row) {
     tuple(stagedMeta, sourceFiles.unique())
 }
 
-def resolveReferenceInputPath(row, value) {
+def resolveReferenceInputPath(row, value, launchDir, field) {
     def matchedFiles = []
     def hasChromosomePattern = value.contains('{chr}') || value.contains('{CHR}') ||
         value.contains('{chromosome}') || value.contains('#')
@@ -131,13 +154,14 @@ def resolveReferenceInputPath(row, value) {
                 .replace('{CHR}', chromosome.toString())
                 .replace('{chromosome}', chromosome.toString())
                 .replace('#', chromosome.toString())
-            if (java.nio.file.Files.exists(file(resolved))) {
-                matchedFiles << file(resolved, checkIfExists: true)
+            def resolvedPath = userInputPath(resolved, launchDir)
+            if (java.nio.file.Files.exists(resolvedPath)) {
+                matchedFiles << file(resolvedPath, checkIfExists: true)
             }
         }
         if (!matchedFiles) error "Reference '${row.reference_id}' chromosome placeholder matched no files."
     } else {
-        matchedFiles << file(value, checkIfExists: true)
+        matchedFiles << requiredUserInput(value, launchDir, "Reference '${row.reference_id}' ${field}")
     }
     matchedFiles
 }
@@ -145,11 +169,11 @@ def resolveReferenceInputPath(row, value) {
 // Stage reference files or directories as declared Nextflow inputs. This keeps
 // external bundles portable across Docker and Apptainer and adds their content to
 // task hashes without copying or modifying the source bundle.
-def referenceInputFiles(row) {
+def referenceInputFiles(row, launchDir) {
     def sourcePath = row.path.toString()
     def sourceCompanion = row.companion?.toString() ?: ''
-    def sourceFiles = resolveReferenceInputPath(row, sourcePath)
-    if (sourceCompanion) sourceFiles.addAll(resolveReferenceInputPath(row, sourceCompanion))
+    def sourceFiles = resolveReferenceInputPath(row, sourcePath, launchDir, 'path')
+    if (sourceCompanion) sourceFiles.addAll(resolveReferenceInputPath(row, sourceCompanion, launchDir, 'companion'))
     def stagedMeta = row + [
         source_path: sourcePath,
         source_companion: sourceCompanion,
@@ -198,17 +222,17 @@ workflow DNAPRS {
     // generated records retain stable source paths for provenance.
     validation_target_assets = target_manifest
         .splitCsv(header: true, sep: '\t')
-        .flatMap { row -> targetInputFiles(row)[1] }
+        .flatMap { row -> targetInputFiles(row, launch_dir)[1] }
         .ifEmpty { file("${projectDir}/assets/empty_input") }
         .collect()
     validation_gwas_assets = gwas_manifest
         .splitCsv(header: true, sep: '\t')
-        .map { row -> file(row.path, checkIfExists: true) }
+        .map { row -> requiredUserInput(row.path, launch_dir, "GWAS '${row.trait_id}' path") }
         .ifEmpty { file("${projectDir}/assets/empty_input") }
         .collect()
     validation_reference_assets = reference_manifest
         .splitCsv(header: true, sep: '\t')
-        .flatMap { row -> referenceInputFiles(row)[1] }
+        .flatMap { row -> referenceInputFiles(row, launch_dir)[1] }
         .ifEmpty { file("${projectDir}/assets/empty_input") }
         .collect()
 
@@ -235,13 +259,13 @@ workflow DNAPRS {
 
     gwas_rows = VALIDATE_MANIFESTS.out.gwas_manifest
         .splitCsv(header: true, sep: '\t')
-        .map { row -> tuple(row, file(row.path)) }
+        .map { row -> tuple(row, requiredUserInput(row.path, launch_dir, "GWAS '${row.trait_id}' path")) }
     target_rows = VALIDATE_MANIFESTS.out.target_manifest
         .splitCsv(header: true, sep: '\t')
-    target_inputs = target_rows.map { row -> targetInputFiles(row) }
+    target_inputs = target_rows.map { row -> targetInputFiles(row, launch_dir) }
     reference_rows = VALIDATE_MANIFESTS.out.reference_manifest
         .splitCsv(header: true, sep: '\t')
-    reference_inputs = reference_rows.map { row -> referenceInputFiles(row) }
+    reference_inputs = reference_rows.map { row -> referenceInputFiles(row, launch_dir) }
 
     dbsnp_source = reference_inputs
         .filter { row, _files -> row.reference_type == 'dbsnp' }

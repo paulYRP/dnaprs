@@ -1,0 +1,12 @@
+{
+    "relative BED, GWAS, and reference paths complete PLINK scoring": {
+        "content": [
+            "software_versions.yml:md5,de7580a89210dbd5163457376b3aac5f"
+        ],
+        "timestamp": "2026-09-04T11:27:42.041094774",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.6"
+        }
+    }
+}

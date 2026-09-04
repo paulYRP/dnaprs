@@ -1,0 +1,114 @@
+nextflow_pipeline {
+
+    name "Resolve structured paths from the launch directory"
+    script "../main.nf"
+    tag "pipeline"
+    tag "relative_paths"
+    tag "real"
+
+    test("relative BED, GWAS, and reference paths complete PLINK scoring") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "relative_paths"
+                input = [[
+                    id: 'RELATIVE',
+                    path: '../../../tests/data/target/formats/target_bed.bed',
+                    format: 'bed',
+                    stage: 'raw',
+                    build: 'GRCh37',
+                    ancestry: 'European',
+                    assay_manifest: '../../../tests/data/target/mini_manifest.csv',
+                ]]
+                gwas = [[
+                    id: 'MDD',
+                    path: '../../../tests/data/gwas/mdd.tsv',
+                    build: 'GRCh37',
+                    ancestry: 'European',
+                    effect_type: 'log_or',
+                    sample_size: 100000,
+                    prs_name: 'MDD_PRS',
+                    columns: [
+                        variant: 'SNP', chromosome: 'CHR', position: 'BP',
+                        effect_allele: 'A1', other_allele: 'A2', effect: 'BETA',
+                        standard_error: 'SE', p_value: 'P', frequency: 'EAF', sample_size: 'N',
+                    ],
+                ]]
+                references = [
+                    root: '../../../tests/data/reference',
+                    assets: [
+                        dbsnp: 'dbsnp_source',
+                        fasta: 'human_g1k_v37.fasta',
+                        fasta_index: 'human_g1k_v37.fasta.fai',
+                        imputation_panel: 'source_panel',
+                        genetic_maps: 'genetic_map_source.zip',
+                        population_metadata: 'population.tsv',
+                        related_samples: 'related.txt',
+                        unbref3_jar: 'unbref3.test.jar',
+                    ],
+                ]
+                stop_after = "prs"
+                phenotype = null
+                outcome = null
+                covariates = null
+                model_type = null
+                participant_id = null
+                target_imputation = false
+                report_enabled = false
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/relative_paths"
+            def targets = path("$runDir/data/inputs/targets.tsv")
+            def gwas = path("$runDir/data/inputs/gwas.tsv")
+            def references = path("$runDir/data/inputs/references.tsv")
+
+            assert workflow.success
+            assertAll(
+                { assert targets.exists() },
+                { assert targets.text.contains('/tests/data/target/formats/target_bed.bed') },
+                { assert gwas.text.contains('/tests/data/gwas/mdd.tsv') },
+                { assert references.text.contains('/tests/data/reference/dbsnp_source') },
+                { assert path("$runDir/data/target_qc/RELATIVE/RELATIVE.target_qc.tsv").exists() },
+                { assert path("$runDir/data/scores/RELATIVE/MDD/RELATIVE.MDD.plink_ct.score.tsv").exists() },
+                { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() }
+            )
+        }
+    }
+
+    test("a missing relative PLINK companion has an actionable error") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "relative_path_error"
+                input = [[
+                    id: 'MISSING',
+                    path: '../../../tests/data/target/formats/missing_companion.bed',
+                    format: 'bed',
+                    stage: 'raw',
+                    build: 'GRCh37',
+                    ancestry: 'European',
+                ]]
+                stop_after = "target_qc"
+                phenotype = null
+                outcome = null
+                covariates = null
+                model_type = null
+                participant_id = null
+                target_imputation = false
+                report_enabled = false
+            }
+        }
+
+        then {
+            assert workflow.failed
+            assert workflow.stdout.any { line ->
+                line.contains("Target 'MISSING' BIM companion cannot be accessed") &&
+                    line.contains('missing_companion.bim')
+            }
+        }
+    }
+}

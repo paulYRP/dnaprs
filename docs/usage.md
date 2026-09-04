@@ -91,6 +91,10 @@ nextflow run . -profile singularity -params-file examples/params.yml -resume
 
 The YAML may use simple paths or explicit record lists. A multi-model declaration is:
 
+Relative input paths are resolved from the directory where `nextflow run` is launched.
+Use absolute paths when a file is outside that directory. Files distributed with the
+pipeline are resolved separately from the pipeline project directory.
+
 ```yaml
 phenotype: data/pheno/pheno.csv
 participant_id: participant_id

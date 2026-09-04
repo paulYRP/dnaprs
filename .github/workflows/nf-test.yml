@@ -134,7 +134,7 @@ jobs:
       - name: Run focused stage and reference tests
         if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
-          nf-test test tests/stages.nf.test tests/reference.nf.test tests/formats.nf.test tests/directory_inputs.nf.test \
+          nf-test test tests/stages.nf.test tests/reference.nf.test tests/formats.nf.test tests/directory_inputs.nf.test tests/relative_paths.nf.test \
             --profile test,docker \
             --ci \
             --verbose \
