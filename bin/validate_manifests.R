@@ -172,6 +172,77 @@ referenceFILES <- function(path, companion = "") {
   }), use.names = FALSE))
 }
 
+relativeFILENAMES <- function(files, root) {
+  if (!dir.exists(root)) return(basename(files))
+  normalROOT <- normalizePath(root, winslash = "/", mustWork = TRUE)
+  normalFILE <- normalizePath(files, winslash = "/", mustWork = TRUE)
+  prefix <- paste0(normalROOT, "/")
+  ifelse(startsWith(normalFILE, prefix), substring(normalFILE, nchar(prefix) + 1L), basename(normalFILE))
+}
+
+archiveNAMES <- function(path, label) {
+  value <- try(utils::unzip(path, list = TRUE), silent = TRUE)
+  if (inherits(value, "try-error")) {
+    stop(sprintf("%s is not a readable ZIP archive: %s", label, path), call. = FALSE)
+  }
+  value$Name
+}
+
+referenceCHROMOSOMES <- function(fileNAME, resource) {
+  fileNAME <- sub("^\\./", "", gsub("\\\\", "/", fileNAME))
+  if (resource == "genetic_map") {
+    supported <- grepl(
+      "^((maps/)?plink\\.chr[0-9]+\\.GRCh37\\.map|chr[0-9]+\\.map)$",
+      fileNAME
+    )
+    chromosome <- basename(fileNAME[supported])
+    chromosome <- sub("^plink\\.chr", "", chromosome)
+    chromosome <- sub("^chr", "", chromosome)
+    chromosome <- sub("\\.GRCh37\\.map$", "", chromosome)
+    chromosome <- sub("\\.map$", "", chromosome)
+  } else {
+    supported <- grepl(
+      "^(panel/)?chr[0-9]+((\\..+)?\\.bref3|\\.vcf(\\.gz)?|\\.bcf)$",
+      fileNAME
+    )
+    chromosome <- sub("^chr([0-9]+).*$", "\\1", basename(fileNAME[supported]))
+  }
+  chromosome <- suppressWarnings(as.integer(chromosome))
+  chromosome[!is.na(chromosome) & chromosome >= 1L & chromosome <= 22L]
+}
+
+checkCHROMOSOMES <- function(chromosome, referenceID, label, requireCOMPLETE = FALSE) {
+  if (length(chromosome) == 0L) {
+    stop(sprintf("Reference '%s' contains no supported autosomal %s files.", referenceID, label), call. = FALSE)
+  }
+  duplicateCHROMOSOME <- sort(unique(chromosome[duplicated(chromosome)]))
+  if (length(duplicateCHROMOSOME) > 0L) {
+    stop(
+      sprintf(
+        "Reference '%s' contains more than one %s file for chromosome(s): %s. Keep one supported file per chromosome.",
+        referenceID,
+        label,
+        paste(duplicateCHROMOSOME, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  if (requireCOMPLETE) {
+    missingCHROMOSOME <- setdiff(seq_len(22L), chromosome)
+    if (length(missingCHROMOSOME) > 0L) {
+      stop(
+        sprintf(
+          "Reference '%s' is missing %s file(s) for chromosome(s): %s. Provide chromosomes 1 to 22.",
+          referenceID,
+          label,
+          paste(missingCHROMOSOME, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+  }
+}
+
 resourceDIGEST <- function(files, base) {
   files <- sort(normalizePath(files, winslash = "/", mustWork = TRUE))
   if (length(files) == 1L) return(tolower(sha256FILE(files)))
@@ -331,6 +402,7 @@ if (!all(c("setting", "value") %in% names(runPLAN)) || anyDuplicated(runPLAN$set
 planVALUE <- stats::setNames(as.list(runPLAN$value), runPLAN$setting)
 runPRS <- identical(tolower(planVALUE[["run_prs"]]), "true")
 runPHENOTYPE <- identical(tolower(planVALUE[["run_phenotype"]]), "true")
+referenceONLY <- identical(tolower(planVALUE[["reference_only"]]), "true")
 requiredREFERENCE <- unique(trimws(strsplit(planVALUE[["required_reference_roles"]], ",", fixed = TRUE)[[1L]]))
 if (length(requiredREFERENCE) == 0L || any(!nzchar(requiredREFERENCE))) {
   stop("run_plan.tsv has no valid required_reference_roles.", call. = FALSE)
@@ -576,15 +648,75 @@ for (row in seq_len(nrow(reference))) {
   referenceFILELIST[[row]] <- referenceFILES(referencePATHNATIVE[row], referenceCOMPANIONNATIVE[row])
   checkPATH(referenceFILELIST[[row]], sprintf("Reference '%s' content", reference$reference_id[row]))
   fileNAME <- basename(referenceFILELIST[[row]])
+  contentNAME <- relativeFILENAMES(referenceFILELIST[[row]], referencePATHNATIVE[row])
   referenceTYPE <- reference$reference_type[row]
+  dbsnpVCF <- grepl(
+    "(\\.vcf(\\.gz|\\.bgz)?|\\.bcf|^GCF_.*\\.gz)$",
+    fileNAME,
+    ignore.case = TRUE
+  )
+  assemblyREPORT <- grepl("assembly[_-]?report.*\\.txt$", fileNAME, ignore.case = TRUE)
+  if (referenceTYPE == "dbsnp") {
+    if (sum(dbsnpVCF) != 1L) {
+      stop(
+        sprintf(
+          "Reference '%s' must contain exactly one dbSNP VCF; found %s.",
+          reference$reference_id[row],
+          sum(dbsnpVCF)
+        ),
+        call. = FALSE
+      )
+    }
+    if (sum(assemblyREPORT) != 1L) {
+      stop(
+        sprintf(
+          "Reference '%s' must contain exactly one dbSNP assembly report; found %s.",
+          reference$reference_id[row],
+          sum(assemblyREPORT)
+        ),
+        call. = FALSE
+      )
+    }
+  }
+  panelCHROMOSOME <- referenceCHROMOSOMES(contentNAME, "imputation_panel")
+  if (referenceTYPE == "imputation_panel") {
+    checkCHROMOSOMES(
+      panelCHROMOSOME,
+      reference$reference_id[row],
+      "imputation-panel",
+      requireCOMPLETE = referenceONLY
+    )
+  }
+  mapNAME <- character()
+  mapCHROMOSOME <- integer()
+  if (referenceTYPE == "genetic_map") {
+    if (reference$source_format[row] == "zip") {
+      zipFILE <- referenceFILELIST[[row]][grepl("\\.zip$", referenceFILELIST[[row]], ignore.case = TRUE)]
+      if (length(zipFILE) != 1L) {
+        stop(
+          sprintf("Reference '%s' must resolve to exactly one genetic-map ZIP archive.", reference$reference_id[row]),
+          call. = FALSE
+        )
+      }
+      mapNAME <- archiveNAMES(zipFILE[[1L]], sprintf("Reference '%s'", reference$reference_id[row]))
+    } else {
+      mapNAME <- contentNAME
+    }
+    mapCHROMOSOME <- referenceCHROMOSOMES(mapNAME, "genetic_map")
+    checkCHROMOSOMES(
+      mapCHROMOSOME,
+      reference$reference_id[row],
+      "genetic-map",
+      requireCOMPLETE = referenceONLY
+    )
+  }
   hasCONTENT <- switch(
     referenceTYPE,
-    dbsnp = any(grepl("\\.vcf(\\.gz)?$|\\.gz$", fileNAME, ignore.case = TRUE)) &&
-      any(grepl("assembly[_-]?report", fileNAME, ignore.case = TRUE)),
+    dbsnp = sum(dbsnpVCF) == 1L && sum(assemblyREPORT) == 1L,
     reference_fasta = any(grepl("\\.(fa|fasta|fna)(\\.gz)?$", fileNAME, ignore.case = TRUE)) &&
       any(grepl("\\.fai$", fileNAME, ignore.case = TRUE)),
-    genetic_map = reference$source_format[row] == "zip" || any(grepl("\\.map(\\.gz)?$", fileNAME, ignore.case = TRUE)),
-    imputation_panel = any(grepl("\\.(bref3|vcf|vcf\\.gz|bcf)$", fileNAME, ignore.case = TRUE)),
+    genetic_map = length(mapCHROMOSOME) > 0L,
+    imputation_panel = length(panelCHROMOSOME) > 0L,
     population_panel = length(referenceFILELIST[[row]]) >= 1L,
     related_samples = length(referenceFILELIST[[row]]) >= 1L,
     sbayesrc_ld_source = any(grepl("\\.zip$", fileNAME, ignore.case = TRUE)),

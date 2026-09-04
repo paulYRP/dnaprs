@@ -124,6 +124,17 @@ an independent task; a one-model run follows the same code path.
   download;
 - `download`: acquire the pinned bundle even when another local root is supplied.
 
+A local reference root must contain one BREF3 panel file and one supported genetic map
+for each autosome from 1 to 22. Panel names start with `chr<chromosome>` and end in
+`.bref3`. Map names use `plink.chr<chromosome>.GRCh37.map` or
+`chr<chromosome>.map`. Additional non-autosomal maps are accepted. Missing or duplicate
+autosomal files stop validation before imputation.
+
+The dbSNP directory must contain one VCF source and one assembly report. The VCF source
+may use a standard VCF extension or a RefSeq name such as `GCF_000001405.25.gz`. When no
+index is available, the pipeline creates an indexed copy in the task work directory and
+does not modify the source directory.
+
 The persistent cache defaults to `references/dnaprs/grch37-v1/`. It includes dbSNP157,
 the GRCh37 FASTA/index, Beagle maps and chromosome panel, 1000 Genomes population and
 related-sample metadata, pinned Beagle/unbref3 JARs, and selected SBayesRC resources.

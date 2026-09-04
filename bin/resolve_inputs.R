@@ -436,6 +436,50 @@ archiveNAMES <- function(path) {
   if (inherits(value, "try-error")) character() else value$Name
 }
 
+referenceCHROMOSOMES <- function(path, resource) {
+  fileNAME <- basename(list.files(path, full.names = TRUE, all.files = FALSE, no.. = TRUE))
+  if (resource == "genetic_map") {
+    supported <- grepl(
+      "^(plink\\.chr[0-9]+\\.GRCh37\\.map|chr[0-9]+\\.map)$",
+      fileNAME
+    )
+    chromosome <- fileNAME[supported]
+    chromosome <- sub("^plink\\.chr", "", chromosome)
+    chromosome <- sub("^chr", "", chromosome)
+    chromosome <- sub("\\.GRCh37\\.map$", "", chromosome)
+    chromosome <- sub("\\.map$", "", chromosome)
+  } else {
+    supported <- grepl("^chr[0-9]+(\\..*)?\\.bref3$", fileNAME)
+    chromosome <- sub("^chr([0-9]+).*$", "\\1", fileNAME[supported])
+  }
+  chromosome <- suppressWarnings(as.integer(chromosome))
+  chromosome[!is.na(chromosome) & chromosome >= 1L & chromosome <= 22L]
+}
+
+completeAUTOSOMES <- function(path, resource) {
+  chromosome <- referenceCHROMOSOMES(path, resource)
+  identical(sort(chromosome), seq_len(22L))
+}
+
+autosomeERROR <- function(path, resource) {
+  chromosome <- referenceCHROMOSOMES(path, resource)
+  missing <- setdiff(seq_len(22L), unique(chromosome))
+  duplicated <- sort(unique(chromosome[duplicated(chromosome)]))
+  issue <- character()
+  if (length(missing) > 0L) issue <- c(issue, sprintf("missing chromosome(s): %s", paste(missing, collapse = ", ")))
+  if (length(duplicated) > 0L) issue <- c(issue, sprintf("duplicate chromosome(s): %s", paste(duplicated, collapse = ", ")))
+  label <- if (resource == "genetic_map") "Genetic map" else "Imputation panel"
+  stop(
+    sprintf(
+      "%s directory '%s' must contain exactly one supported file for chromosomes 1 to 22; %s.",
+      label,
+      path,
+      paste(issue, collapse = "; ")
+    ),
+    call. = FALSE
+  )
+}
+
 oneREFERENCE <- function(values, role) {
   values <- unique(values[file.exists(values) | dir.exists(values)])
   if (length(values) == 0L) return("")
@@ -456,13 +500,26 @@ discoverREFERENCES <- function(stagedROOT, originalROOT, mode, required) {
 
   dbDIR <- directories[vapply(directories, function(path) {
     item <- list.files(path, full.names = TRUE)
-    any(grepl("\\.(vcf\\.gz|gz)$", item, ignore.case = TRUE)) &&
-      any(grepl("\\.tbi$", item, ignore.case = TRUE)) &&
-      any(grepl("assembly[_-]?report", item, ignore.case = TRUE))
+    fileNAME <- basename(item)
+    dbsnpVCF <- grepl(
+      "(\\.vcf(\\.gz|\\.bgz)?|\\.bcf|^GCF_.*\\.gz)$",
+      fileNAME,
+      ignore.case = TRUE
+    )
+    assemblyREPORT <- grepl("assembly[_-]?report.*\\.txt$", fileNAME, ignore.case = TRUE)
+    sum(dbsnpVCF) == 1L && sum(assemblyREPORT) == 1L
   }, logical(1L))]
   fasta <- files[grepl("\\.(fa|fasta|fna)$", lower) & file.exists(paste0(files, ".fai"))]
-  mapDIR <- directories[vapply(directories, function(path) length(list.files(path, pattern = "\\.map$", ignore.case = TRUE)) >= 22L, logical(1L))]
-  panelDIR <- directories[vapply(directories, function(path) length(list.files(path, pattern = "\\.bref3$", ignore.case = TRUE)) >= 22L, logical(1L))]
+  mapCANDIDATE <- directories[vapply(directories, function(path) length(referenceCHROMOSOMES(path, "genetic_map")) > 0L, logical(1L))]
+  panelCANDIDATE <- directories[vapply(directories, function(path) length(referenceCHROMOSOMES(path, "imputation_panel")) > 0L, logical(1L))]
+  mapDIR <- mapCANDIDATE[vapply(mapCANDIDATE, completeAUTOSOMES, logical(1L), resource = "genetic_map")]
+  panelDIR <- panelCANDIDATE[vapply(panelCANDIDATE, completeAUTOSOMES, logical(1L), resource = "imputation_panel")]
+  if (mode == "local" && length(mapDIR) == 0L && length(mapCANDIDATE) == 1L) {
+    autosomeERROR(mapCANDIDATE[[1L]], "genetic_map")
+  }
+  if (mode == "local" && length(panelDIR) == 0L && length(panelCANDIDATE) == 1L) {
+    autosomeERROR(panelCANDIDATE[[1L]], "imputation_panel")
+  }
   population <- files[grepl("\\.(panel|tsv|txt)$", lower) & grepl("population|sample.*panel|integrated_call", lower)]
   related <- files[grepl("related", lower) & grepl("\\.(txt|tsv)$", lower)]
   zipFILES <- files[grepl("\\.zip$", lower)]

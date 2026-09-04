@@ -45,10 +45,21 @@ for candidate in "${reference_candidates[@]}"; do
 done
 [[ -n "$reference_vcf" ]] || { echo "No imputation reference for chromosome ${chromosome} in ${panel}" >&2; exit 3; }
 
-map_arg=()
+map_candidates=()
 for candidate in "${map_root}/plink.chr${chromosome}.GRCh37.map" "${map_root}/maps/plink.chr${chromosome}.GRCh37.map" "${map_root}/chr${chromosome}.map"; do
-    if [[ -s "$candidate" ]]; then map_arg=("map=${candidate}"); break; fi
+    if [[ -s "$candidate" ]]; then map_candidates+=("$candidate"); fi
 done
+if [[ "${#map_candidates[@]}" -eq 0 ]]; then
+    printf 'Genetic map %s has no supported map for chromosome %s. Provide plink.chr%s.GRCh37.map or chr%s.map.\n' \
+        "$genetic_map" "$chromosome" "$chromosome" "$chromosome" >&2
+    exit 3
+fi
+if [[ "${#map_candidates[@]}" -gt 1 ]]; then
+    printf 'Genetic map %s has %s supported maps for chromosome %s. Keep one supported map for this chromosome.\n' \
+        "$genetic_map" "${#map_candidates[@]}" "$chromosome" >&2
+    exit 3
+fi
+map_arg=("map=${map_candidates[0]}")
 
 target_prefix="${cohort}.chr${chromosome}.input"
 cp "$target_pgen" "${target_prefix}.pgen"

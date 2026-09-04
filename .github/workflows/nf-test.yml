@@ -79,6 +79,15 @@ jobs:
             --tag ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
             .
 
+      - name: Test local reference layouts
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            bash tests/scripts/test_reference_layout.sh
+
       - name: Run minimal real-tool workflow test
         if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |

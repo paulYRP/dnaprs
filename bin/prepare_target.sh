@@ -118,10 +118,26 @@ if [[ "$input_stage" == "raw" ]]; then
         exit 4
     }
     if [[ -d "$dbsnp_source" ]]; then
-        dbsnp_vcf=$(find "$dbsnp_source" -maxdepth 1 -type f \
-            \( -name '*.vcf.gz' -o -name '*.vcf.bgz' -o -name '*.bcf' -o -name '*.vcf' \) \
-            ! -name '*.md5' -print -quit)
-        assembly_report=$(find "$dbsnp_source" -maxdepth 1 -type f -name 'assembly_report.txt' -print -quit)
+        mapfile -t dbsnp_candidates < <(
+            find -L "$dbsnp_source" -maxdepth 1 -type f \
+                \( -iname '*.vcf.gz' -o -iname '*.vcf.bgz' -o -iname '*.bcf' -o -iname '*.vcf' -o -iname 'GCF_*.gz' \) \
+                ! -name '*.md5' -print | sort
+        )
+        mapfile -t assembly_reports < <(
+            find -L "$dbsnp_source" -maxdepth 1 -type f \
+                \( -iname 'assembly_report.txt' -o -iname '*assembly_report*.txt' -o -iname '*assembly-report*.txt' \) \
+                -print | sort
+        )
+        [[ "${#dbsnp_candidates[@]}" -eq 1 ]] || {
+            echo "Expected exactly one dbSNP VCF in $dbsnp_source; found ${#dbsnp_candidates[@]}." >&2
+            exit 4
+        }
+        [[ "${#assembly_reports[@]}" -eq 1 ]] || {
+            echo "Expected exactly one dbSNP assembly report in $dbsnp_source; found ${#assembly_reports[@]}." >&2
+            exit 4
+        }
+        dbsnp_vcf="${dbsnp_candidates[0]}"
+        assembly_report="${assembly_reports[0]}"
     else
         dbsnp_vcf="$dbsnp_source"
         assembly_report=""

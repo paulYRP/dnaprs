@@ -10,7 +10,7 @@ expected_csv="$6"
 output_dir="${cohort}.imputed"
 mkdir -p "$output_dir"
 
-mapfile -t chromosome_dirs < <(find . -maxdepth 1 -type d -name "${cohort}.chr*.imputed" -printf '%f\n' | sort -V)
+mapfile -t chromosome_dirs < <(find -L . -maxdepth 1 -type d -name "${cohort}.chr*.imputed" -printf '%f\n' | sort -V)
 [[ "${#chromosome_dirs[@]}" -gt 0 ]] || { echo "No completed chromosome-imputation bundles were supplied." >&2; exit 2; }
 IFS=',' read -r -a expected_chromosomes <<< "$expected_csv"
 mapfile -t observed_chromosomes < <(printf '%s\n' "${chromosome_dirs[@]}" | sed -E "s/^${cohort}[.]chr([0-9]+)[.]imputed$/\\1/" | sort -n)
@@ -25,7 +25,7 @@ done
 first_psam=""
 prefixes=()
 for directory in "${chromosome_dirs[@]}"; do
-    mapfile -t pgen < <(find "$directory" -maxdepth 1 -type f -name "${cohort}_chr*.pgen")
+    mapfile -t pgen < <(find -L "$directory" -maxdepth 1 -type f -name "${cohort}_chr*.pgen")
     [[ "${#pgen[@]}" -eq 1 ]] || { echo "Imputation bundle ${directory} does not contain exactly one PGEN." >&2; exit 2; }
     prefix="${pgen[0]%.pgen}"
     [[ -s "${prefix}.pvar" && -s "${prefix}.psam" ]] || { echo "Incomplete PGEN bundle: ${prefix}" >&2; exit 2; }
@@ -55,7 +55,7 @@ fi
 
 combine_tables() {
     local pattern="$1" output="$2"
-    mapfile -t tables < <(find . -maxdepth 1 -type f -name "$pattern" -printf '%f\n' | sort -V)
+    mapfile -t tables < <(find -L . -maxdepth 1 -type f -name "$pattern" -printf '%f\n' | sort -V)
     [[ "${#tables[@]}" -eq "${#chromosome_dirs[@]}" ]] || { echo "Incomplete imputation summary set for ${pattern}." >&2; exit 4; }
     head -n 1 "${tables[0]}" > "$output"
     for table in "${tables[@]}"; do tail -n +2 "$table"; done | sort -t $'\t' -k2,2n >> "$output"

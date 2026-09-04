@@ -2,6 +2,7 @@ nextflow_pipeline {
 
     name "Run chromosome imputation with real Beagle and PLINK tools"
     script "../main.nf"
+    config "./symlink.config"
     tag "pipeline"
     tag "real"
     tag "imputation"

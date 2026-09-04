@@ -31,6 +31,8 @@ All notable changes to dnaprs are recorded here.
   GenomeStudio inputs without dataset-specific names.
 - Added validated local, cached, and downloaded reference modes, including pinned
   Beagle, unbref3, dbSNP, genome, genetic-map, ancestry, and SBayesRC assets.
+- Corrected staged-directory discovery for local references, accepted RefSeq-named
+  dbSNP VCF sources, and required one supported genetic map per imputed autosome.
 - Added raw-genotype exploration, target conversion, two-stage QC, chromosome-level
   Beagle imputation, chromosome gathering, ancestry projection, and integrated
   participant decisions.
