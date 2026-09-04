@@ -22,7 +22,7 @@ inputs; records raw genotype EDA; resolves markers against pinned GRCh37 referen
 applies two target-QC checkpoints; and projects participants onto unrelated 1000 Genomes
 reference PCA axes. It can impute with Beagle, generate PLINK C+T and/or SBayesRC
 scores, apply participant eligibility consistently, and fit one or many declared
-phenotype models. Source files are read-only.
+phenotype models.
 
 ![dnaprs workflow metro map showing raw inputs, target QC, reference handling, PLINK C+T, SBayesRC, phenotype models, and reporting](docs/images/dnaprs-workflow.svg)
 

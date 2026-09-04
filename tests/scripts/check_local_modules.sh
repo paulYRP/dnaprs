@@ -56,4 +56,9 @@ if find "$repo_root/modules/local" -mindepth 1 -maxdepth 1 -type d -empty | grep
     failed=1
 fi
 
+if grep -RHE '@sha256:' --include='main.nf' "$repo_root/modules/local"; then
+    printf 'ERROR: process container references must not use tag@digest syntax.\n' >&2
+    failed=1
+fi
+
 exit "$failed"

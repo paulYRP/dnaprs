@@ -2,7 +2,7 @@ process SBAYESRC_SCORE {
     tag "${target.cohort}:${gwas.trait_id}"
     label 'process_high'
 
-    container 'docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb'
+    container 'docker.io/zhiliz/sbayesrc:0.2.6'
 
     input:
     tuple val(target), path(target_dir), path(target_qc), path(participant_decisions), path(participant_keep), val(gwas), path(weight), path(parameter), path(model_qc), path(impute_qc), path(tidy_qc), path(harmonisation_qc)

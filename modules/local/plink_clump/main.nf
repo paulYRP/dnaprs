@@ -2,7 +2,10 @@ process PLINK_CLUMP {
     tag "${meta.trait_id}"
     label 'process_high'
 
-    container 'ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21@sha256:ebdfdb952f083cd554811f9c8b9ab8b2669f92ec914b9566b0aa962d642b66e7'
+    conda "${moduleDir}/environment.yml"
+    container "${ workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/plink2:2.0.0a.6.9--h9948957_0' :
+        'quay.io/biocontainers/plink2:2.0.0a.6.9--h9948957_0' }"
 
     input:
     tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)

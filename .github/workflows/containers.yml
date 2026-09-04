@@ -38,7 +38,7 @@ jobs:
             --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
             .
 
-      - name: Build PLINK 2 image
+      - name: Build combined PLINK image
         run: |
           docker build --pull \
             --build-arg VCS_REF="${GITHUB_SHA}" \
@@ -73,8 +73,10 @@ jobs:
             plink2 --version | grep 'v2.0.0-a.6.12'
           docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
             plink --version | grep 'v1.90b6.21'
+          docker run --rm quay.io/biocontainers/plink2:2.0.0a.6.9--h9948957_0 \
+            plink2 --version | grep 'v2.0.0-a.6.9'
           docker run --rm --entrypoint Rscript \
-            docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb \
+            docker.io/zhiliz/sbayesrc:0.2.6 \
             -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
           docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.0 \
             quarto --version | grep '^1.7.32$'

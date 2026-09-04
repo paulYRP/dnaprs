@@ -4,6 +4,9 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Replaced Aqua-incompatible `tag@digest` process references with stable versioned
+  containers, using a native Singularity PLINK 2 BioContainer for PLINK2-only tasks
+  while retaining PLINK 1.9 `--genome full` for relatedness.
 - Added explicit `timepoint_column` and `timepoint_values` handling for repeated
   phenotype records, with deterministic technical-record selection and completeness
   reporting.

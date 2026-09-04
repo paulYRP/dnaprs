@@ -2,7 +2,7 @@ process SBAYESRC_TIDY {
     tag "${meta.trait_id}"
     label 'process_high'
 
-    container 'docker.io/zhiliz/sbayesrc:0.2.6@sha256:5a6139e6c3ab471799c059fe7032870f22bacc07dfadf14fc0517314db5ea4bb'
+    container 'docker.io/zhiliz/sbayesrc:0.2.6'
 
     input:
     tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(ld_reference), path(ld_reference_files)
