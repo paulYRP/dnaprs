@@ -18,9 +18,10 @@ YAML `input` list with an `id`, `path`, `format`, and optional companions per co
 
 ### GWAS summary statistics
 
-`--gwas` defaults to `data/gwas/raw`. Each supported text or compressed-text GWAS is
-inspected independently. Common column names are resolved only when their roles are
-unambiguous. An unfamiliar release must be described in a YAML `gwas` list,
+`--gwas` defaults to `data/gwas/raw`. The pipeline accepts `.tsv`, `.txt`, `.csv`, and
+VCF-style summary statistics as plain text, gzip (`.gz`), or block-gzip (`.bgz`). Each
+GWAS is inspected independently. Common column names are resolved only when their roles
+are unambiguous. An unfamiliar release must be described in a YAML `gwas` list,
 including effect scale, study size, build, and source-column mapping.
 
 The workflow validates numeric effects, uncertainty, P values, frequencies, alleles,

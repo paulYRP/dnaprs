@@ -2,7 +2,7 @@ process ASSEMBLE_REFERENCES {
     tag "${reference_bundle}"
     label 'process_low'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     val asset_rows

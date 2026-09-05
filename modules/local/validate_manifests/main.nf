@@ -2,7 +2,7 @@ process VALIDATE_MANIFESTS {
     tag "$run_name"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     val run_name

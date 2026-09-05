@@ -35,7 +35,7 @@ jobs:
             --build-arg VCS_REF="${GITHUB_SHA}" \
             --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             --file containers/analysis/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
             .
 
       - name: Build combined PLINK image
@@ -53,7 +53,7 @@ jobs:
             --build-arg VCS_REF="${GITHUB_SHA}" \
             --build-arg BUILD_DATE="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
             --file containers/report/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+            --tag ghcr.io/paulyrp/dnaprs-report:1.0.1 \
             .
 
       - name: Build target-imputation image
@@ -67,8 +67,13 @@ jobs:
 
       - name: Verify software versions
         run: |
-          docker run --rm ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
-            Rscript -e "stopifnot(as.character(getRversion()) == '4.4.1', as.character(packageVersion('data.table')) == '1.18.0', as.character(packageVersion('glm2')) == '1.2.1', as.character(packageVersion('lme4')) == '2.0.1')"
+          docker run --rm ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
+            Rscript -e "stopifnot(as.character(getRversion()) == '4.4.1')"
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
+            Rscript tests/scripts/check_r_dependencies.R analysis
           docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
             plink2 --version | grep 'v2.0.0-a.6.12'
           docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
@@ -78,8 +83,13 @@ jobs:
           docker run --rm --entrypoint Rscript \
             docker.io/zhiliz/sbayesrc:0.2.6 \
             -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
-          docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+          docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.1 \
             quarto --version | grep '^1.7.32$'
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+            Rscript tests/scripts/check_r_dependencies.R report
           docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
             bash -c "bcftools --version | head -n 1 && java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2 && java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2 && plink2 --version && Rscript -e \"stopifnot(as.character(packageVersion('data.table')) == '1.18.0')\""
 
@@ -102,7 +112,7 @@ jobs:
           (github.event.release.tag_name == '1.0.0' || github.event.release.tag_name == 'v1.0.0')) ||
           (github.event_name == 'workflow_dispatch' && inputs.publish_images))
         run: |
-          docker push ghcr.io/paulyrp/dnaprs-analysis:1.0.0
+          docker push ghcr.io/paulyrp/dnaprs-analysis:1.0.1
           docker push ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21
-          docker push ghcr.io/paulyrp/dnaprs-report:1.0.0
+          docker push ghcr.io/paulyrp/dnaprs-report:1.0.1
           docker push ghcr.io/paulyrp/dnaprs-imputation:1.1.0

@@ -2,7 +2,7 @@ process REPORT_SOFTWARE {
     tag 'report software'
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-report:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-report:1.0.1'
 
     output:
     tuple val("${task.process}"), val('quarto'), eval("quarto --version 2>/dev/null || printf stub"), emit: versions_quarto, topic: versions

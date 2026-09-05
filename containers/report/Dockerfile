@@ -37,7 +37,7 @@ RUN Rscript -e "install.packages('/tmp/remotes.tar.gz', repos=NULL, type='source
 LABEL org.opencontainers.image.title="dnaprs report"
 LABEL org.opencontainers.image.description="Pinned R and Quarto environment for the dnaprs report"
 LABEL org.opencontainers.image.source="https://github.com/paulYRP/dnaprs"
-LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.version="1.0.1"
 LABEL org.opencontainers.image.revision="${VCS_REF}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.licenses="MIT"

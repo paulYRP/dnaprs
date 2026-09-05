@@ -1,0 +1,32 @@
+nextflow_process {
+
+    name "Test Process HARMONISE_GWAS"
+    script "../main.nf"
+    process "HARMONISE_GWAS"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_stub"
+    tag "harmonise_gwas"
+
+    test("GWAS harmonisation - stub") {
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = [[trait_id: 'MDD', prs_name: 'MDD_PRS', effect_type: 'log_or', sample_size: 100000, snp_col: 'SNP', chr_col: 'CHR', bp_col: 'BP', effect_allele_col: 'A1', other_allele_col: 'A2', beta_col: 'BETA', se_col: 'SE', p_col: 'P', freq_col: 'EAF', n_col: 'N', source_format: 'tsv', maf_min: '0.01'], file("${projectDir}/tests/data/gwas/mdd.tsv")]
+                input[1] = file("${projectDir}/bin/harmonise_gwas.R")
+                """
+            }
+        }
+
+        then {
+            assert process.success
+            assert process.out.harmonised.size() == 1
+            assert process.out.findAll { key, value -> key.startsWith("versions_") }.size() == 3
+            assert process.out.versions_r[0][2].toString()
+            assert process.out.versions_data_table[0][2].toString()
+            assert process.out.versions_r_utils[0][2].toString()
+        }
+    }
+}

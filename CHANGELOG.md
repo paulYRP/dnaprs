@@ -4,6 +4,8 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Added tested gzip and block-gzip GWAS harmonisation, declared the required `R.utils`
+  dependency, and added direct R dependency checks for the analysis and report images.
 - Replaced Aqua-incompatible `tag@digest` process references with stable versioned
   containers, using a native Singularity PLINK 2 BioContainer for PLINK2-only tasks
   while retaining PLINK 1.9 `--genome full` for relatedness.

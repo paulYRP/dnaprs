@@ -2,7 +2,7 @@ process BUILD_CT_WEIGHTS {
     tag "${meta.trait_id}"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(meta), path(cojo), path(clumps), path(harmonisation_qc), path(clump_log)

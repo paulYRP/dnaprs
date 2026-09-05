@@ -34,7 +34,7 @@ RUN curl --fail --location --retry 5 "${REMOTES_URL}" --output /tmp/remotes.tar.
 LABEL org.opencontainers.image.title="dnaprs analysis"
 LABEL org.opencontainers.image.description="Pinned R environment for dnaprs validation, QC, score processing, and phenotype models"
 LABEL org.opencontainers.image.source="https://github.com/paulYRP/dnaprs"
-LABEL org.opencontainers.image.version="1.0.0"
+LABEL org.opencontainers.image.version="1.0.1"
 LABEL org.opencontainers.image.revision="${VCS_REF}"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.licenses="MIT"

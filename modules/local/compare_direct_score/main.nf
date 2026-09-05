@@ -2,7 +2,7 @@ process COMPARE_DIRECT_SCORE {
     tag "${target.cohort}:${gwas.trait_id}"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(target), val(gwas), path(primary_score), path(primary_used), path(direct_score), path(direct_used)

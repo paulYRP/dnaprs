@@ -2,7 +2,7 @@ process HARMONISE_GWAS {
     tag "${meta.trait_id}"
     label 'process_medium'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(meta), path(gwas_file)
@@ -12,6 +12,7 @@ process HARMONISE_GWAS {
     tuple val(meta), path("${meta.trait_id}.cojo.ma"), path("${meta.trait_id}.clump.tsv"), path("${meta.trait_id}.harmonisation_qc.tsv"), emit: harmonised
     tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
     tuple val("${task.process}"), val('data.table'), eval("Rscript -e 'cat(as.character(packageVersion(\"data.table\")))' 2>/dev/null || printf stub"), emit: versions_data_table, topic: versions
+    tuple val("${task.process}"), val('R.utils'), eval("Rscript -e 'cat(as.character(packageVersion(\"R.utils\")))' 2>/dev/null || printf stub"), emit: versions_r_utils, topic: versions
     script:
     """
     Rscript ${harmonise_script} \

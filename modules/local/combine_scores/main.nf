@@ -2,7 +2,7 @@ process COMBINE_SCORES {
     tag 'all scores'
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     path score_files

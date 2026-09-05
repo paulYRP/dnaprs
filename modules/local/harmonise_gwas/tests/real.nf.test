@@ -1,0 +1,147 @@
+nextflow_process {
+
+    name "Test Process HARMONISE_GWAS with real software"
+    script "../main.nf"
+    process "HARMONISE_GWAS"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "harmonise_gwas"
+
+    test("uncompressed GWAS produces the expected records - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[trait_id: 'GAD_PLAIN', prs_name: 'GAD_PRS', effect_type: 'beta', sample_size: 90000, snp_col: 'SNP', chr_col: 'CHR', bp_col: 'BP', effect_allele_col: 'A1', other_allele_col: 'A2', beta_col: 'BETA', se_col: 'SE', p_col: 'P', freq_col: 'EAF', n_col: 'N', source_format: 'tsv', maf_min: '0.01'], file("${projectDir}/tests/data/gwas/gad.tsv")]
+                input[1] = file("${projectDir}/bin/harmonise_gwas.R")
+                """
+            }
+        }
+
+        then {
+            def output = process.out.harmonised[0]
+            def cojo = file(output[1]).text.readLines()
+            def qcLines = file(output[3]).text.readLines()
+            def qc = [qcLines[0].split('\t', -1), qcLines[1].split('\t', -1)].transpose().collectEntries()
+            assertAll(
+                { assert process.success },
+                { assert cojo[0] == 'SNP\tCHR\tBP\tA1\tA2\tfreq\tb\tse\tp\tN' },
+                { assert cojo[1] == '1:100:A:G\t1\t100\tG\tA\t0.25\t0.07\t0.03\t0.01\t90000' },
+                { assert cojo[2] == '1:200:C:T\t1\t200\tT\tC\t0.4\t-0.05\t0.02\t0.02\t90000' },
+                { assert qc.source_variants == '2' },
+                { assert qc.harmonised_variants == '2' },
+                { assert qc.structural_status == 'PASS' }
+            )
+        }
+    }
+
+    test("gzip GWAS produces the same expected records - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[trait_id: 'GAD_GZIP', prs_name: 'GAD_PRS', effect_type: 'beta', sample_size: 90000, snp_col: 'SNP', chr_col: 'CHR', bp_col: 'BP', effect_allele_col: 'A1', other_allele_col: 'A2', beta_col: 'BETA', se_col: 'SE', p_col: 'P', freq_col: 'EAF', n_col: 'N', source_format: 'txt.gz', maf_min: '0.01'], file("${projectDir}/tests/data/gwas/gad.txt.gz")]
+                input[1] = file("${projectDir}/bin/harmonise_gwas.R")
+                """
+            }
+        }
+
+        then {
+            def output = process.out.harmonised[0]
+            def cojo = file(output[1]).text.readLines()
+            def qcLines = file(output[3]).text.readLines()
+            def qc = [qcLines[0].split('\t', -1), qcLines[1].split('\t', -1)].transpose().collectEntries()
+            assertAll(
+                { assert process.success },
+                { assert cojo[0] == 'SNP\tCHR\tBP\tA1\tA2\tfreq\tb\tse\tp\tN' },
+                { assert cojo[1] == '1:100:A:G\t1\t100\tG\tA\t0.25\t0.07\t0.03\t0.01\t90000' },
+                { assert cojo[2] == '1:200:C:T\t1\t200\tT\tC\t0.4\t-0.05\t0.02\t0.02\t90000' },
+                { assert qc.source_variants == '2' },
+                { assert qc.harmonised_variants == '2' },
+                { assert process.out.versions_r_utils[0][2] == '2.13.0' }
+            )
+        }
+    }
+
+    test("metadata-prefixed gzip GWAS uses declared columns - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[trait_id: 'MDD_GZIP', prs_name: 'MDD_PRS', effect_type: 'log_or', sample_size: 1000, snp_col: 'ID', chr_col: 'CHROM', bp_col: 'POS', effect_allele_col: 'EA', other_allele_col: 'NEA', beta_col: 'BETA', se_col: 'SE', p_col: 'PVAL', case_freq_col: 'FCAS', control_freq_col: 'FCON', case_n_col: 'NCAS', control_n_col: 'NCON', n_col: 'NEFF', info_col: 'IMPINFO', info_min: '0.8', source_format: 'tsv.gz', maf_min: '0.01'], file("${projectDir}/tests/data/gwas/mdd_raw.tsv.gz")]
+                input[1] = file("${projectDir}/bin/harmonise_gwas.R")
+                """
+            }
+        }
+
+        then {
+            def output = process.out.harmonised[0]
+            def cojoLines = file(output[1]).text.readLines()
+            def header = cojoLines[0].split('\t', -1)
+            def first = [header, cojoLines[1].split('\t', -1)].transpose().collectEntries()
+            def second = [header, cojoLines[2].split('\t', -1)].transpose().collectEntries()
+            assertAll(
+                { assert process.success },
+                { assert first.SNP == 'rsRaw1' },
+                { assert Math.abs((first.freq as Double) - 0.35d) < 1e-12 },
+                { assert first.N == '1000' },
+                { assert second.SNP == 'rsRaw2' },
+                { assert Math.abs((second.freq as Double) - (1d / 6d)) < 1e-12 },
+                { assert second.N == '1200' }
+            )
+        }
+    }
+
+    test("gzip VCF GWAS recognises the prefixed chromosome header - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[trait_id: 'PTSD_GZIP', prs_name: 'PTSD_PRS', effect_type: 'log_or', sample_size: 800, snp_col: 'ID', chr_col: 'CHROM', bp_col: 'POS', effect_allele_col: 'A1', other_allele_col: 'A2', beta_col: 'BETA', se_col: 'SE', p_col: 'P', freq_col: 'FREQ', case_n_col: 'NCASE', control_n_col: 'NCON', n_col: 'NEFF', source_format: 'vcf.gz', maf_min: '0.01'], file("${projectDir}/tests/data/gwas/ptsd_raw.vcf.gz")]
+                input[1] = file("${projectDir}/bin/harmonise_gwas.R")
+                """
+            }
+        }
+
+        then {
+            def output = process.out.harmonised[0]
+            def cojo = file(output[1]).text.readLines()
+            def clump = file(output[2]).text.readLines()
+            assertAll(
+                { assert process.success },
+                { assert cojo[1].startsWith('rsPTSD1\t1\t100\tG\tA\t') },
+                { assert cojo[2].startsWith('rsPTSD2\t1\t200\tT\tC\t') },
+                { assert clump[0] == 'ID\tCHR\tPOS\tA1\tP' },
+                { assert clump[1] == 'rsPTSD1\t1\t100\tG\t0.005' }
+            )
+        }
+    }
+
+    test("block-gzip VCF GWAS uses the gzip-compatible path - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[trait_id: 'PTSD_BGZIP', prs_name: 'PTSD_PRS', effect_type: 'log_or', sample_size: 800, snp_col: 'ID', chr_col: 'CHROM', bp_col: 'POS', effect_allele_col: 'A1', other_allele_col: 'A2', beta_col: 'BETA', se_col: 'SE', p_col: 'P', freq_col: 'FREQ', case_n_col: 'NCASE', control_n_col: 'NCON', n_col: 'NEFF', source_format: 'vcf.bgz', maf_min: '0.01'], file("${projectDir}/tests/data/gwas/ptsd_raw.vcf.bgz")]
+                input[1] = file("${projectDir}/bin/harmonise_gwas.R")
+                """
+            }
+        }
+
+        then {
+            def output = process.out.harmonised[0]
+            def cojo = file(output[1]).text.readLines()
+            def qcLines = file(output[3]).text.readLines()
+            def qc = [qcLines[0].split('\t', -1), qcLines[1].split('\t', -1)].transpose().collectEntries()
+            assertAll(
+                { assert process.success },
+                { assert cojo[1].startsWith('rsPTSD1\t1\t100\tG\tA\t') },
+                { assert cojo[2].startsWith('rsPTSD2\t1\t200\tT\tC\t') },
+                { assert qc.source_variants == '2' },
+                { assert qc.harmonised_variants == '2' },
+                { assert qc.filtered_structural == '0' }
+            )
+        }
+    }
+}

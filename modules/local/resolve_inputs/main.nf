@@ -2,7 +2,7 @@ process RESOLVE_INPUTS {
     tag 'raw inputs'
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     val input_spec

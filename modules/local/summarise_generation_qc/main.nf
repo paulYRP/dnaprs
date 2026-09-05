@@ -2,7 +2,7 @@ process SUMMARISE_GENERATION_QC {
     tag 'variant flow'
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     path generation_qc_files

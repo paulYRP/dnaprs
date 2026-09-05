@@ -2,7 +2,7 @@ process ALIGN_PLINK_GWAS {
     tag "${meta.trait_id}"
     label 'process_medium'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)

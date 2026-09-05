@@ -2,7 +2,7 @@ process PARTICIPANT_DECISIONS {
     tag "${meta.cohort}"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(meta), path(sample_decisions), path(eda_tables), path(target_ancestry)

@@ -2,7 +2,7 @@ process REFERENCE_PLAN {
     tag "${reference_mode}"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     path provided_references

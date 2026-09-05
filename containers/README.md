@@ -5,12 +5,12 @@ target data, and phenotype data are not stored in these images.
 
 | Image                                                 | Processes                                                                        | Fixed software                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `dnaprs-analysis:1.0.0`                               | Input validation, GWAS harmonisation, score processing, QC, and phenotype models | R 4.4.1 and the R packages in `analysis/R-packages.tsv`                                                   |
+| `dnaprs-analysis:1.0.1`                               | Input validation, GWAS harmonisation, score processing, QC, and phenotype models | R 4.4.1 and the R packages in `analysis/R-packages.tsv`                                                   |
 | `quay.io/biocontainers/plink2:2.0.0a.6.9--h9948957_0` | Target QC, reference frequency, clumping, and C+T scoring                        | PLINK 2.0 alpha 6.9                                                                                       |
 | `dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21`           | Raw genotype EDA and identity by descent                                         | PLINK 1.90b6.21 and PLINK 2.0 alpha 6.12                                                                  |
 | `dnaprs-imputation:1.1.0`                             | Target marker resolution, reference preparation, QC, and imputation              | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, PLINK 2.0 alpha 6.12, R 4.4.1, and data.table 1.18.0 |
 | `zhiliz/sbayesrc:0.2.6`                               | SBayesRC preparation, modelling, and scoring                                     | The authors' SBayesRC 0.2.6 environment                                                                   |
-| `dnaprs-report:1.0.0`                                 | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv`                      |
+| `dnaprs-report:1.0.1`                                 | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv`                      |
 
 The PLINK 2-only processes use the matching versioned BioContainer and native
 Singularity image. `GENOTYPE_EDA` keeps the combined dnaprs image because it runs
@@ -22,6 +22,10 @@ digest. This avoids the `tag@sha256` reference that the Singularity version on A
 cannot parse. The dnaprs Dockerfiles still use digest-pinned base images. Downloaded
 installers are SHA-256 checked, and R dependencies resolve against the dated
 `2026-08-01` Posit Package Manager CRAN snapshot.
+
+The analysis environment includes `R.utils` so `data.table` can read compressed GWAS
+files. Container checks load every package in the relevant manifests and compare its
+installed version with the expected version.
 
 The component audit retained the local processes because they produce
 pipeline-specific decision tables, QC records, or checkpoints that the generic
@@ -35,7 +39,7 @@ Build the images from the repository root in dependency order:
 ```bash
 docker build \
   --file containers/analysis/Dockerfile \
-  --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+  --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
   .
 
 docker build \
@@ -45,7 +49,7 @@ docker build \
 
 docker build \
   --file containers/report/Dockerfile \
-  --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+  --tag ghcr.io/paulyrp/dnaprs-report:1.0.1 \
   .
 
 docker build \
@@ -57,15 +61,24 @@ docker build \
 Verify the environments before a pipeline test:
 
 ```bash
-docker run --rm ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
-  Rscript -e "stopifnot(as.character(getRversion()) == '4.4.1')"
+docker run --rm \
+  --volume "$PWD:/work/dnaprs:ro" \
+  --workdir /work/dnaprs \
+  ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
+  Rscript tests/scripts/check_r_dependencies.R analysis
 docker run --rm quay.io/biocontainers/plink2:2.0.0a.6.9--h9948957_0 \
   plink2 --version
 docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 plink2 --version
 docker run --rm ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 plink --version
 docker run --rm --entrypoint Rscript docker.io/zhiliz/sbayesrc:0.2.6 \
   -e "stopifnot(as.character(packageVersion('SBayesRC')) == '0.2.6')"
-docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.0 quarto --version
+docker run --rm \
+  --volume "$PWD:/work/dnaprs:ro" \
+  --workdir /work/dnaprs \
+  ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+  Rscript tests/scripts/check_r_dependencies.R report
+docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+  quarto --version
 docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
   bash -c "bcftools --version | head -n 1; java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2; java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2; Rscript -e \"stopifnot(as.character(packageVersion('data.table')) == '1.18.0')\""
 ```

@@ -27,6 +27,17 @@ if (length(missingOPTION) > 0L) {
   stop(sprintf("Missing option(s): %s", paste(missingOPTION, collapse = ", ")), call. = FALSE)
 }
 
+compressedINPUT <- grepl("\\.(gz|bgz)$", option[["input"]], ignore.case = TRUE)
+if (compressedINPUT && !requireNamespace("R.utils", quietly = TRUE)) {
+  stop(
+    sprintf(
+      "Compressed GWAS input '%s' requires the R.utils package. Use the pipeline analysis container.",
+      basename(option[["input"]])
+    ),
+    call. = FALSE
+  )
+}
+
 # Locate the real table header after consortium metadata, then read only the columns
 # explicitly declared in the manifest. This supports metadata-prefixed TSV/VCF-style
 # releases and whitespace-delimited tables without study-specific code in the scorer.
@@ -38,7 +49,7 @@ sourceCOLUMN <- unique(c(
   option[["control-n-col"]], option[["info-col"]]
 ))
 sourceCOLUMN <- sourceCOLUMN[!is.na(sourceCOLUMN) & sourceCOLUMN != ""]
-connection <- if (grepl("\\.gz$", option[["input"]], ignore.case = TRUE)) gzfile(option[["input"]], "rt") else file(option[["input"]], "rt")
+connection <- if (compressedINPUT) gzfile(option[["input"]], "rt") else file(option[["input"]], "rt")
 headerCANDIDATE <- readLines(connection, n = 500L, warn = FALSE)
 close(connection)
 splitHEADER <- function(value) {

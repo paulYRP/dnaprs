@@ -2,7 +2,7 @@ process PARSE_PLINK_SCORE {
     tag "${target.cohort}:${gwas.trait_id}"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(target), val(gwas), path(score), path(used), path(score_log), path(weight), path(target_pvar)

@@ -2,7 +2,7 @@ process PHENOTYPE_ASSOCIATION {
     tag "${score_job.cohort}:${score_job.trait_id}:${score_job.method}:${model_id}"
     label 'process_single'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     tuple val(score_job), path(scores_long), path(phenotype_models), val(model_id)

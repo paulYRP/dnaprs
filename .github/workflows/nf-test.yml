@@ -64,7 +64,7 @@ jobs:
         run: |
           docker build --pull \
             --file containers/analysis/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            --tag ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
             .
           docker build --pull \
             --file containers/plink2/Dockerfile \
@@ -72,12 +72,26 @@ jobs:
             .
           docker build --pull \
             --file containers/report/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-report:1.0.0 \
+            --tag ghcr.io/paulyrp/dnaprs-report:1.0.1 \
             .
           docker build --pull \
             --file containers/imputation/Dockerfile \
             --tag ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
             .
+
+      - name: Check R dependency declarations
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
+            Rscript tests/scripts/check_r_dependencies.R analysis
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+            Rscript tests/scripts/check_r_dependencies.R report
 
       - name: Test local reference layouts
         if: ${{ matrix.NXF_VER == '25.10.4' }}
@@ -85,7 +99,7 @@ jobs:
           docker run --rm \
             --volume "$PWD:/work/dnaprs" \
             --workdir /work/dnaprs \
-            ghcr.io/paulyrp/dnaprs-analysis:1.0.0 \
+            ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
             bash tests/scripts/test_reference_layout.sh
 
       - name: Run minimal real-tool workflow test

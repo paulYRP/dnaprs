@@ -2,7 +2,7 @@ process COLLECT_VERSIONS {
     tag 'software versions'
     label 'process_low'
 
-    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.0'
+    container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
     path version_files, stageAs: 'versions/versions????.yml'
