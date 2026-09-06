@@ -1,5 +1,5 @@
 name: harmonise_gwas
-description: Convert a QC-completed GWAS to explicit COJO and PLINK clumping formats.
+description: Apply common GWAS QC and write clean COJO and clumping tables.
 keywords:
   - gwas
   - harmonisation

@@ -801,7 +801,10 @@ if (nrow(imputationQC) && "chromosome" %in% names(imputationQC)) {
   imputationLONG <- melt(
     imputationQC,
     id.vars = intersect(c("cohort", "chromosome", "status", "source_file"), names(imputationQC)),
-    measure.vars = intersect(c("input_variants", "retained_variants", "imputed_variants"), names(imputationQC)),
+    measure.vars = intersect(
+      c("corrected_typed_variants", "reference_matched_typed_variants", "retained_variants", "imputed_variants"),
+      names(imputationQC)
+    ),
     variable.name = "measure",
     value.name = "variants"
   )
@@ -816,7 +819,7 @@ if (nrow(imputationQC) && "chromosome" %in% names(imputationQC)) {
   savePLOT(
     "target_imputation_counts", imputationPLOT, 12, 6,
     "Target Imputation", "Chromosome results", "Target imputation variant counts",
-    "Typed input, retained post-imputation, and newly imputed variant counts by chromosome.",
+    "Corrected typed, exact reference-matched, retained post-imputation, and newly imputed variant counts by chromosome.",
     "Inspect chromosome-specific failures and unexpected differences before scoring.",
     saveFIGUREDATA("target_imputation_counts", imputationLONG)
   )
@@ -1627,6 +1630,12 @@ columnMEANING <- c(
   stage = "PRS generation stage.",
   variant_count = "Variants retained at the stage.",
   percent_of_source = "Percentage of source GWAS variants retained.",
+  corrected_typed_variants = "Typed variants after GRCh37 orientation and technical QC.",
+  reference_matched_typed_variants = "Typed variants with one exact reference allele match.",
+  unmatched_typed_variants = "Typed variants excluded because no unique exact reference allele match was available.",
+  filtered_conflicting_key = "GWAS records excluded in conflicting canonical variant-key groups.",
+  filtered_palindromic = "Palindromic GWAS variants excluded from PLINK C+T.",
+  effect_flips = "GWAS effects reversed to represent target ALT dosage.",
   path = "Source input path.",
   checksum = "Cryptographic input checksum.",
   algorithm = "Checksum algorithm."

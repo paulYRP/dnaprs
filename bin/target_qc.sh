@@ -35,14 +35,14 @@ case "$input_stage" in
         if is_positive "$maf"; then qc_args+=(--maf "$maf"); fi
         if is_positive "$hwe"; then qc_args+=(--hwe "$hwe" midp keep-fewhet); fi
         plink2 --pfile "$source_prefix" "${qc_args[@]}" \
-            --make-pgen --threads "$threads" --out "$imputation_prefix"
+            --set-all-var-ids '@:#:$r:$a' --make-pgen --threads "$threads" --out "$imputation_prefix"
         plink2 --pfile "$imputation_prefix" --geno "$direct_geno" \
             --make-pgen --threads "$threads" --out "$direct_prefix"
         qc_action="FILTERED"
         ;;
     qc_completed|imputed)
-        plink2 --pfile "$source_prefix" --autosome --make-pgen \
-            --threads "$threads" --out "$imputation_prefix"
+        plink2 --pfile "$source_prefix" --autosome --set-all-var-ids '@:#:$r:$a' \
+            --make-pgen --threads "$threads" --out "$imputation_prefix"
         plink2 --pfile "$imputation_prefix" --make-pgen \
             --threads "$threads" --out "$direct_prefix"
         qc_action="INHERITED"
@@ -59,6 +59,57 @@ direct_variants=$(awk 'BEGIN{n=0} !/^#/ && NF {n++} END{print n}' "${direct_pref
 if [[ "$retained_samples" -eq 0 || "$imputation_variants" -eq 0 || "$direct_variants" -eq 0 ]]; then
     echo "Target QC removed every participant or variant for ${cohort}." >&2
     exit 3
+fi
+
+printf 'cohort\tFID\tIID\trecorded_sex\tgenetic_sex\tx_inbreeding_coefficient\tstatus\treason\n' \
+    > "${cohort}.sex_check.tsv"
+x_variants=$(awk '!/^#/ { chromosome=toupper($1); sub(/^CHR/, "", chromosome); if (chromosome == "X" || chromosome == "23") count++ } END { print count + 0 }' "${source_prefix}.pvar")
+recorded_sex=$(awk '
+    BEGIN { FS="\t" }
+    NR == 1 {
+        for (column = 1; column <= NF; column++) {
+            name=$column; sub(/^#/, "", name); column_index[name]=column
+        }
+        next
+    }
+    column_index["SEX"] && $(column_index["SEX"]) !~ /^(|0|NA|\.)$/ { count++ }
+    END { print count + 0 }
+' "${source_prefix}.psam")
+if [[ "$x_variants" -gt 0 && "$recorded_sex" -gt 0 ]]; then
+    awk 'BEGIN { FS=OFS="\t" }
+        NR == 1 {
+            for (column = 1; column <= NF; column++) {
+                name=$column; sub(/^#/, "", name); column_index[name]=column
+            }
+            next
+        }
+        { print $(column_index["FID"]), $(column_index["IID"]) }
+    ' "${imputation_prefix}.psam" > retained_participants.keep
+    plink2 --pfile "$source_prefix" --keep retained_participants.keep --chr X --freq \
+        --threads "$threads" --out "${cohort}.corrected_x"
+    plink2 --pfile "$source_prefix" --keep retained_participants.keep \
+        --read-freq "${cohort}.corrected_x.afreq" \
+        --check-sex max-female-xf=0.2 min-male-xf=0.8 \
+        --threads "$threads" --out "${cohort}.corrected_x"
+    awk -v cohort="$cohort" '
+        BEGIN { FS=OFS="\t" }
+        NR == 1 {
+            for (column = 1; column <= NF; column++) {
+                name=$column; sub(/^#/, "", name); column_index[name]=column
+            }
+            next
+        }
+        {
+            fid=(column_index["FID"] ? $(column_index["FID"]) : "0")
+            recorded=(column_index["PEDSEX"] ? $(column_index["PEDSEX"]) : "NA")
+            inferred=(column_index["SNPSEX"] ? $(column_index["SNPSEX"]) : "NA")
+            coefficient=(column_index["F"] ? $(column_index["F"]) : (column_index["XF"] ? $(column_index["XF"]) : ""))
+            plink_status=(column_index["STATUS"] ? $(column_index["STATUS"]) : "NA")
+            status=(plink_status == "OK" ? "PASS" : "REVIEW")
+            reason=(status == "PASS" ? "Recorded and genetic sex agree." : "Recorded or genetic sex is missing or discordant.")
+            print cohort, fid, $(column_index["IID"]), recorded, inferred, coefficient, status, reason
+        }
+    ' "${cohort}.corrected_x.sexcheck" >> "${cohort}.sex_check.tsv"
 fi
 
 awk -v cohort="$cohort" -v stage="$input_stage" -v threshold="$mind" '

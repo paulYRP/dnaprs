@@ -166,6 +166,11 @@
                     "minItems": 1,
                     "uniqueItems": true
                 },
+                "require_repeated_value_agreement": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Require outcomes and covariates used by fixed models to agree across a participant's timepoints before selection."
+                },
                 "group_column": {
                     "type": ["string", "null"],
                     "description": "Grouping column required by a mixed model."
@@ -369,7 +374,7 @@
                     "type": "integer",
                     "minimum": 2,
                     "maximum": 20,
-                    "default": 10,
+                    "default": 6,
                     "description": "Number of reference principal components used for ancestry distance."
                 },
                 "ancestry_percentile": {

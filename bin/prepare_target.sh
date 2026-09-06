@@ -17,7 +17,7 @@ dbsnp_source="${13:-}"
 reference_fasta="${14:-}"
 
 mkdir -p "$cohort"
-prefixes=()
+imported_prefixes=()
 
 import_target() {
     local source_path="$1"
@@ -82,31 +82,25 @@ if [[ "$genotype" == *'{chr}'* || "$genotype" == *'{CHR}'* || "$genotype" == *'{
         if [[ -e "$source_check" ]]; then
             chromosome_prefix="$cohort/${cohort}_chr${chromosome}"
             import_target "$source_path" "$chromosome_prefix" ""
-            prefixes+=("$chromosome_prefix")
+            imported_prefixes+=("$chromosome_prefix")
         fi
     done
 else
     all_prefix="$cohort/${cohort}_all"
     import_target "$genotype" "$all_prefix" ""
-    mapfile -t chromosomes < <(awk '!/^#/ {print $1}' "${all_prefix}.pvar" | sed 's/^chr//' | awk '$1 >= 1 && $1 <= 22' | sort -n -u)
-    for chromosome in "${chromosomes[@]}"; do
-        chromosome_prefix="$cohort/${cohort}_chr${chromosome}"
-        plink2 --pfile "$all_prefix" --chr "$chromosome" --make-pgen \
-            --threads "$threads" --out "$chromosome_prefix"
-        prefixes+=("$chromosome_prefix")
-    done
+    imported_prefixes+=("$all_prefix")
 fi
 
-if [[ "${#prefixes[@]}" -eq 0 ]]; then
-    echo "No autosomal target genotypes were prepared for $cohort." >&2
+if [[ "${#imported_prefixes[@]}" -eq 0 ]]; then
+    echo "No target genotypes were prepared for cohort '$cohort'." >&2
     exit 3
 fi
 
-printf '%s\n' "${prefixes[@]}" > "$cohort/${cohort}_merge.txt"
-if [[ "${#prefixes[@]}" -eq 1 ]]; then
-    cp "${prefixes[0]}.pgen" "$cohort/${cohort}.pgen"
-    cp "${prefixes[0]}.pvar" "$cohort/${cohort}.pvar"
-    cp "${prefixes[0]}.psam" "$cohort/${cohort}.psam"
+printf '%s\n' "${imported_prefixes[@]}" > "$cohort/${cohort}_merge.txt"
+if [[ "${#imported_prefixes[@]}" -eq 1 ]]; then
+    cp "${imported_prefixes[0]}.pgen" "$cohort/${cohort}.pgen"
+    cp "${imported_prefixes[0]}.pvar" "$cohort/${cohort}.pvar"
+    cp "${imported_prefixes[0]}.psam" "$cohort/${cohort}.psam"
 else
     plink2 --pmerge-list "$cohort/${cohort}_merge.txt" pfile --make-pgen \
         --threads "$threads" --out "$cohort/${cohort}"
@@ -159,7 +153,7 @@ if [[ "$input_stage" == "raw" ]]; then
     mv "$cohort/${cohort}.annotated.pvar" "$cohort/${cohort}.pvar"
 
     awk -F '\t' 'BEGIN { OFS="\t" }
-        !/^#/ && $2 == "assembled-molecule" && $3 ~ /^([1-9]|1[0-9]|2[0-2])$/ { print $3, $7 }
+        !/^#/ && $2 == "assembled-molecule" && $3 ~ /^([1-9]|1[0-9]|2[0-2]|X|Y|MT)$/ { print $3, $7 }
     ' "$assembly_report" > chromosome_refseq.tsv
     awk -F '\t' 'BEGIN { OFS="\t" }
         NR == FNR { accession[$1]=$2; next }
@@ -187,22 +181,95 @@ if [[ "$input_stage" == "raw" ]]; then
         --keep "$cohort.retained_markers.txt" \
         --rename "$cohort.rename_markers.tsv"
 
+    source_count=$(wc -l < "$cohort.retained_markers.txt")
+    rename_count=$(wc -l < "$cohort.rename_markers.tsv")
+    source_unique=$(sort -u "$cohort.retained_markers.txt" | wc -l)
+    final_unique=$(cut -f2 "$cohort.rename_markers.tsv" | sort -u | wc -l)
+    [[ "$source_count" -gt 0 && "$source_count" -eq "$rename_count" ]] || {
+        echo "Marker resolution for cohort '$cohort' produced different retained and rename counts." >&2
+        exit 5
+    }
+    [[ "$source_count" -eq "$source_unique" ]] || {
+        echo "Marker resolution for cohort '$cohort' produced repeated retained source identifiers." >&2
+        exit 5
+    }
+    [[ "$rename_count" -eq "$final_unique" ]] || {
+        echo "Marker resolution for cohort '$cohort' produced repeated final identifiers." >&2
+        exit 5
+    }
+
     plink2 --pfile "$cohort/${cohort}" \
         --extract "$cohort.retained_markers.txt" \
+        --make-pgen --threads "$threads" --out "$cohort/${cohort}_retained"
+    plink2 --pfile "$cohort/${cohort}_retained" \
         --update-name "$cohort.rename_markers.tsv" \
         --make-pgen --threads "$threads" --out "$cohort/${cohort}_resolved"
-    plink2 --pfile "$cohort/${cohort}_resolved" --ref-from-fa force --fa "$reference_fasta" \
+
+    awk -F '\t' 'NR == 1 {
+            for (column = 1; column <= NF; column++) {
+                if ($column == "final_id") final_id = column
+                if ($column == "decision") decision = column
+            }
+            next
+        }
+        $decision ~ /^RETAINED_/ { print $final_id }
+    ' "$cohort.marker_decisions.tsv" | sort > expected_final_ids.txt
+    awk '!/^#/ { print $3 }' "$cohort/${cohort}_resolved.pvar" | sort > observed_final_ids.txt
+    if ! cmp -s expected_final_ids.txt observed_final_ids.txt; then
+        echo "Resolved PVAR identifiers for cohort '$cohort' do not match the retained marker decisions." >&2
+        exit 5
+    fi
+
+    cp "$cohort/${cohort}_resolved.psam" resolved.psam
+    plink2 --pfile "$cohort/${cohort}_resolved" --export vcf bgz id-paste=iid \
+        --threads "$threads" --out "$cohort/${cohort}_top"
+    if [[ -n "$assay_manifest" ]]; then
+        bcftools +fixref "$cohort/${cohort}_top.vcf.gz" -Oz -o "$cohort/${cohort}_forward.vcf.gz" -- \
+            -f "$reference_fasta" -m top
+    else
+        cp "$cohort/${cohort}_top.vcf.gz" "$cohort/${cohort}_forward.vcf.gz"
+    fi
+    bcftools norm -f "$reference_fasta" -c e -Oz \
+        -o "$cohort/${cohort}_forward.checked.vcf.gz" "$cohort/${cohort}_forward.vcf.gz"
+    tabix -f -p vcf "$cohort/${cohort}_forward.checked.vcf.gz"
+    plink2 --vcf "$cohort/${cohort}_forward.checked.vcf.gz" --double-id \
         --make-pgen --threads "$threads" --out "$cohort/${cohort}_referenced"
+
+    awk '!/^#/ { print $2 }' resolved.psam > expected_iids.txt
+    awk '!/^#/ { print $2 }' "$cohort/${cohort}_referenced.psam" > observed_iids.txt
+    if ! cmp -s expected_iids.txt observed_iids.txt; then
+        echo "Participant identifiers changed during GRCh37 orientation for cohort '$cohort'." >&2
+        exit 5
+    fi
+    cp resolved.psam "$cohort/${cohort}_referenced.psam"
     mv "$cohort/${cohort}_referenced.pgen" "$cohort/${cohort}.pgen"
     mv "$cohort/${cohort}_referenced.pvar" "$cohort/${cohort}.pvar"
     mv "$cohort/${cohort}_referenced.psam" "$cohort/${cohort}.psam"
     duplicate_count=$(awk '!/^#/ {count[$3]++} END {n=0; for (id in count) if (count[id] > 1) n++; print n}' "$cohort/${cohort}.pvar")
-    [[ "$duplicate_count" == "0" ]] || { echo "Resolved target still contains duplicate marker IDs." >&2; exit 5; }
+    [[ "$duplicate_count" == "0" ]] || { echo "Resolved target for cohort '$cohort' contains repeated marker identifiers." >&2; exit 5; }
+    invalid_alleles=$(awk '!/^#/ && ($4 !~ /^[ACGT]$/ || $5 !~ /^[ACGT]$/ || $4 == $5) { count++ } END { print count + 0 }' "$cohort/${cohort}.pvar")
+    [[ "$invalid_alleles" == "0" ]] || {
+        echo "Resolved target for cohort '$cohort' contains $invalid_alleles invalid REF and ALT allele pairs." >&2
+        exit 5
+    }
 else
     awk -v stage="$input_stage" 'BEGIN{FS=OFS="\t"; print "source_id","final_id","source_chr","source_pos","final_chr","final_pos","source_ref","source_alt","final_ref","final_alt","decision","reason"}
         /^##/ || /^#CHROM/ {next}
         {print $3,$3,$1,$2,$1,$2,$4,$5,$4,$5,"INHERITED","Input entered at " stage " stage"}
     ' "$cohort/${cohort}.pvar" > "$cohort.marker_decisions.tsv"
+fi
+
+prefixes=()
+mapfile -t chromosomes < <(awk '!/^#/ {print $1}' "$cohort/${cohort}.pvar" | sed 's/^chr//' | awk '$1 >= 1 && $1 <= 22' | sort -n -u)
+for chromosome in "${chromosomes[@]}"; do
+    chromosome_prefix="$cohort/${cohort}_chr${chromosome}"
+    plink2 --pfile "$cohort/${cohort}" --chr "$chromosome" --make-pgen \
+        --threads "$threads" --out "$chromosome_prefix"
+    prefixes+=("$chromosome_prefix")
+done
+if [[ "${#prefixes[@]}" -eq 0 ]]; then
+    echo "Prepared target for cohort '$cohort' contains no autosomal variants." >&2
+    exit 3
 fi
 
 sample_count=$(awk 'BEGIN{n=0} !/^#/ && NF>0 {n++} END{print n}' "$cohort/${cohort}.psam")

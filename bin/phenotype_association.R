@@ -14,9 +14,9 @@ if ("source_row" %in% names(phenotype)) {
   stop("Phenotype input cannot contain the reserved column 'source_row'.", call. = FALSE)
 }
 phenotype[, source_row := .I]
-modelSPEC <- data.table::fread(option[["models"]])
+allModelSPEC <- data.table::fread(option[["models"]])
 if (is.null(option[["model-id"]]) || !nzchar(option[["model-id"]])) stop("--model-id is required.", call. = FALSE)
-modelSPEC <- modelSPEC[model_id == option[["model-id"]]]
+modelSPEC <- allModelSPEC[model_id == option[["model-id"]]]
 if (nrow(modelSPEC) != 1L) stop("--model-id must select exactly one resolved phenotype model.", call. = FALSE)
 for (column in setdiff(c("control_value", "case_value"), names(modelSPEC))) {
   modelSPEC[[column]] <- ""
@@ -26,6 +26,9 @@ if (!"model_type" %in% names(modelSPEC)) {
 }
 for (column in setdiff(c("timepoint_column", "timepoint_values"), names(modelSPEC))) {
   modelSPEC[[column]] <- ""
+}
+if (!"require_repeated_value_agreement" %in% names(modelSPEC)) {
+  modelSPEC[, require_repeated_value_agreement := FALSE]
 }
 
 # Add the completed PRSs to the original phenotype rows without changing row order.
@@ -128,6 +131,40 @@ agreementCOLUMN <- unique(c(
     paste0(as.character(specification$prs_name), "_", toupper(option[["method"]]))
 ))
 agreementCOLUMN <- intersect(agreementCOLUMN, names(phenotype))
+
+if (length(timepointVALUE) > 0L && (!nzchar(timepointCOLUMN) || !timepointCOLUMN %in% names(phenotype))) {
+  stop(sprintf("Model '%s' requires phenotype timepoint column '%s'.", specification$model_id, timepointCOLUMN), call. = FALSE)
+}
+if (
+  length(timepointVALUE) > 0L && !groupedMODEL &&
+    tolower(as.character(specification$require_repeated_value_agreement)) == "true"
+) {
+  declaredCOVARIATE <- trimws(unlist(strsplit(as.character(allModelSPEC$covariates), ",", fixed = TRUE)))
+  sexCOLUMN <- names(phenotype)[tolower(names(phenotype)) == "sex"]
+  completedSCORE <- unique(as.character(score$score_name))
+  globalAGREEMENT <- unique(c(as.character(allModelSPEC$outcome), declaredCOVARIATE, sexCOLUMN, completedSCORE))
+  globalAGREEMENT <- intersect(globalAGREEMENT[nzchar(globalAGREEMENT)], names(phenotype))
+  repeatedPARTICIPANT <- unique(phenotype[[participantCOLUMN]][
+    duplicated(phenotype[[participantCOLUMN]]) | duplicated(phenotype[[participantCOLUMN]], fromLast = TRUE)
+  ])
+  for (participant in repeatedPARTICIPANT) {
+    index <- which(phenotype[[participantCOLUMN]] == participant)
+    for (column in globalAGREEMENT) {
+      observedVALUE <- unique(as.character(phenotype[[column]][index]))
+      observedVALUE <- observedVALUE[!is.na(observedVALUE) & nzchar(observedVALUE)]
+      if (length(observedVALUE) > 1L) {
+        observedTIMEPOINT <- unique(as.character(phenotype[[timepointCOLUMN]][index]))
+        stop(
+          sprintf(
+            "Model '%s' requires repeated values to agree before timepoint selection, but participant '%s' has conflicting field '%s' values across timepoints %s: %s.",
+            specification$model_id, participant, column, paste(observedTIMEPOINT, collapse = ", "), paste(observedVALUE, collapse = ", ")
+          ),
+          call. = FALSE
+        )
+      }
+    }
+  }
+}
 
 if (length(timepointVALUE) > 0L) {
   if (!nzchar(timepointCOLUMN) || !timepointCOLUMN %in% names(phenotype)) {

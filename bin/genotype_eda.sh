@@ -332,17 +332,22 @@ if [[ "$sample_count" -ge 2 && "$autosomal_variants" -ge 2 ]]; then
     bad_ld=()
     if [[ "$sample_count" -lt 50 ]]; then bad_ld=(--bad-ld); fi
     if run_plink "LD pruning for heterozygosity, relatedness, and internal PCA" \
-        --pfile "$raw_prefix" --maf 0.05 --indep-pairwise 200kb 0.2 \
+        --pfile "$raw_prefix" --autosome --maf 0.05 --geno 0.01 --indep-pairwise 200 50 0.10 \
         "${bad_ld[@]}" --threads "$threads" --out "${analysis_prefix}_prune"; then
         if [[ ! -s "${analysis_prefix}_prune.prune.in" ]]; then
             if run_plink "Retain eligible autosomal markers when no LD pairs are present" \
-                --pfile "$raw_prefix" --autosome --maf 0.05 --write-snplist \
+                --pfile "$raw_prefix" --autosome --maf 0.05 --geno 0.01 --write-snplist \
                 --threads "$threads" --out "${analysis_prefix}_prune_unpaired"; then
                 cp "${analysis_prefix}_prune_unpaired.snplist" "${analysis_prefix}_prune.prune.in"
             fi
         fi
         if [[ -s "${analysis_prefix}_prune.prune.in" ]]; then
             pruned_count=$(awk 'NF>0 {n++} END{print n+0}' "${analysis_prefix}_prune.prune.in")
+            if [[ "$pruned_count" -ge 2 ]]; then
+                run_plink "Allele frequencies for sample diagnostics" \
+                    --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" --freq \
+                    --threads "$threads" --out "${analysis_prefix}_prune_frequency"
+            fi
         fi
     fi
 fi
@@ -353,7 +358,8 @@ printf 'cohort\tFID\tIID\tobserved_homozygotes\texpected_homozygotes\tobservatio
     > "${cohort}.heterozygosity.tsv"
 if [[ "$pruned_count" -ge 2 ]]; then
     if run_plink "Autosomal heterozygosity" \
-        --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" --het \
+        --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" \
+        --read-freq "${analysis_prefix}_prune_frequency.afreq" --het \
         --threads "$threads" --out "${analysis_prefix}_heterozygosity"; then
         awk -v cohort="$cohort" '
             BEGIN { FS=OFS="\t" }
@@ -505,6 +511,7 @@ if [[ "$pruned_count" -ge 2 ]]; then
     if [[ "$pc_count" -gt "$pruned_count" ]]; then pc_count="$pruned_count"; fi
     if [[ "$pc_count" -ge 2 ]] && run_plink "Internal target PCA" \
         --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" \
+        --read-freq "${analysis_prefix}_prune_frequency.afreq" \
         --pca "$pc_count" --threads "$threads" --out "${analysis_prefix}_pca"; then
         awk -v cohort="$cohort" '
             BEGIN { FS=OFS="\t" }

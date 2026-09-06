@@ -18,18 +18,18 @@ model1/
 - `inputs/`: internally resolved targets, GWAS, references, models, effective settings,
   checksums, input checks, and the workflow-output index;
 - `genotype_eda/<cohort>/`: untouched-input composition, missingness, allele frequency,
-  heterozygosity, sex checks, relatedness, and descriptive internal PCA;
+  heterozygosity, relatedness, and descriptive internal PCA;
 - `target_prep/<cohort>/`: target conversion, marker decisions, and checks;
-- `target_qc/<cohort>/`: sample/variant decisions, reference ancestry projections,
-  distance summary, and integrated `participant_decisions.tsv`;
+- `target_qc/<cohort>/`: sample/variant decisions, corrected X-chromosome sex check,
+  reference ancestry projections, distance summary, and integrated participant decisions;
 - `target/prepared/<cohort>/`: separate imputation-ready and direct-genotype PGEN
   checkpoints;
-- `target_imputation/<cohort>/`: deterministically gathered chromosome handoff, DR2
-  distribution, sample/order, chromosome/key/dosage checks, and SHA-256 receipts;
+- `target_imputation/<cohort>/`: exact typed-reference match counts, chromosome handoff,
+  DR2 distribution, sample/order, chromosome/key/dosage checks, and SHA-256 receipts;
 - `gwas/<trait>/` and `qc/gwas/<trait>/`: harmonised statistics and decisions;
 - `reference/`: prepared PLINK and SBayesRC resources used by the run;
-- `plink_ct/`, `sbayesrc/`, `scores/`, and `qc/`: weights, method results, combined
-  scores, coverage, and agreement;
+- `plink_ct/<cohort>/<trait>/`, `sbayesrc/`, `scores/`, and `qc/`: target-specific C+T
+  weights, method results, combined scores, coverage, and agreement;
 - `phenotype/`: model declarations, coefficients, fit, permutation, influence, plotting,
   and analysis-ready phenotype/PRS tables;
 - `pipeline_info/software_versions.yml`: combined tool versions.

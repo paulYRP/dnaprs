@@ -24,9 +24,11 @@ GWAS is inspected independently. Common column names are resolved only when thei
 are unambiguous. An unfamiliar release must be described in a YAML `gwas` list,
 including effect scale, study size, build, and source-column mapping.
 
-The workflow validates numeric effects, uncertainty, P values, frequencies, alleles,
-coordinates, duplicate IDs, palindromic ambiguity, MAF, optional INFO, and orientation.
-It does not recognise a private cohort, trait, or filename.
+Common GWAS QC requires finite effects, uncertainty, P values, frequencies and sample
+sizes; autosomal single-base alleles; MAF at least 0.01; and the declared INFO threshold.
+It collapses exact records and excludes conflicting canonical variant keys. PLINK C+T
+then removes every palindromic variant and orients effects to the final target ALT allele.
+SBayesRC receives the common clean GWAS without this PLINK-specific filter.
 
 ## Minimal commands
 
@@ -74,11 +76,13 @@ For repeated phenotype records, declare the visit column and retained values tog
 participant_id: Sample_Name
 timepoint_column: Timepoint
 timepoint_values: [1]
+require_repeated_value_agreement: true
 ```
 
 A fixed model requires one value. The pipeline checks agreeing outcome and covariate
 values within each participant and requested timepoint, then selects the first source
-record. It reports a participant who lacks the requested value. Mixed models may select
+record. Set `require_repeated_value_agreement: true` when these fields must also agree
+across timepoints. It reports a participant who lacks the requested value. Mixed models may select
 several values and retain one agreeing record per participant and value; the declared
 covariates still determine whether time is included in the model.
 
@@ -167,7 +171,7 @@ imputation_variant_missingness: 0.10
 direct_variant_missingness: 0.01
 maf_filter: 0
 hwe_filter: 0
-ancestry_pcs: 10
+ancestry_pcs: 6
 ancestry_percentile: 0.99
 target_imputation: true
 imputation_dr2: 0.80
@@ -176,8 +180,10 @@ seed: 20260829
 
 The 0.10 checkpoint feeds imputation; the 0.01 checkpoint supports direct-genotype
 sensitivity work. MAF and HWE are reported but are not filters by default. Reference
-ancestry uses exact typed-variant matches, unrelated 1000 Genomes axes, target
-projection, and the empirical European distance percentile. Participant decisions
+ancestry uses exact typed-variant matches, excludes the extended MHC, and applies the
+declared minor allele frequency, missingness, and LD-pruning rules. It estimates six
+unrelated 1000 Genomes reference axes, projects the target, and applies the empirical
+European distance percentile. Participant decisions
 separate technical eligibility, relatedness, ancestry, score eligibility, and primary
 analysis.
 

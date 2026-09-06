@@ -1,6 +1,5 @@
 name: prepare_target
-description: Import raw or checkpointed target genotypes, apply source marker references, and create PGEN
-  datasets.
+description: Import target genotypes, resolve source markers, and orient retained variants to GRCh37.
 keywords:
   - plink
   - genotype
@@ -42,7 +41,7 @@ input:
       description: Shell script that imports target formats and creates corrected PGEN datasets.
   - adapter_script:
       type: file
-      description: R script that converts GenomeStudio FinalReport data to PLINK input.
+      description: Perl script that converts GenomeStudio data and restores Illumina TOP alleles.
   - marker_resolver:
       type: file
       description: R script that resolves marker coordinates, identifiers, and alleles.

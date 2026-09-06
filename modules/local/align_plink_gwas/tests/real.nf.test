@@ -1,0 +1,41 @@
+nextflow_process {
+
+    name "Test ALIGN_PLINK_GWAS target and reference alignment with real software"
+    script "../main.nf"
+    process "ALIGN_PLINK_GWAS"
+    tag "modules"
+    tag "modules_local"
+    tag "modules_real"
+    tag "align_plink_gwas"
+
+    test("effects are oriented to target ALT after method-specific filtering - real") {
+
+        when {
+            process {
+                """
+                input[0] = [[cohort: 'ALIGN', scoring_stage: 'imputed'], file("${projectDir}/tests/data/plink_alignment_target"), file("${projectDir}/assets/empty_input"), [trait_id: 'ALIGNMENT', prs_name: 'ALIGNMENT_PRS'], file("${projectDir}/tests/data/gwas/plink_alignment.cojo.ma"), file("${projectDir}/tests/data/gwas/plink_alignment.cojo.ma"), file("${projectDir}/tests/data/generation_qc/harmonisation_qc.tsv"), [reference_id: 'EUR', path: 'plink_alignment_reference/eur_reference'], file("${projectDir}/tests/data/plink_alignment_reference")]
+                input[1] = file("${projectDir}/bin/align_plink_gwas.R")
+                """
+            }
+        }
+
+        then {
+            def output = process.out.aligned[0]
+            def cojoLines = file(output[2]).text.readLines()
+            def header = cojoLines[0].split('\t', -1)
+            def rows = cojoLines.tail().collect { line -> [header, line.split('\t', -1)].transpose().collectEntries() }
+            def qcLines = file(process.out.qc[0][2]).text.readLines()
+            def qc = [qcLines[0].split('\t', -1), qcLines[1].split('\t', -1)].transpose().collectEntries()
+            assertAll(
+                { assert process.success },
+                { assert rows*.SNP == ['1:100:A:G', '1:200:C:T'] },
+                { assert rows.every { it.A1 == (it.SNP == '1:100:A:G' ? 'G' : 'T') } },
+                { assert (rows[0].b as Double) == -0.20d },
+                { assert (rows[0].freq as Double) == 0.70d },
+                { assert qc.filtered_palindromic == '1' },
+                { assert qc.filtered_reference_missing_or_mismatched == '1' },
+                { assert qc.effect_flips == '1' }
+            )
+        }
+    }
+}

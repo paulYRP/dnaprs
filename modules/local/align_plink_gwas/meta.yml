@@ -1,5 +1,5 @@
 name: align_plink_gwas
-description: Align harmonised GWAS identifiers and alleles to the PLINK LD reference.
+description: Align harmonised GWAS variants to the final target ALT allele and European LD reference.
 keywords:
   - gwas
   - harmonisation
@@ -15,7 +15,16 @@ tools:
       identifier: ""
       homepage: https://r-datatable.com/
 input:
-  - - meta:
+  - - target:
+        type: map
+        description: Target cohort and scoring-stage metadata.
+    - target_dir:
+        type: directory
+        description: Final target PGEN used to select and orient candidate variants.
+    - target_qc:
+        type: file
+        description: Target QC summary associated with the final target PGEN.
+    - meta:
         type: map
         description: GWAS trait and PRS metadata.
     - cojo:
@@ -38,9 +47,12 @@ input:
       description: R script that aligns GWAS coordinates and alleles to the LD reference.
 output:
   aligned:
-    - - meta:
+    - - target:
           type: map
-          description: Metadata associated with reference-aligned cojo and clumping tables with common qc.
+          description: Target cohort and scoring-stage metadata.
+      - meta:
+          type: map
+          description: GWAS trait and PRS metadata.
       - ${meta.trait_id}.plink.cojo.ma:
           type: file
           description: Reference-aligned COJO and clumping tables with common QC.
@@ -51,10 +63,12 @@ output:
           type: file
           description: Reference-aligned COJO and clumping tables with common QC.
   qc:
-    - - meta:
+    - - target:
           type: map
-          description: Metadata associated with counts of aligned, absent, ambiguous, duplicate, and complemented
-            variants.
+          description: Target cohort and scoring-stage metadata.
+      - meta:
+          type: map
+          description: GWAS trait and PRS metadata.
       - ${meta.trait_id}.plink.reference_alignment_qc.tsv:
           type: file
           description: Counts of aligned, absent, ambiguous, duplicate, and complemented variants.

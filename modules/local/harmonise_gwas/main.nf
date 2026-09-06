@@ -45,6 +45,6 @@ process HARMONISE_GWAS {
     """
     printf 'SNP\tCHR\tBP\tA1\tA2\tfreq\tb\tse\tp\tN\n1:100:A:G\t1\t100\tG\tA\t0.25\t0.10\t0.03\t0.001\t100000\n' > ${meta.trait_id}.cojo.ma
     printf 'ID\tCHR\tPOS\tA1\tP\n1:100:A:G\t1\t100\tG\t0.001\n' > ${meta.trait_id}.clump.tsv
-    printf 'trait_id\tprs_name\tsource_format\tsource_variants\tharmonised_variants\tfiltered_structural\tfiltered_frequency\tfiltered_maf\tfiltered_info\tfiltered_ambiguous\tfiltered_duplicate\tmaf_min\tinfo_min\tduplicated_snp\tstructural_status\n${meta.trait_id}\t${meta.prs_name}\t${meta.source_format ?: 'auto'}\t1\t1\t0\t0\t0\t0\t0\t0\t0.01\t\t0\tPASS\n' > ${meta.trait_id}.harmonisation_qc.tsv
+    printf 'trait_id\tprs_name\tsource_format\tsource_variants\tharmonised_variants\tfiltered_structural\tfiltered_frequency\tfiltered_maf\tfiltered_info\tfiltered_ambiguous\tfiltered_duplicate\tcollapsed_exact\tfiltered_conflicting_key\tmaf_min\tinfo_min\tduplicated_snp\tstructural_status\n${meta.trait_id}\t${meta.prs_name}\t${meta.source_format ?: 'auto'}\t1\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0.01\t\t0\tPASS\n' > ${meta.trait_id}.harmonisation_qc.tsv
     """
 }

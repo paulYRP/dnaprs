@@ -28,16 +28,18 @@ awk 'BEGIN{FS=OFS="\t"}
 matched_variants=$(awk 'NF{n++} END{print n+0}' "${cohort}.ancestry_matched_variants.txt")
 [[ "$matched_variants" -ge 2 ]] || { echo "Fewer than two exact target/reference variants are available for ancestry PCA." >&2; exit 3; }
 
-if [[ "$matched_variants" -lt 100 ]]; then
-    # Very small validation cohorts cannot support stable LD pruning. Retain all
-    # exact common variants and make the decision visible in the log.
-    cp "${cohort}.ancestry_matched_variants.txt" "${cohort}.ancestry_prune.prune.in"
-    printf 'LD pruning was not applied because fewer than 100 exact variants were available.\n' >> "$log_file"
-else
-    plink2 --pfile "$reference_prefix" --extract "${cohort}.ancestry_matched_variants.txt" \
-        --maf 0.05 --indep-pairwise 200kb 0.2 --threads "$threads" \
-        --out "${cohort}.ancestry_prune" >> "$log_file" 2>&1
+printf '6\t25000000\t34000000\textended_mhc\n' > "${cohort}.extended_mhc.range"
+reference_samples=$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "${reference_prefix}.psam")
+ld_options=()
+if [[ "$reference_samples" -lt 50 ]]; then
+    ld_options+=(--bad-ld)
+    printf 'PLINK small-reference LD override applied to %s reference participants.\n' \
+        "$reference_samples" >> "$log_file"
 fi
+plink2 --pfile "$reference_prefix" --extract "${cohort}.ancestry_matched_variants.txt" \
+    --exclude range "${cohort}.extended_mhc.range" --maf 0.05 --geno 0.01 \
+    --indep-pairwise 200 50 0.10 "${ld_options[@]}" --threads "$threads" \
+    --out "${cohort}.ancestry_prune" >> "$log_file" 2>&1
 pruned_variants=$(awk 'NF{n++} END{print n+0}' "${cohort}.ancestry_prune.prune.in")
 [[ "$pruned_variants" -ge 2 ]] || { echo "Fewer than two LD-pruned variants remain for ancestry PCA." >&2; exit 3; }
 

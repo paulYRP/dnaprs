@@ -77,7 +77,8 @@ genetic report still complete.
 Repeated phenotype rows are supported through an explicit timepoint selection in
 `params.yml`, such as `timepoint_column: Timepoint` and `timepoint_values: [1]`. The input
 rows remain unchanged; the model uses one agreeing record per participant at the
-requested value.
+requested value. Set `require_repeated_value_agreement: true` when a fixed model requires
+its outcomes and covariates to remain constant across visits.
 
 ## References
 

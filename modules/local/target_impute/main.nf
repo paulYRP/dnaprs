@@ -5,7 +5,7 @@ process TARGET_IMPUTE_CHROMOSOME {
     container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'
 
     input:
-    tuple val(group_key), val(chromosome), path(target_pgen), path(target_pvar), path(target_psam), path(target_qc), val(panel), path(panel_files), val(genetic_map), path(genetic_map_files), val(beagle), path(beagle_files), val(reference_fasta), path(reference_fasta_files)
+    tuple val(group_key), val(chromosome), path(target_pgen), path(target_pvar), path(target_psam), path(target_qc), val(panel), path(panel_files), val(genetic_map), path(genetic_map_files), val(beagle), path(beagle_files), val(reference_fasta), path(reference_fasta_files), val(prepared_reference), path(prepared_reference_dir)
     path impute_script
     val imputation_dr2
 
@@ -21,7 +21,7 @@ process TARGET_IMPUTE_CHROMOSOME {
     BEAGLE_JAR='${beagle.path}' bash ${impute_script} \
         '${meta.cohort}' '${chromosome}' '${target_pgen}' '${target_pvar}' '${target_psam}' \
         '${panel.path}' '${genetic_map.path}' '${imputation_dr2}' '${task.cpus}' '${memory_mb}' '${panel.build}' \
-        '${reference_fasta.path}'
+        '${reference_fasta.path}' '${prepared_reference_dir}/all_reference.pvar'
     """
 
     stub:
@@ -34,7 +34,7 @@ process TARGET_IMPUTE_CHROMOSOME {
     printf 'stub\n' > ${meta.cohort}.chr${chromosome}.imputed/${meta.cohort}_chr${chromosome}.vcf.gz
     printf 'stub\n' > ${meta.cohort}.chr${chromosome}.imputed/${meta.cohort}_chr${chromosome}.vcf.gz.tbi
     printf 'cohort\tchromosome\tvcf\tindex\tvcf_sha256\tindex_sha256\tbuild\tdr2_threshold\tstatus\n${meta.cohort}\t${chromosome}\t${meta.cohort}_chr${chromosome}.vcf.gz\t${meta.cohort}_chr${chromosome}.vcf.gz.tbi\tstub\tstub\t${panel.build}\t${imputation_dr2}\tPASS\n' > ${meta.cohort}.chr${chromosome}.imputation_manifest.tsv
-    printf 'cohort\tchromosome\tinput_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus\n${meta.cohort}\t${chromosome}\t1\t1\t0\t${imputation_dr2}\tPASS\tPASS\tPASS\tPASS\tPASS\n' > ${meta.cohort}.chr${chromosome}.imputation_qc.tsv
+    printf 'cohort\tchromosome\tcorrected_typed_variants\treference_matched_typed_variants\tunmatched_typed_variants\tbeagle_input_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus\n${meta.cohort}\t${chromosome}\t1\t1\t0\t1\t1\t0\t${imputation_dr2}\tPASS\tPASS\tPASS\tPASS\tPASS\n' > ${meta.cohort}.chr${chromosome}.imputation_qc.tsv
     printf 'cohort\tchromosome\tdr2_bin\tvariants\n${meta.cohort}\t${chromosome}\t[0.9,1]\t1\n' > ${meta.cohort}.chr${chromosome}.imputation_dr2.tsv
     printf 'Target chromosome imputation stub\n' > ${meta.cohort}.chr${chromosome}.target_imputation.log
     """

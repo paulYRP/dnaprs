@@ -27,7 +27,7 @@ nextflow_pipeline {
                 { assert models.text.readLines().tail().size() == 4 },
                 { assert ['mhc_total', 'who_total', 'brs_total', 'bdsst_total'].every { models.text.contains(it) } },
                 { assert path("$runDir/data/target_imputation/TEST/TEST.imputation_manifest.tsv").exists() },
-                { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
+                { assert path("$runDir/data/plink_ct/TEST/MDD/MDD.plink_ct.weights.tsv").exists() },
                 { assert path("$runDir/data/sbayesrc/MDD/model/MDD.sbayesrc.txt").exists() },
                 { assert path("$runDir/data/scores/combined/prs_scores_long.tsv").exists() },
                 { assert path("$runDir/data/phenotype/phenotype_associations.tsv").exists() },

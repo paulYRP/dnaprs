@@ -60,6 +60,12 @@ input:
     - reference_fasta_files:
         type: list
         description: Reference FASTA and index files.
+    - prepared_reference:
+        type: map
+        description: Prepared reference metadata used for exact target matching.
+    - prepared_reference_dir:
+        type: directory
+        description: Prepared unrelated reference PGEN files used to select exact target alleles.
   - impute_script:
       type: file
       description: Shell script that phases, imputes, filters, and converts one chromosome.
@@ -72,22 +78,22 @@ output:
           type: directory
           description: Metadata associated with one chromosome-level imputed pgen and vcf checkpoint.
       - chromosome:
-          type: directory
-          description: One chromosome-level imputed PGEN and VCF checkpoint.
+          type: string
+          description: Imputed chromosome.
       - "*.chr*.imputed":
           type: directory
           description: One chromosome-level imputed PGEN and VCF checkpoint.
       - "*.chr*.imputation_manifest.tsv":
-          type: directory
+          type: file
           description: One chromosome-level imputed PGEN and VCF checkpoint.
       - "*.chr*.imputation_qc.tsv":
-          type: directory
+          type: file
           description: One chromosome-level imputed PGEN and VCF checkpoint.
       - "*.chr*.imputation_dr2.tsv":
-          type: directory
+          type: file
           description: One chromosome-level imputed PGEN and VCF checkpoint.
       - "*.chr*.target_imputation.log":
-          type: directory
+          type: file
           description: One chromosome-level imputed PGEN and VCF checkpoint.
   versions_beagle:
     - - ${task.process}:

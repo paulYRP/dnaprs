@@ -112,33 +112,46 @@ cojo <- data.table::data.table(
 information <- suppressWarnings(as.numeric(extractCOLUMN(option[["info-col"]])))
 
 # Apply one common PRS-specific QC contract after format adaptation.
-validALLELE <- grepl("^[ACGT]+$", cojo$A1) & grepl("^[ACGT]+$", cojo$A2) & cojo$A1 != cojo$A2
+validALLELE <- grepl("^[ACGT]$", cojo$A1) & grepl("^[ACGT]$", cojo$A2) & cojo$A1 != cojo$A2
 structuralROW <- !is.na(cojo$CHR) & cojo$CHR %in% as.character(1:22) &
   is.finite(cojo$BP) & cojo$BP > 0 & validALLELE & is.finite(cojo$b) &
-  is.finite(cojo$se) & cojo$se > 0 & is.finite(cojo$p) & cojo$p > 0 & cojo$p <= 1 &
+  is.finite(cojo$se) & cojo$se > 0 & is.finite(cojo$p) & cojo$p >= 0 & cojo$p <= 1 &
   is.finite(cojo$N) & cojo$N > 0
 missingID <- is.na(cojo$SNP) | cojo$SNP == "" | cojo$SNP == "."
 cojo$SNP[missingID & structuralROW] <- paste(cojo$CHR[missingID & structuralROW], cojo$BP[missingID & structuralROW], cojo$A1[missingID & structuralROW], cojo$A2[missingID & structuralROW], sep = ":")
-frequencyROW <- is.na(cojo$freq) | (is.finite(cojo$freq) & cojo$freq > 0 & cojo$freq < 1)
+frequencyROW <- is.finite(cojo$freq) & cojo$freq > 0 & cojo$freq < 1
 mafMIN <- suppressWarnings(as.numeric(option[["maf-min"]]))
 if (!is.finite(mafMIN)) mafMIN <- 0.01
-mafROW <- is.na(cojo$freq) | pmin(cojo$freq, 1 - cojo$freq) >= mafMIN
+mafROW <- is.finite(cojo$freq) & pmin(cojo$freq, 1 - cojo$freq) >= mafMIN
 infoMIN <- suppressWarnings(as.numeric(option[["info-min"]]))
 infoROW <- if (is.finite(infoMIN)) is.finite(information) & information >= infoMIN else rep(TRUE, nrow(cojo))
-palindromic <- paste0(cojo$A1, cojo$A2) %in% c("AT", "TA", "CG", "GC")
-ambiguousROW <- !(palindromic & is.finite(cojo$freq) & cojo$freq >= 0.4 & cojo$freq <= 0.6)
-retainROW <- structuralROW & frequencyROW & mafROW & infoROW & ambiguousROW
+retainROW <- structuralROW & frequencyROW & mafROW & infoROW
 filteredSTRUCTURAL <- sum(!structuralROW)
 filteredFREQUENCY <- sum(structuralROW & !frequencyROW)
 filteredMAF <- sum(structuralROW & frequencyROW & !mafROW)
 filteredINFO <- sum(structuralROW & frequencyROW & mafROW & !infoROW)
-filteredAMBIGUOUS <- sum(structuralROW & frequencyROW & mafROW & infoROW & !ambiguousROW)
+filteredAMBIGUOUS <- 0L
 cojo <- cojo[retainROW]
 if (nrow(cojo) == 0L) stop(sprintf("GWAS '%s' retained no variants after common QC.", option[["trait-id"]]), call. = FALSE)
-duplicateROW <- duplicated(cojo$SNP) | duplicated(cojo$SNP, fromLast = TRUE)
-filteredDUPLICATE <- sum(duplicateROW)
-cojo <- cojo[!duplicateROW]
-if (nrow(cojo) == 0L) stop(sprintf("GWAS '%s' retained no unique variants.", option[["trait-id"]]), call. = FALSE)
+
+beforeEXACT <- nrow(cojo)
+cojo <- unique(cojo)
+collapsedEXACT <- beforeEXACT - nrow(cojo)
+complement <- function(value) chartr("ACGT", "TGCA", value)
+directPAIR <- paste(pmin(cojo$A1, cojo$A2), pmax(cojo$A1, cojo$A2), sep = "/")
+complementPAIR <- paste(
+  pmin(complement(cojo$A1), complement(cojo$A2)),
+  pmax(complement(cojo$A1), complement(cojo$A2)),
+  sep = "/"
+)
+canonicalPAIR <- pmin(directPAIR, complementPAIR)
+canonicalKEY <- paste(cojo$CHR, cojo$BP, canonicalPAIR, sep = ":")
+conflictingROW <- duplicated(canonicalKEY) | duplicated(canonicalKEY, fromLast = TRUE)
+filteredCONFLICTING <- sum(conflictingROW)
+cojo <- cojo[!conflictingROW]
+filteredDUPLICATE <- collapsedEXACT + filteredCONFLICTING
+if (nrow(cojo) == 0L) stop(sprintf("GWAS '%s' retained no unique canonical variants.", option[["trait-id"]]), call. = FALSE)
+duplicatedSNP <- sum(duplicated(cojo$SNP) | duplicated(cojo$SNP, fromLast = TRUE))
 
 data.table::setorder(cojo, CHR, BP)
 data.table::fwrite(cojo, paste0(option[["trait-id"]], ".cojo.ma"), sep = "\t", quote = FALSE, na = "NA")
@@ -161,9 +174,11 @@ data.table::fwrite(
     filtered_info = filteredINFO,
     filtered_ambiguous = filteredAMBIGUOUS,
     filtered_duplicate = filteredDUPLICATE,
+    collapsed_exact = collapsedEXACT,
+    filtered_conflicting_key = filteredCONFLICTING,
     maf_min = mafMIN,
     info_min = if (is.finite(infoMIN)) infoMIN else NA_real_,
-    duplicated_snp = filteredDUPLICATE,
+    duplicated_snp = duplicatedSNP,
     structural_status = "PASS"
   ),
   paste0(option[["trait-id"]], ".harmonisation_qc.tsv"),

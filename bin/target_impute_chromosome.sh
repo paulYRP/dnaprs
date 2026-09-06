@@ -13,6 +13,7 @@ threads="$9"
 memory_mb="${10}"
 genome_build="${11}"
 reference_fasta="${12}"
+reference_pvar="${13}"
 output_dir="${cohort}.chr${chromosome}.imputed"
 log_file="${cohort}.chr${chromosome}.target_imputation.log"
 mkdir -p "$output_dir"
@@ -65,7 +66,32 @@ target_prefix="${cohort}.chr${chromosome}.input"
 cp "$target_pgen" "${target_prefix}.pgen"
 cp "$target_pvar" "${target_prefix}.pvar"
 cp "$target_psam" "${target_prefix}.psam"
-plink2 --pfile "$target_prefix" --export vcf bgz id-paste=iid --threads "$threads" --out "${cohort}.chr${chromosome}.typed" >> "$log_file" 2>&1
+corrected_typed_variants=$(awk '!/^#/ && NF { count++ } END { print count + 0 }' "${target_prefix}.pvar")
+awk 'BEGIN { FS=OFS="\t" }
+    FILENAME == ARGV[1] && !/^#/ {
+        chromosome=$1; sub(/^chr/, "", chromosome)
+        key=chromosome FS $2 FS toupper($4) FS toupper($5)
+        target_id[key]=$3; target_count[key]++
+        next
+    }
+    FILENAME == ARGV[2] && !/^#/ {
+        chromosome=$1; sub(/^chr/, "", chromosome)
+        key=chromosome FS $2 FS toupper($4) FS toupper($5)
+        reference_count[key]++
+    }
+    END {
+        for (key in target_id) if (target_count[key] == 1 && reference_count[key] == 1) print target_id[key]
+    }
+' "${target_prefix}.pvar" "$reference_pvar" | sort -u > "${cohort}.chr${chromosome}.reference_matched.txt"
+reference_matched_variants=$(awk 'NF { count++ } END { print count + 0 }' "${cohort}.chr${chromosome}.reference_matched.txt")
+unmatched_typed_variants=$((corrected_typed_variants-reference_matched_variants))
+[[ "$reference_matched_variants" -gt 0 ]] || {
+    echo "Chromosome ${chromosome} in cohort '${cohort}' has no unique CHROM:POS:REF:ALT match in the imputation reference." >&2
+    exit 4
+}
+plink2 --pfile "$target_prefix" --extract "${cohort}.chr${chromosome}.reference_matched.txt" \
+    --make-pgen --threads "$threads" --out "${target_prefix}.matched" >> "$log_file" 2>&1
+plink2 --pfile "${target_prefix}.matched" --export vcf bgz id-paste=iid --threads "$threads" --out "${cohort}.chr${chromosome}.typed" >> "$log_file" 2>&1
 tabix -f -p vcf "${cohort}.chr${chromosome}.typed.vcf.gz"
 bcftools norm --check-ref e --fasta-ref "$reference_fasta" -Ou "${cohort}.chr${chromosome}.typed.vcf.gz" >/dev/null
 input_variants=$(bcftools index --nrecords "${cohort}.chr${chromosome}.typed.vcf.gz")
@@ -95,11 +121,18 @@ bcftools norm --check-ref e --fasta-ref "$reference_fasta" -Ou "${output_dir}/${
 retained_variants=$(bcftools index --nrecords "${output_dir}/${cohort}_chr${chromosome}.vcf.gz")
 imputed_variants=$(bcftools query -f '%INFO/IMP\n' "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" | awk '$1==1{n++} END{print n+0}')
 plink2 --vcf "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" dosage=DS --double-id \
-    --set-missing-var-ids '@:#:$r:$a' --make-pgen --threads "$threads" --out "${output_dir}/${cohort}_chr${chromosome}" >> "$log_file" 2>&1
+    --set-all-var-ids '@:#:$r:$a' --make-pgen --threads "$threads" --out "${output_dir}/${cohort}_chr${chromosome}" >> "$log_file" 2>&1
+awk '!/^#/ { print $2 }' "$target_psam" > expected_iids.txt
+awk '!/^#/ { print $2 }' "${output_dir}/${cohort}_chr${chromosome}.psam" > observed_iids.txt
+cmp -s expected_iids.txt observed_iids.txt || {
+    echo "Participant identifiers changed during imputation of chromosome ${chromosome} in cohort '${cohort}'." >&2
+    exit 5
+}
+cp "$target_psam" "${output_dir}/${cohort}_chr${chromosome}.psam"
 
 vcf_checksum=$(sha256sum "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" | awk '{print $1}')
 index_checksum=$(sha256sum "${output_dir}/${cohort}_chr${chromosome}.vcf.gz.tbi" | awk '{print $1}')
 printf 'cohort\tchromosome\tvcf\tindex\tvcf_sha256\tindex_sha256\tbuild\tdr2_threshold\tstatus\n' > "${cohort}.chr${chromosome}.imputation_manifest.tsv"
 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\tPASS\n' "$cohort" "$chromosome" "${cohort}_chr${chromosome}.vcf.gz" "${cohort}_chr${chromosome}.vcf.gz.tbi" "$vcf_checksum" "$index_checksum" "$genome_build" "$dr2" >> "${cohort}.chr${chromosome}.imputation_manifest.tsv"
-printf 'cohort\tchromosome\tinput_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus\n' > "${cohort}.chr${chromosome}.imputation_qc.tsv"
-printf '%s\t%s\t%s\t%s\t%s\t%s\tPASS\tPASS\tPASS\tPASS\tPASS\n' "$cohort" "$chromosome" "$input_variants" "$retained_variants" "$imputed_variants" "$dr2" >> "${cohort}.chr${chromosome}.imputation_qc.tsv"
+printf 'cohort\tchromosome\tcorrected_typed_variants\treference_matched_typed_variants\tunmatched_typed_variants\tbeagle_input_variants\tretained_variants\timputed_variants\tdr2_threshold\tsample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus\n' > "${cohort}.chr${chromosome}.imputation_qc.tsv"
+printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\tPASS\tPASS\tPASS\tPASS\tPASS\n' "$cohort" "$chromosome" "$corrected_typed_variants" "$reference_matched_variants" "$unmatched_typed_variants" "$input_variants" "$retained_variants" "$imputed_variants" "$dr2" >> "${cohort}.chr${chromosome}.imputation_qc.tsv"

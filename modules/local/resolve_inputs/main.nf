@@ -23,6 +23,7 @@ process RESOLVE_INPUTS {
     val participant_id
     val timepoint_column
     val timepoint_values_spec
+    val require_repeated_value_agreement
     val group_column
     val control_value
     val case_value
@@ -67,6 +68,7 @@ process RESOLVE_INPUTS {
         --participant-id '${participant_id}' \
         --timepoint-column '${timepoint_column}' \
         --timepoint-values-spec '${timepoint_values_spec}' \
+        --require-repeated-value-agreement '${require_repeated_value_agreement}' \
         --group-column '${group_column}' \
         --control-value '${control_value}' \
         --case-value '${case_value}' \

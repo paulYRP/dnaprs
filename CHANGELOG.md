@@ -4,6 +4,15 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Corrected raw array-marker recovery to retain Illumina TOP alleles, extract selected
+  probes by source identifier, rename them in a separate PLINK step, and orient the
+  retained genotypes to GRCh37 with `bcftools +fixref`.
+- Added exact typed-target/reference matching before imputation, corrected X-chromosome
+  sex checking, and the R Markdown marker rules for sample diagnostics and ancestry.
+- Separated common GWAS QC from method-specific alignment and made PLINK C+T alignment,
+  clumping, weights, and complete-weight checks specific to each final target cohort.
+- Added optional repeated-value agreement checks before fixed timepoint selection and
+  configured the UKR run to select timepoint 1 after this validation.
 - Added tested gzip and block-gzip GWAS harmonisation, declared the required `R.utils`
   dependency, and added direct R dependency checks for the analysis and report images.
 - Replaced Aqua-incompatible `tag@digest` process references with stable versioned

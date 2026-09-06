@@ -44,10 +44,10 @@ tableVIEW(plinkSENSITIVITY, "Participant-level standardised score comparison bet
 ```{r}
 fileTABLE(
   "^(plink_ct|reference/plink_ct|qc/plink_ct|qc/scores|scores|logs/plink_ct)",
-  "PLINK reference frequencies, clumps, ALT-aligned weights, participant scores, checks, and logs."
+  "PLINK reference frequencies, cohort-specific clumps and ALT-aligned weights, participant scores, checks, and logs."
 )
 ```
 
 <div class="dnaprs-closing-card">
-<p>A passed PLINK score requires a non-empty weight set, recorded variant coverage, one finite score for every eligible participant, and an auditable allele direction. Typed and imputed contributions show where the genetic information came from. These checks establish calculation quality but do not by themselves establish prediction or clinical validity.</p>
+<p>A passed PLINK score requires a cohort-specific non-empty weight set, use of every fixed weight, one finite score for every eligible participant, and an auditable target-ALT direction. Typed and imputed contributions show where the genetic information came from. These checks establish calculation quality but do not by themselves establish prediction or clinical validity.</p>
 </div>

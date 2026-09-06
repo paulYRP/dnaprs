@@ -354,10 +354,10 @@ workflow DNAPRS {
     participant_decision_inputs = TARGET_QC.out.sample_decisions
         .map { meta, decisions -> tuple(meta.cohort, meta, decisions) }
         .join(TARGET_QC_REVIEW.out.tables.map { meta, tables -> tuple(meta.source_cohort, tables) }, failOnDuplicate: true, failOnMismatch: true)
-        .join(GENOTYPE_EDA.out.tables.map { meta, tables -> tuple(meta.cohort, tables) }, failOnDuplicate: true, failOnMismatch: true)
+        .join(TARGET_QC.out.sex_check.map { meta, sex_check -> tuple(meta.cohort, sex_check) }, failOnDuplicate: true, failOnMismatch: true)
         .join(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple(meta.cohort, ancestry) }, failOnDuplicate: true, failOnMismatch: true)
-        .map { _cohort, meta, decisions, review_tables, raw_tables, ancestry ->
-            tuple(meta, decisions, review_tables + raw_tables, ancestry)
+        .map { _cohort, meta, decisions, review_tables, sex_check, ancestry ->
+            tuple(meta, decisions, review_tables + [sex_check], ancestry)
         }
     PARTICIPANT_DECISIONS(participant_decision_inputs, script_files.participant_decisions)
 
@@ -390,7 +390,10 @@ workflow DNAPRS {
         .mix(VALIDATE_MANIFESTS.out.input_checks.map { result_file -> tuple('inputs/checks', result_file) })
         .mix(VALIDATE_MANIFESTS.out.reference_integrity.map { result_file -> tuple('inputs/checks', result_file) })
         .mix(input_checks.map { result_file -> tuple('inputs', result_file) })
-        .mix(GENOTYPE_EDA.out.tables.flatMap { meta, tables -> tables.collect { result_file -> tuple("genotype_eda/${meta.cohort}", result_file) } })
+        .mix(GENOTYPE_EDA.out.tables.flatMap { meta, tables ->
+            tables.findAll { result_file -> !result_file.name.endsWith('.sex_check.tsv') }
+                .collect { result_file -> tuple("genotype_eda/${meta.cohort}", result_file) }
+        })
         .mix(GENOTYPE_EDA.out.logs.map { meta, stage_log -> tuple("logs/genotype_eda/${meta.cohort}", stage_log) })
         .mix(TARGET_QC_REVIEW.out.tables.flatMap { meta, tables -> tables.collect { result_file -> tuple("target_qc/${meta.source_cohort}/sample_review", result_file) } })
         .mix(TARGET_QC_REVIEW.out.logs.map { meta, stage_log -> tuple("logs/target_qc/${meta.source_cohort}/sample_review", stage_log) })
@@ -404,6 +407,7 @@ workflow DNAPRS {
             })
         .mix(TARGET_QC.out.imputation_ready.map { meta, _target_dir, target_qc -> tuple("target_qc/${meta.cohort}", target_qc) })
         .mix(TARGET_QC.out.sample_decisions.map { meta, decisions -> tuple("target_qc/${meta.cohort}", decisions) })
+        .mix(TARGET_QC.out.sex_check.map { meta, sex_check -> tuple("target_qc/${meta.cohort}", sex_check) })
         .mix(TARGET_QC.out.variant_decisions.map { meta, decisions -> tuple("target_qc/${meta.cohort}", decisions) })
         .mix(PARTICIPANT_DECISIONS.out.decisions.map { meta, decisions, _keep -> tuple("target_qc/${meta.cohort}", decisions) })
         .mix(PREPARE_PLINK_REFERENCE.out.summary.map { _meta, summary -> tuple('reference/plink_ct', summary) })
@@ -454,6 +458,7 @@ workflow DNAPRS {
             .combine(genetic_map)
             .combine(beagle_jar)
             .combine(reference_fasta_source)
+            .combine(plink_reference)
         TARGET_IMPUTE_CHROMOSOME(target_impute_input, script_files.target_impute_chromosome, imputation_dr2)
         target_impute_gather = TARGET_IMPUTE_CHROMOSOME.out.chromosomes
             .groupTuple(sort: 'deep')
@@ -511,13 +516,22 @@ workflow DNAPRS {
     if (run_prs && methods.contains('plink_ct')) {
         PLINK_REFERENCE_FREQ(plink_reference)
 
-        plink_alignment_input = HARMONISE_GWAS.out.harmonised.combine(plink_reference)
+        plink_alignment_input = score_target_files
+            .combine(HARMONISE_GWAS.out.harmonised)
+            .combine(plink_reference)
         ALIGN_PLINK_GWAS(plink_alignment_input, script_files.align_plink_gwas)
         PLINK_CLUMP(ALIGN_PLINK_GWAS.out.aligned.combine(plink_reference))
         BUILD_CT_WEIGHTS(PLINK_CLUMP.out.clumped, script_files.ct_weights)
 
+        plink_weights_by_cohort = BUILD_CT_WEIGHTS.out.weights.map { weight_target, gwas, weight, weight_qc, harmonisation_qc, clump_log ->
+            tuple(weight_target.cohort, gwas, weight, weight_qc, harmonisation_qc, clump_log)
+        }
         plink_score_input = score_targets
-            .combine(BUILD_CT_WEIGHTS.out.weights)
+            .map { target, target_dir, target_qc, decisions, keep -> tuple(target.cohort, target, target_dir, target_qc, decisions, keep) }
+            .combine(plink_weights_by_cohort, by: 0)
+            .map { _cohort, target, target_dir, target_qc, decisions, keep, gwas, weight, weight_qc, harmonisation_qc, clump_log ->
+                tuple(target, target_dir, target_qc, decisions, keep, gwas, weight, weight_qc, harmonisation_qc, clump_log)
+            }
             .combine(PLINK_REFERENCE_FREQ.out.frequency)
         PLINK_SCORE(plink_score_input)
         PARSE_PLINK_SCORE(PLINK_SCORE.out.raw, script_files.parse_plink, script_files.audit_scoring)
@@ -526,17 +540,17 @@ workflow DNAPRS {
             [cohort: target.cohort, trait_id: gwas.trait_id, prs_name: gwas.prs_name, method: 'plink_ct']
         })
         generation_qc_files = generation_qc_files.mix(
-            ALIGN_PLINK_GWAS.out.qc.map { _meta, alignment_qc -> alignment_qc },
-            BUILD_CT_WEIGHTS.out.weights.map { _meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> weight_qc }
+            ALIGN_PLINK_GWAS.out.qc.map { _target, _meta, alignment_qc -> alignment_qc },
+            BUILD_CT_WEIGHTS.out.weights.map { _target, _meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> weight_qc }
         )
 
         result_files = result_files
             .mix(PLINK_REFERENCE_FREQ.out.frequency.map { _reference, frequency, _reference_log -> tuple('reference/plink_ct', frequency) })
             .mix(PLINK_REFERENCE_FREQ.out.frequency.map { _reference, _frequency, reference_log -> tuple('logs/plink_ct/reference', reference_log) })
-            .mix(ALIGN_PLINK_GWAS.out.qc.map { meta, alignment_qc -> tuple("qc/plink_ct/${meta.trait_id}", alignment_qc) })
-            .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, weight, _weight_qc, _harmonisation_qc, _clump_log -> tuple("plink_ct/${meta.trait_id}", weight) })
-            .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> tuple("qc/plink_ct/${meta.trait_id}", weight_qc) })
-            .mix(BUILD_CT_WEIGHTS.out.weights.map { meta, _weight, _weight_qc, _harmonisation_qc, clump_log -> tuple("qc/plink_ct/${meta.trait_id}", clump_log) })
+            .mix(ALIGN_PLINK_GWAS.out.qc.map { target, meta, alignment_qc -> tuple("qc/plink_ct/${target.cohort}/${meta.trait_id}", alignment_qc) })
+            .mix(BUILD_CT_WEIGHTS.out.weights.map { target, meta, weight, _weight_qc, _harmonisation_qc, _clump_log -> tuple("plink_ct/${target.cohort}/${meta.trait_id}", weight) })
+            .mix(BUILD_CT_WEIGHTS.out.weights.map { target, meta, _weight, weight_qc, _harmonisation_qc, _clump_log -> tuple("qc/plink_ct/${target.cohort}/${meta.trait_id}", weight_qc) })
+            .mix(BUILD_CT_WEIGHTS.out.weights.map { target, meta, _weight, _weight_qc, _harmonisation_qc, clump_log -> tuple("qc/plink_ct/${target.cohort}/${meta.trait_id}", clump_log) })
             .mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, score, _score_qc -> tuple("scores/${target.cohort}/${gwas.trait_id}", score) })
             .mix(PARSE_PLINK_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
             .mix(PARSE_PLINK_SCORE.out.compatibility.map { target, gwas, audit, _coverage -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", audit) })
@@ -544,7 +558,11 @@ workflow DNAPRS {
             .mix(PARSE_PLINK_SCORE.out.logs.map { target, gwas, score_log -> tuple("logs/plink_ct/${target.cohort}/${gwas.trait_id}", score_log) })
         if (target_imputation) {
             plink_direct_input = direct_score_targets
-                .combine(BUILD_CT_WEIGHTS.out.weights)
+                .map { target, target_dir, target_qc, decisions, keep -> tuple(target.cohort, target, target_dir, target_qc, decisions, keep) }
+                .combine(plink_weights_by_cohort, by: 0)
+                .map { _cohort, target, target_dir, target_qc, decisions, keep, gwas, weight, weight_qc, harmonisation_qc, clump_log ->
+                    tuple(target, target_dir, target_qc, decisions, keep, gwas, weight, weight_qc, harmonisation_qc, clump_log)
+                }
                 .combine(PLINK_REFERENCE_FREQ.out.frequency)
             PLINK_DIRECT_SCORE(plink_direct_input)
             PARSE_PLINK_DIRECT_SCORE(PLINK_DIRECT_SCORE.out.raw, script_files.parse_plink, script_files.audit_scoring)

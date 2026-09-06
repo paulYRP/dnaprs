@@ -46,23 +46,26 @@ sub read_manifest {
         my $strand = uc($value[$column{IlmnStrand}] // '');
         my $ref_strand = $value[$column{RefStrand}] // '';
         my $snp = uc($value[$column{SNP}] // '');
-        my ($allele_a, $allele_b) = $snp =~ /^\[([ACGT])\/([ACGT])\]$/;
-        # Convert the assay-coded alleles to TOP first, then TOP to the
-        # reference-forward strand used by PLINK and the GRCh build.
-        if (defined $allele_a && $strand eq 'BOT') {
-            $allele_a = complement($allele_a);
-            $allele_b = complement($allele_b);
+        my ($assay_a, $assay_b) = $snp =~ /^\[([ACGT])\/([ACGT])\]$/;
+        my ($top_a, $top_b) = ($assay_a, $assay_b);
+        if (defined $top_a && $strand eq 'BOT') {
+            $top_a = complement($top_a);
+            $top_b = complement($top_b);
         }
-        if (defined $allele_a && $ref_strand eq '-') {
-            $allele_a = complement($allele_a);
-            $allele_b = complement($allele_b);
+        my ($reference_a, $reference_b) = ($top_a, $top_b);
+        if (defined $reference_a && $ref_strand eq '-') {
+            $reference_a = complement($reference_a);
+            $reference_b = complement($reference_b);
         }
         $result{$name} = {
             chromosome => $chromosome,
             position => $position,
-            allele_a => $allele_a // '',
-            allele_b => $allele_b // '',
-            complement_calls => $ref_strand eq '-' ? 1 : 0,
+            assay_a => $assay_a // '',
+            assay_b => $assay_b // '',
+            top_a => $top_a // '',
+            top_b => $top_b // '',
+            reference_a => $reference_a // '',
+            reference_b => $reference_b // '',
         };
     }
     close $handle;
@@ -132,7 +135,7 @@ sub finalreport_to_ped {
         my $record = $manifest->{$marker};
         next if $record->{chromosome} !~ /^(?:[1-9]|1[0-9]|2[0-2]|X|Y|XY|MT)$/i;
         next if $record->{position} !~ /^\d+$/ || $record->{position} < 1;
-        next if $record->{allele_a} eq '' || $record->{allele_b} eq '';
+        next if $record->{top_a} eq '' || $record->{top_b} eq '';
 
         if ($sample ne $current_sample) {
             if ($sample ne '') {
@@ -146,10 +149,6 @@ sub finalreport_to_ped {
         }
         my $allele1 = uc($value[$column{'Allele1 - Top'}] // '0');
         my $allele2 = uc($value[$column{'Allele2 - Top'}] // '0');
-        if ($record->{complement_calls}) {
-            $allele1 = complement($allele1);
-            $allele2 = complement($allele2);
-        }
         $allele1 = '0' if $allele1 !~ /^[ACGT]$/;
         $allele2 = '0' if $allele2 !~ /^[ACGT]$/;
         print {$ped} " $allele1 $allele2";
@@ -210,7 +209,7 @@ sub annotate_pvar {
             my $record = $manifest->{$source_id};
             $final_chr = $record->{chromosome} if $record->{chromosome} ne '';
             $final_pos = $record->{position} if $record->{position} ne '';
-            my @assay = ($record->{allele_a}, $record->{allele_b});
+            my @assay = ($record->{top_a}, $record->{top_b});
             if (($final_ref eq '' || $final_ref eq '.' || $final_ref eq '0') && $final_alt =~ /^[ACGT]$/) {
                 my ($other) = grep { $_ ne $final_alt } @assay;
                 $final_ref = $other if defined $other;

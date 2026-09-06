@@ -35,5 +35,5 @@ fileTABLE("^(gwas|qc/gwas)/", "Harmonised GWAS fields, clumping inputs, and stru
 ```
 
 <div class="dnaprs-closing-card">
-<p>A passed GWAS QC result means the declared records have valid scoring fields, one row per variant identifier, and an auditable effect scale. It does not repeat discovery-consortium participant QC, establish target allele compatibility by itself, or prove phenotype prediction; method-specific reference alignment and target score coverage remain downstream evidence.</p>
+<p>A passed GWAS QC result means the declared records have valid scoring fields, unique canonical variant keys, and an auditable effect scale. It does not repeat discovery-consortium participant QC, establish target allele compatibility by itself, or prove phenotype prediction; method-specific reference alignment and target score coverage remain downstream evidence.</p>
 </div>

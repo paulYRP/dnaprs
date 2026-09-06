@@ -19,6 +19,7 @@ data.table::setnames(weight, c("ID", "A1", "b"), c("SNP", "A1", "BETA"))
 data.table::fwrite(weight, paste0(option[["trait-id"]], ".plink_ct.weights.tsv"), sep = "\t", quote = FALSE)
 data.table::fwrite(
   data.table::data.table(
+    cohort = option[["cohort"]],
     trait_id = option[["trait-id"]],
     prs_name = option[["prs-name"]],
     harmonised_variants = nrow(gwas),

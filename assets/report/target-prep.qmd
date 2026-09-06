@@ -29,5 +29,5 @@ fileTABLE("^target_prep/", "Prepared target dimensions and conversion summaries.
 ```
 
 <div class="dnaprs-closing-card">
-<p>A passed preparation result means that the declared QC-completed input was converted into non-empty autosomal PGEN output. It does not certify array annotation, ancestry, imputation quality, or study-specific participant and variant exclusions that must already have been completed upstream.</p>
+<p>A passed preparation result means that the declared input was converted into a non-empty PGEN dataset. For raw arrays, marker decisions record source-probe selection, rsID assignment, TOP-strand recovery, and GRCh37 orientation. Ancestry, imputation quality, and participant eligibility remain downstream checks.</p>
 </div>

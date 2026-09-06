@@ -43,7 +43,7 @@ output:
           type: map
           description: Metadata associated with imputation-ready target dataset and qc summary.
       - ${meta.cohort}.imputation_ready:
-          type: file
+          type: directory
           description: Imputation-ready target dataset and QC summary.
       - ${meta.cohort}.target_qc.tsv:
           type: file
@@ -53,7 +53,7 @@ output:
           type: map
           description: Metadata associated with direct-score sensitivity dataset and qc summary.
       - ${meta.cohort}.direct_ready:
-          type: file
+          type: directory
           description: Direct-score sensitivity dataset and QC summary.
       - ${meta.cohort}.target_qc.tsv:
           type: file
@@ -65,6 +65,13 @@ output:
       - ${meta.cohort}.sample_decisions.tsv:
           type: file
           description: Participant-level retain/filter decisions.
+  sex_check:
+    - - meta:
+          type: map
+          description: Metadata associated with the corrected X-chromosome sex check.
+      - ${meta.cohort}.sex_check.tsv:
+          type: file
+          description: Reported and genetic sex comparison after sample missingness filtering.
   variant_decisions:
     - - meta:
           type: map
@@ -77,7 +84,7 @@ output:
           type: map
           description: Metadata associated with imputation-ready target checkpoint record.
       - ${meta.cohort}.imputation_ready:
-          type: file
+          type: directory
           description: Imputation-ready target checkpoint record.
       - ${meta.cohort}.imputation_ready_target.tsv:
           type: file
@@ -87,7 +94,7 @@ output:
           type: map
           description: Metadata associated with direct-score target checkpoint record.
       - ${meta.cohort}.direct_ready:
-          type: file
+          type: directory
           description: Direct-score target checkpoint record.
       - ${meta.cohort}.direct_ready_target.tsv:
           type: file

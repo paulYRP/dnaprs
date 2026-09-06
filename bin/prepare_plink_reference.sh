@@ -77,21 +77,21 @@ for source_file in "${panel_files[@]}"; do
     filtered_vcf="chr${chromosome}.eur.vcf.gz"
     bcftools view --force-samples --samples-file eur.samples.txt \
         --min-alleles 2 --max-alleles 2 --types snps -Ou "$source_vcf" 2>> "$log_file" |
-        bcftools annotate --set-id '+%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$filtered_vcf" 2>> "$log_file"
+        bcftools annotate --set-id '%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$filtered_vcf" 2>> "$log_file"
     tabix -f -p vcf "$filtered_vcf"
 
     all_vcf="chr${chromosome}.unrelated.vcf.gz"
     bcftools view --force-samples --samples-file unrelated.samples.txt \
         --min-alleles 2 --max-alleles 2 --types snps -Ou "$source_vcf" 2>> "$log_file" |
-        bcftools annotate --set-id '+%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$all_vcf" 2>> "$log_file"
+        bcftools annotate --set-id '%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$all_vcf" 2>> "$log_file"
     tabix -f -p vcf "$all_vcf"
 
     chromosome_prefix="${output_dir}/chromosomes/eur_chr${chromosome}"
-    plink2 --vcf "$filtered_vcf" --double-id --set-missing-var-ids '@:#:$r:$a' \
+    plink2 --vcf "$filtered_vcf" --double-id --set-all-var-ids '@:#:$r:$a' \
         --make-pgen --threads "$threads" --out "$chromosome_prefix" >> "$log_file" 2>&1
     prefixes+=("$chromosome_prefix")
     all_chromosome_prefix="${output_dir}/chromosomes/all_chr${chromosome}"
-    plink2 --vcf "$all_vcf" --double-id --set-missing-var-ids '@:#:$r:$a' \
+    plink2 --vcf "$all_vcf" --double-id --set-all-var-ids '@:#:$r:$a' \
         --make-pgen --threads "$threads" --out "$all_chromosome_prefix" >> "$log_file" 2>&1
     all_prefixes+=("$all_chromosome_prefix")
 

@@ -26,8 +26,9 @@ modelQC <- selectQC(c("trait_id", "weights", "nonzero_weights"))
 if (nrow(harmonisedQC) == 0L) stop("No GWAS harmonisation QC table was supplied.", call. = FALSE)
 if (nrow(scoreQC) == 0L) stop("No final score QC row was supplied.", call. = FALSE)
 
-oneROW <- function(value, traitID, label) {
+oneROW <- function(value, traitID, label, cohortID = "") {
   selected <- value[trait_id == traitID]
+  if (nzchar(cohortID) && "cohort" %in% names(selected)) selected <- selected[cohort == cohortID]
   if (nrow(selected) != 1L) {
     stop(sprintf("Expected one %s QC row for trait '%s'.", label, traitID), call. = FALSE)
   }
@@ -41,7 +42,7 @@ for (row in seq_len(nrow(scoreQC))) {
   harmonisedROW <- oneROW(harmonisedQC, traitID, "harmonisation")
 
   if (scoreROW$method == "plink_ct") {
-    methodROW <- oneROW(plinkQC, traitID, "PLINK C+T")
+    methodROW <- oneROW(plinkQC, traitID, "PLINK C+T", scoreROW$cohort)
     stage <- c("Source GWAS", "Harmonised", "LD-clumped", "Scored")
     count <- c(
       harmonisedROW$source_variants,

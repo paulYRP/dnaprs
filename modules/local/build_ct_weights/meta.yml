@@ -14,7 +14,10 @@ tools:
       identifier: ""
       homepage: https://r-datatable.com/
 input:
-  - - meta:
+  - - target:
+        type: map
+        description: Target cohort and scoring-stage metadata.
+    - meta:
         type: map
         description: GWAS trait and PRS metadata.
     - cojo:
@@ -34,9 +37,12 @@ input:
       description: R script that creates C+T score weights from aligned clumps.
 output:
   weights:
-    - - meta:
+    - - target:
           type: map
-          description: Metadata associated with allele-explicit score weights, qc, and upstream audit files.
+          description: Target cohort and scoring-stage metadata.
+      - meta:
+          type: map
+          description: GWAS trait and PRS metadata.
       - ${meta.trait_id}.plink_ct.weights.tsv:
           type: file
           description: Allele-explicit score weights, QC, and upstream audit files.

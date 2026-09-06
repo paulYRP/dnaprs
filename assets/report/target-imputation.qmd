@@ -19,7 +19,7 @@ figureGALLERY("Target Imputation")
 ```
 
 ```{r}
-tableVIEW(imputationQC, "Typed input, retained output, imputed variant counts, and the applied DR2 threshold by chromosome.")
+tableVIEW(imputationQC, "Corrected typed, exact reference-matched, unmatched, retained, and imputed variant counts with the applied DR2 threshold by chromosome.")
 ```
 
 ```{r}
@@ -39,5 +39,5 @@ fileTABLE("^(target_imputation|logs/target_imputation)/", "Imputed target manife
 ```
 
 <div class="dnaprs-closing-card">
-<p>A passed imputation checkpoint requires a matching reference bundle, successful chromosome-level processing, and retention of typed variants plus newly imputed variants meeting the declared DR2 threshold. It does not establish phenotype prediction.</p>
+<p>A passed imputation checkpoint requires an exact target-reference allele match for each Beagle input variant, successful chromosome-level processing, and retention of typed variants plus newly imputed variants meeting the declared DR2 threshold. It does not establish phenotype prediction.</p>
 </div>

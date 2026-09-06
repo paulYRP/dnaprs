@@ -20,6 +20,7 @@ process TARGET_QC {
     tuple val(meta), path("${meta.cohort}.imputation_ready"), path("${meta.cohort}.target_qc.tsv"), emit: imputation_ready
     tuple val(meta), path("${meta.cohort}.direct_ready"), path("${meta.cohort}.target_qc.tsv"), emit: direct_ready
     tuple val(meta), path("${meta.cohort}.sample_decisions.tsv"), emit: sample_decisions
+    tuple val(meta), path("${meta.cohort}.sex_check.tsv"), emit: sex_check
     tuple val(meta), path("${meta.cohort}.variant_decisions.tsv"), emit: variant_decisions
     tuple val(meta), path("${meta.cohort}.imputation_ready"), path("${meta.cohort}.imputation_ready_target.tsv"), emit: imputation_checkpoint
     tuple val(meta), path("${meta.cohort}.direct_ready"), path("${meta.cohort}.direct_ready_target.tsv"), emit: direct_checkpoint
@@ -65,6 +66,7 @@ process TARGET_QC {
     done
     printf 'cohort\tinput_stage\tqc_action\tsource_participants\tretained_participants\tfiltered_participants\tsource_variants\timputation_variants\tretained_variants\tfiltered_variants\timputation_variant_missingness\tdirect_variant_missingness\tsample_missingness\tmaf_filter\thwe_filter\tchromosomes\tstatus\n${meta.cohort}\t${meta.input_stage ?: 'raw'}\tFILTERED\t2\t2\t0\t1\t1\t1\t0\t${imputation_geno}\t${direct_geno}\t${target_mind}\t${target_maf}\t${target_hwe}\t1\tPASS\n' > ${meta.cohort}.target_qc.tsv
     printf 'cohort\tFID\tIID\tmissingness\tdecision\treason\n${meta.cohort}\tTEST01\tTEST01\t0\tRETAIN\tWithin threshold\n${meta.cohort}\tTEST02\tTEST02\t0\tRETAIN\tWithin threshold\n' > ${meta.cohort}.sample_decisions.tsv
+    printf 'cohort\tFID\tIID\trecorded_sex\tgenetic_sex\tx_inbreeding_coefficient\tstatus\treason\n${meta.cohort}\tTEST01\tTEST01\t2\t2\t0.1\tPASS\tRecorded and genetic sex agree.\n${meta.cohort}\tTEST02\tTEST02\t1\t1\t0.9\tPASS\tRecorded and genetic sex agree.\n' > ${meta.cohort}.sex_check.tsv
     printf 'cohort\tID\tchromosome\tposition\tref\talt\tmissingness\tmaf\thwe_midp\timputation_decision\tdirect_decision\tdecision\treason\n${meta.cohort}\t1:100:A:G\t1\t100\tA\tG\t0\t0.5\t1\tRETAIN\tRETAIN\tRETAIN\tWithin thresholds\n' > ${meta.cohort}.variant_decisions.tsv
     printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.imputation_ready_target.tsv
     printf '${meta.cohort}\t${meta.role}\tpgen\tdata/target/prepared/${meta.cohort}/imputation_ready/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\tqc_completed\t\t\n' >> ${meta.cohort}.imputation_ready_target.tsv

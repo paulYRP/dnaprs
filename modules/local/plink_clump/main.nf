@@ -1,5 +1,5 @@
 process PLINK_CLUMP {
-    tag "${meta.trait_id}"
+    tag "${target.cohort}:${meta.trait_id}"
     label 'process_high'
 
     conda "${moduleDir}/environment.yml"
@@ -8,10 +8,10 @@ process PLINK_CLUMP {
         'quay.io/biocontainers/plink2:2.0.0a.6.9--h9948957_0' }"
 
     input:
-    tuple val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)
+    tuple val(target), val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)
 
     output:
-    tuple val(meta), path(cojo), path("${meta.trait_id}.clumps"), path(harmonisation_qc), path("${meta.trait_id}.clump.log"), emit: clumped
+    tuple val(target), val(meta), path(cojo), path("${meta.trait_id}.clumps"), path(harmonisation_qc), path("${meta.trait_id}.clump.log"), emit: clumped
     tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     script:
     """

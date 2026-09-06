@@ -52,7 +52,7 @@ if (!all(c("SNP", "COUNTED", "ALT") %in% names(calls)) || nrow(calls) != nrow(pv
 if (!identical(as.character(calls$SNP), as.character(pvar$ID))) {
   stop("PLINK A-transpose marker order differs from the annotated PVAR.", call. = FALSE)
 }
-sampleCOLUMN <- setdiff(names(calls), c("CHROM", "SNP", "(C)M", "CM", "POS", "COUNTED", "ALT"))
+sampleCOLUMN <- setdiff(names(calls), c("CHROM", "CHR", "SNP", "(C)M", "CM", "POS", "COUNTED", "ALT"))
 if (length(sampleCOLUMN) == 0L) stop("PLINK A-transpose output contains no participant dosages.", call. = FALSE)
 dosage <- as.matrix(data.frame(lapply(calls[sampleCOLUMN], as.numeric), check.names = FALSE))
 
@@ -92,6 +92,8 @@ candidate <- if (length(expanded) > 0L) unique(do.call(rbind, expanded)) else da
   chromosome = character(), position = integer(), candidate = character(),
   candidate_ref = character(), candidate_alt = character(), stringsAsFactors = FALSE
 )
+candidateKEY <- paste(candidate$chromosome, candidate$position, sep = ":")
+candidateINDEX <- split(seq_len(nrow(candidate)), candidateKEY)
 
 result <- data.frame(
   source_id = initial$source_id,
@@ -129,7 +131,9 @@ for (row in seq_len(nrow(pvar))) {
     result$reason[[row]] <- if (all(sourcePAIR %in% c("0", "."))) "All genotypes or assay alleles missing" else "Incompatible assay alleles"
     next
   }
-  atCOORDINATE <- candidate[candidate$chromosome == chromosome & candidate$position == position, , drop = FALSE]
+  lookupKEY <- paste(chromosome, position, sep = ":")
+  candidateROW <- candidateINDEX[[lookupKEY]]
+  atCOORDINATE <- if (is.null(candidateROW)) candidate[FALSE, , drop = FALSE] else candidate[candidateROW, , drop = FALSE]
   result$coordinate_candidates[[row]] <- length(unique(atCOORDINATE$candidate))
   if (nrow(atCOORDINATE) == 0L) {
     result$reason[[row]] <- "No dbSNP coordinate match"
@@ -215,5 +219,5 @@ if (!any(retained)) stop("Raw marker resolution retained no variants.", call. = 
 if (anyDuplicated(result$final_id[retained])) stop("Raw marker resolution did not produce unique final rsIDs.", call. = FALSE)
 
 writeTSV(result, option[["output-decisions"]])
-writeTSV(data.frame(id = result$final_id[retained]), option[["keep"]], header = FALSE)
+writeTSV(data.frame(id = pvar$ID[retained]), option[["keep"]], header = FALSE)
 writeTSV(data.frame(source_id = pvar$ID[retained], final_id = result$final_id[retained]), option[["rename"]], header = FALSE)

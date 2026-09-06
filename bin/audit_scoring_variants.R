@@ -14,14 +14,13 @@ if (!all(c("SNP", "A1") %in% names(weight)) || !all(c("ID", "REF", "ALT") %in% n
 if (anyDuplicated(weight$SNP) || anyDuplicated(pvar$ID) || anyDuplicated(used)) {
   stop("Weights, target IDs, and used-variant IDs must each be unique.", call. = FALSE)
 }
-complement <- function(value) chartr("ACGT", "TGCA", toupper(value))
 target <- pvar[match(weight$SNP, pvar$ID)]
 effect <- toupper(weight$A1)
 ref <- toupper(target$REF)
 alt <- toupper(target$ALT)
 state <- ifelse(
   is.na(target$ID), "MISSING_TARGET",
-  ifelse(effect == ref | effect == alt, "DIRECT", ifelse(complement(effect) == ref | complement(effect) == alt, "COMPLEMENT", "INCOMPATIBLE"))
+  ifelse(effect == alt, "TARGET_ALT", ifelse(effect == ref, "TARGET_REF", "INCOMPATIBLE"))
 )
 audit <- data.table::data.table(
   cohort = option[["cohort"]], trait_id = option[["trait-id"]], method = option[["method"]],
@@ -31,19 +30,23 @@ audit <- data.table::data.table(
 audit[, reason := data.table::fcase(
   used, "Used by PLINK scoring",
   state == "MISSING_TARGET", "Weight variant is absent from target",
+  state == "TARGET_REF", "Weight effect is not oriented to the target ALT allele",
   state == "INCOMPATIBLE", "Effect allele is incompatible with target alleles",
-  default = "Compatible variant was not reported in the PLINK used-variant set"
+  default = "Target-ALT variant was not reported in the PLINK used-variant set"
 )]
-if (any(audit$used & audit$allele_state %in% c("MISSING_TARGET", "INCOMPATIBLE"))) {
-  stop("PLINK reported an absent or allele-incompatible weight as used.", call. = FALSE)
+if (any(audit$used & audit$allele_state != "TARGET_ALT")) {
+  stop("PLINK reported a weight that is absent or not oriented to the target ALT allele as used.", call. = FALSE)
 }
 requested <- nrow(audit)
 usedN <- sum(audit$used)
 if (usedN == 0L) stop("No requested weight variant was used for scoring.", call. = FALSE)
+if (option[["method"]] == "plink_ct" && usedN != requested) {
+  stop(sprintf("PLINK used %s of %s fixed variants for cohort '%s' and trait '%s'; all primary C+T weights are required.", usedN, requested, option[["cohort"]], option[["trait-id"]]), call. = FALSE)
+}
 summary <- data.table::data.table(
   cohort = option[["cohort"]], trait_id = option[["trait-id"]], method = option[["method"]],
   scoring_stage = option[["scoring-stage"]], requested_variants = requested,
-  target_compatible_variants = sum(audit$allele_state %in% c("DIRECT", "COMPLEMENT")),
+  target_compatible_variants = sum(audit$allele_state == "TARGET_ALT"),
   used_variants = usedN, used_fraction = usedN / requested,
   review_required = usedN < requested,
   status = if (usedN < requested) "REVIEW" else "PASS"

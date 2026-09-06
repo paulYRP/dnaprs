@@ -45,7 +45,7 @@ nextflow_pipeline {
                 { assert path("$runDir/data/target_prep/TEST/TEST.marker_decisions.tsv").exists() },
                 { assert path("$runDir/data/target_qc/TEST/TEST.participant_decisions.tsv").exists() },
                 { assert path("$runDir/data/gwas/MDD/MDD.cojo.ma").exists() },
-                { assert path("$runDir/data/plink_ct/MDD/MDD.plink_ct.weights.tsv").exists() },
+                { assert path("$runDir/data/plink_ct/TEST/MDD/MDD.plink_ct.weights.tsv").exists() },
                 { assert path("$runDir/data/scores/combined/prs_scores_long.tsv").exists() },
                 { assert path("$runDir/data/phenotype/phenotype_with_prs.tsv").exists() },
                 { assert path("$runDir/data/phenotype/phenotype_participant_level.tsv").exists() },

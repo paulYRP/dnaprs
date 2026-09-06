@@ -199,6 +199,7 @@ workflow {
         params.participant_id ?: '',
         params.timepoint_column ?: '',
         timepoint_values_spec,
+        params.require_repeated_value_agreement,
         params.group_column ?: '',
         params.control_value ?: '',
         params.case_value ?: '',

@@ -1,0 +1,6 @@
+[Header]
+Descriptor File Name,marker_collision_manifest.csv
+[Assay]
+IlmnID,Name,IlmnStrand,SNP,GenomeBuild,Chr,MapInfo,RefStrand
+probe1,1:53072432,BOT,[T/C],37,1,100,+
+probe2,rs116820347,BOT,[T/C],37,1,100,+

@@ -41,24 +41,24 @@ if (nrow(european) < 20L) stop("At least 20 unrelated European reference partici
 pc <- pc[seq_len(min(length(pc), nrow(european) - 2L))]
 if (length(pc) < 2L) stop("At least two usable reference PCs are required.", call. = FALSE)
 
-eur_matrix <- as.matrix(european[, ..pc])
-target_matrix <- as.matrix(target[, ..pc])
+eur_matrix <- as.matrix(european[, pc, with = FALSE])
+target_matrix <- as.matrix(target[, pc, with = FALSE])
 if (any(!is.finite(eur_matrix)) || any(!is.finite(target_matrix))) stop("PCA projections contain non-finite values.", call. = FALSE)
 centre <- colMeans(eur_matrix)
 covariance <- stats::cov(eur_matrix)
-ridge <- max(mean(diag(covariance)), .Machine$double.eps) * 1e-8
-inverse <- solve(covariance + diag(ridge, nrow(covariance)))
+if (qr(covariance)$rank < ncol(covariance)) {
+  stop("European reference PC covariance is singular; use six or fewer informative PCs and review the reference projection.", call. = FALSE)
+}
 distanceVALUE <- function(matrix) {
-  centred <- sweep(matrix, 2L, centre, "-")
-  sqrt(rowSums((centred %*% inverse) * centred))
+  stats::mahalanobis(matrix, center = centre, cov = covariance)
 }
 eur_distance <- distanceVALUE(eur_matrix)
 percentile <- as.numeric(option[["percentile"]])
 if (!is.finite(percentile) || percentile <= 0 || percentile >= 1) stop("Ancestry percentile must be between 0 and 1.", call. = FALSE)
-threshold <- as.numeric(stats::quantile(eur_distance, probs = percentile, names = FALSE, type = 8))
+threshold <- as.numeric(stats::quantile(eur_distance, probs = percentile, names = FALSE))
 target_distance <- distanceVALUE(target_matrix)
 
-reference[, ancestry_distance := distanceVALUE(as.matrix(reference[, ..pc]))]
+reference[, ancestry_distance := distanceVALUE(as.matrix(reference[, pc, with = FALSE]))]
 reference[, ancestry_flag := ifelse(super_population == "EUR" & ancestry_distance <= threshold, "EUR_REFERENCE", "REFERENCE")]
 data.table::setorder(reference, super_population, population, IID)
 data.table::fwrite(reference, option[["reference-output"]], sep = "\t", na = "NA")

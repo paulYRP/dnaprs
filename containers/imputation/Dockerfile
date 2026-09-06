@@ -31,6 +31,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && plink2 --version \
     && bcftools --version | head -n 1 \
+    && bcftools plugin -l | grep -Fx fixref \
     && java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2 \
     && java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2
 

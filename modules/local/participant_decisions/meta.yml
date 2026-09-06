@@ -23,7 +23,7 @@ input:
         description: Sample-level decisions from target QC checkpoints.
     - eda_tables:
         type: list
-        description: Post-QC heterozygosity and PLINK 1 identity-by-descent tables plus the raw sex-check table.
+        description: Post-QC heterozygosity and PLINK 1 identity-by-descent tables plus the corrected X-chromosome sex check.
     - target_ancestry:
         type: file
         description: Projected ancestry assignments and distance flags for target participants.
