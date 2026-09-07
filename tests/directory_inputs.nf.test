@@ -38,6 +38,8 @@ nextflow_pipeline {
                 { assert checks.text.contains('\tdirectory') },
                 { assert plan.text.contains('run_prs\tfalse') },
                 { assert path("$runDir/data/target_qc/ukr/ukr.target_qc.tsv").exists() },
+                { assert path("$runDir/data/target_qc/ukr/ukr.participant_decisions.tsv").text.readLines().tail().size() == 6 },
+                { assert path("$runDir/data/target_qc/ukr/ukr.variant_decisions.tsv").text.readLines().tail().size() == 6 },
                 { assert path("$runDir/data/pipeline_info/software_versions.yml").exists() }
             )
         }

@@ -1,0 +1,10 @@
+[Header]
+Descriptor File Name,target_bed_manifest.csv
+[Assay]
+IlmnID,Name,IlmnStrand,SNP,GenomeBuild,Chr,MapInfo,RefStrand
+probe1,1:100:A:G,TOP,[A/G],37,1,100,+
+probe2,1:110:A:G,TOP,[A/G],37,1,110,+
+probe3,1:120:A:G,TOP,[A/G],37,1,120,+
+probe4,1:130:A:G,TOP,[A/G],37,1,130,+
+probe5,1:140:A:G,TOP,[A/G],37,1,140,+
+probe6,1:200:C:T,TOP,[C/T],37,1,200,+

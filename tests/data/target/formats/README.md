@@ -5,12 +5,18 @@ small test inputs, not biological reference data.
 
 The six-participant fixture includes four additional markers for valid LD-pruned
 participant QC. The two GWAS scoring markers and their genotypes are unchanged.
-Regenerate the PLINK and BGEN files with `tests/scripts/build_target_fixtures.sh`
-inside the existing imputation container.
+Regenerate the PLINK, BGEN and directory-input files with
+`tests/scripts/build_target_fixtures.sh` inside the existing imputation container.
 
 - `target_bed.{bed,bim,fam}`: PLINK 1 binary trio.
 - `target_ped.{ped,map}`: PED/MAP text pair.
 - `target_bgen.{bgen,sample}`: BGEN 1.2 with 16-bit probabilities.
+- `target_bed_manifest.csv`: synthetic GRCh37 annotation with `Name` values matching
+  the BED fixture's BIM IDs. The GenomeStudio manifest uses different source IDs.
+
+The generator also copies the PED/MAP pair to `tests/data/resolver inputs/ukr/`
+and rebuilds the BED manifest. Both path-resolution tests use the same six-participant
+genotypes as the other format tests.
 
 The BGEN fixture uses 16-bit probabilities because the tested PLINK alpha 6.12
 build cannot read its own 8-bit export for this very small dataset.

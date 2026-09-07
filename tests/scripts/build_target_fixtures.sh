@@ -11,3 +11,14 @@ plink2 --pfile test_target --export bgen-1.2 bits=16 --threads 1 --memory 1024 -
 cp test_target.pgen test_target.pvar test_target.psam "$repo_root/tests/data/target/"
 cp target_bed.bed target_bed.bim target_bed.fam target_ped.ped target_ped.map \
     target_bgen.bgen target_bgen.sample "$repo_root/tests/data/target/formats/"
+cp target_ped.ped "$repo_root/tests/data/resolver inputs/ukr/ukr.ped"
+cp target_ped.map "$repo_root/tests/data/resolver inputs/ukr/ukr.map"
+awk 'BEGIN {
+    OFS=","
+    print "[Header]"
+    print "Descriptor File Name,target_bed_manifest.csv"
+    print "[Assay]"
+    print "IlmnID,Name,IlmnStrand,SNP,GenomeBuild,Chr,MapInfo,RefStrand"
+}
+{print "probe" NR,$2,"TOP","[" $6 "/" $5 "]",37,$1,$4,"+"}
+' target_bed.bim > "$repo_root/tests/data/target/formats/target_bed_manifest.csv"

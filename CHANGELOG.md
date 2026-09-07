@@ -4,6 +4,8 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Corrected path-resolution test fixtures to support participant QC and match BED
+  marker IDs to their manifest. Added checks for participant counts and exact scores.
 - Corrected stored Y-call counts before marker eligibility and restored manifest-based
   duplicate-assay grouping and allele-oriented concordance.
 - Preserved native hard calls, dosages and sample metadata through GRCh37 orientation,

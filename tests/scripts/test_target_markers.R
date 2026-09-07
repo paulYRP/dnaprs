@@ -19,8 +19,8 @@ run <- function(action, expected = 0L) {
 writeTSV(data.table(`#FID` = "0", IID = paste0("S", 1:4), SEX = c(1, 2, 2, 0)), "target.psam")
 
 # Single-zero recovery requires a compatible observed TOP allele.
-writeTSV(data.table(`#CHROM` = "1", POS = 10:12, ID = c("recover", "incompatible", "reverse"),
-  REF = c("A", "C", "A"), ALT = c(".", ".", "G")), "assays.pvar")
+writeTSV(data.table(`#CHROM` = "1", POS = 10:13, ID = c("recover", "incompatible", "reverse", "unlisted"),
+  REF = c("A", "C", "A", "A"), ALT = c(".", ".", "G", "G")), "assays.pvar")
 writeLines(c("[Assay]", "Name,IlmnStrand,SNP,Chr,MapInfo,RefStrand",
   "recover,BOT,[T/C],1,10,-", "incompatible,TOP,[A/G],1,11,+", "reverse,TOP,[A/G],1,12,+"), file.path(root, "assays.csv"))
 stopifnot(system2("perl", shQuote(c(normalizePath("bin/target_adapter.pl"), "annotate-pvar",
@@ -29,7 +29,8 @@ stopifnot(system2("perl", shQuote(c(normalizePath("bin/target_adapter.pl"), "ann
 assay <- fread(file.path(root, "assay_decisions.tsv"))
 stopifnot(assay[source_id == "recover", final_alt] == "G",
   assay[source_id == "recover", assay_ref_a] == "T", assay[source_id == "recover", assay_ref_b] == "C",
-  assay[source_id == "incompatible", assay_status] == "INCOMPATIBLE")
+  assay[source_id == "incompatible", assay_status] == "INCOMPATIBLE",
+  assay[source_id == "unlisted", assay_status] == "MISSING_MANIFEST_RECORD")
 
 pvar <- data.table(`#CHROM` = "1", POS = c(10, 20, 30, 40, 50, 60, 70, 70, 70, 80, 80, 90, 90, 110, 110, 120, 120, 140),
   ID = c("direct", "complement", "unresolved", "multiallelic", "ambiguous", "invalid", "rs107", "b107", "c107", "b108", "rs108", "d1", "d2", "assay1", "assay2", "no_overlap1", "no_overlap2", "missing"),

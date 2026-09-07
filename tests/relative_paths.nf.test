@@ -19,7 +19,7 @@ nextflow_pipeline {
                     stage: 'raw',
                     build: 'GRCh37',
                     ancestry: 'European',
-                    assay_manifest: '../../../tests/data/target/mini_manifest.csv',
+                    assay_manifest: '../../../tests/data/target/formats/target_bed_manifest.csv',
                 ]]
                 gwas = [[
                     id: 'MDD',
@@ -66,13 +66,20 @@ nextflow_pipeline {
             def references = path("$runDir/data/inputs/references.tsv")
 
             assert workflow.success
+            def scores = path("$runDir/data/scores/RELATIVE/MDD/RELATIVE.MDD.plink_ct.score.tsv")
+            def scoreByParticipant = scores.text.readLines().tail().collectEntries { line ->
+                def fields = line.replace('"', '').split('\t', -1)
+                [(fields[6]): fields[7] as Double]
+            }
             assertAll(
                 { assert targets.exists() },
                 { assert targets.text.contains('/tests/data/target/formats/target_bed.bed') },
+                { assert targets.text.contains('/tests/data/target/formats/target_bed_manifest.csv') },
                 { assert gwas.text.contains('/tests/data/gwas/mdd.tsv') },
                 { assert references.text.contains('/tests/data/reference/dbsnp_source') },
                 { assert path("$runDir/data/target_qc/RELATIVE/RELATIVE.target_qc.tsv").exists() },
-                { assert path("$runDir/data/scores/RELATIVE/MDD/RELATIVE.MDD.plink_ct.score.tsv").exists() },
+                { assert scoreByParticipant == [TEST01: -0.08d, TEST02: -0.06d, TEST03: 0.20d, TEST04: -0.16d, TEST05: 0.10d, TEST06: 0.12d] },
+                { assert scores.text.readLines().tail().every { it.endsWith('\t2') } },
                 { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() }
             )
         }
