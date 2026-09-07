@@ -44,11 +44,12 @@ process GENOTYPE_EDA {
     printf 'cohort\tmaf_bin\tvariants\tpercent\n${meta.cohort}\t(0.20,0.50]\t2\t100\n' > ${meta.cohort}.allele_frequency_bins.tsv
     printf 'cohort\tFID\tIID\tobserved_homozygotes\texpected_homozygotes\tobservations\tinbreeding_coefficient\theterozygosity_rate\tmissingness\theterozygosity_z\tstatus\n${meta.cohort}\tTEST01\tTEST01\t1\t1\t2\t0\t0.5\t0\t0\tPASS\n${meta.cohort}\tTEST02\tTEST02\t1\t1\t2\t0\t0.5\t0\t0\tPASS\n' > ${meta.cohort}.heterozygosity.tsv
     printf 'cohort\tFID\tIID\trecorded_sex\tgenetic_sex\tx_inbreeding_coefficient\tstatus\treason\n' > ${meta.cohort}.sex_check.tsv
-    printf 'cohort\tFID1\tIID1\tFID2\tIID2\tvariants\tpi_hat\tz0\tz1\tz2\trelationship_category\treview_status\n' > ${meta.cohort}.relatedness.tsv
+    printf 'cohort\tFID1\tIID1\tFID2\tIID2\tvariants\tpi_hat\tz0\tz1\tz2\trelationship_category\treview_status\n${meta.cohort}\tTEST01\tTEST01\tTEST02\tTEST02\t2\t0\t1\t0\t0\tunrelated\tPASS\n' > ${meta.cohort}.relatedness.tsv
     printf 'cohort\tpi_hat_bin\tpairs\tpercent\n' > ${meta.cohort}.relatedness_bins.tsv
     printf 'cohort\tFID\tIID\tPC1\tPC2\tPC3\tPC4\tPC5\tPC6\tPC7\tPC8\tPC9\tPC10\n' > ${meta.cohort}.internal_pca.tsv
     printf 'cohort\tcomponent\teigenvalue\tpercent_of_reported_eigenvalues\n' > ${meta.cohort}.pca_eigenvalues.tsv
     printf 'cohort\tcheck\tstatus\tvalue\treason\n${meta.cohort}\tformat_import\tPASS\t2 participants; 2 variants\tThe supplied target was imported without changing the source files.\n${meta.cohort}\treported_sex\tNOT_RUN\t0 recorded; 0 X variants\tRecorded sex or X-chromosome variants were unavailable.\n' > ${meta.cohort}.genotype_eda_checks.tsv
     printf 'Genotype EDA stub completed.\n' > ${meta.cohort}.genotype_eda.log
+    printf '${meta.cohort}\theterozygosity\tPASS\t2\tHeterozygosity calculated.\n${meta.cohort}\trelatedness\tPASS\t1\tRelatedness calculated.\n' >> ${meta.cohort}.genotype_eda_checks.tsv
     """
 }

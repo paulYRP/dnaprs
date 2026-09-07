@@ -31,7 +31,7 @@ output:
           description: "Imported PGEN files with source-order assay annotation."
       - "${meta.cohort}.initial_marker_decisions.tsv":
           type: file
-          description: "Source-order marker resolution audit."
+          description: "Source-order annotation audit with original, TOP and reference-oriented assay alleles, strand fields and compatibility status."
   versions_plink2:
     - - "${task.process}":
           type: string

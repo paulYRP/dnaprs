@@ -16,15 +16,18 @@ process PARTICIPANT_DECISIONS {
     relatedness = eda_tables.find { table -> table.name.endsWith('.relatedness.tsv') }
     heterozygosity = eda_tables.find { table -> table.name.endsWith('.heterozygosity.tsv') }
     sex_check = eda_tables.find { table -> table.name == "${meta.cohort}.sex_check.tsv" }
+    qc_checks = eda_tables.find { table -> table.name.endsWith('.genotype_eda_checks.tsv') }
     if (!relatedness) error "The genotype EDA output for ${meta.cohort} has no relatedness table."
     if (!heterozygosity) error "The genotype EDA output for ${meta.cohort} has no heterozygosity table."
     if (!sex_check) error "The genotype EDA output for ${meta.cohort} has no sex-check table."
+    if (!qc_checks) error "The sample QC output for ${meta.cohort} has no diagnostic-status table."
     """
     Rscript ${decision_script} \
         --sample-decisions '${sample_decisions}' \
         --relatedness '${relatedness}' \
         --heterozygosity '${heterozygosity}' \
         --sex-check '${sex_check}' \
+        --qc-checks '${qc_checks}' \
         --ancestry '${target_ancestry}' \
         --output '${meta.cohort}.participant_decisions.tsv' \
         --keep '${meta.cohort}.score_eligible.keep'
@@ -32,7 +35,7 @@ process PARTICIPANT_DECISIONS {
 
     stub:
     """
-    printf 'cohort\tFID\tIID\tmissingness\tsample_missingness_pass\theterozygosity_z\theterozygosity_pass\tsex_check_pass\ttechnical_pass\tscore_eligible\trelated_flag\tancestry_flag\tancestry_distance\tprimary_analysis\treason\n${meta.cohort}\tTEST01\tTEST01\t0\tTRUE\t0\tTRUE\tTRUE\tTRUE\tTRUE\tFALSE\tPASS\t0.5\tTRUE\tEligible\n${meta.cohort}\tTEST02\tTEST02\t0\tTRUE\t0\tTRUE\tTRUE\tTRUE\tTRUE\tFALSE\tPASS\t0.6\tTRUE\tEligible\n' > ${meta.cohort}.participant_decisions.tsv
+    printf 'cohort\tFID\tIID\tmissingness\tretained_after_qc\tsample_missingness_pass\theterozygosity_z\theterozygosity_pass\tsex_check_pass\tsex_check_status\ttechnical_pass\tscore_eligible\trelated_flag\tancestry_flag\tancestry_distance\tprimary_analysis\treason\n${meta.cohort}\tTEST01\tTEST01\t0\tTRUE\tTRUE\t0\tTRUE\tTRUE\tPASS\tTRUE\tTRUE\tFALSE\tPASS\t0.5\tTRUE\tEligible\n${meta.cohort}\tTEST02\tTEST02\t0\tTRUE\tTRUE\t0\tTRUE\tTRUE\tPASS\tTRUE\tTRUE\tFALSE\tPASS\t0.6\tTRUE\tEligible\n' > ${meta.cohort}.participant_decisions.tsv
     printf 'TEST01\tTEST01\nTEST02\tTEST02\n' > ${meta.cohort}.score_eligible.keep
     """
 }

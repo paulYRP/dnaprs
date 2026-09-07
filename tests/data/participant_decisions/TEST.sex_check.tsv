@@ -1,1 +1,5 @@
 cohort	FID	IID	recorded_sex	genetic_sex	x_inbreeding_coefficient	status	reason
+TEST	TEST01	TEST01	NA	NA	NA	NOT_APPLICABLE	No X markers
+TEST	TEST02	TEST02	NA	NA	NA	NOT_APPLICABLE	No X markers
+TEST	TEST03	TEST03	NA	NA	NA	NOT_APPLICABLE	No X markers
+TEST	TEST04	TEST04	NA	NA	NA	NOT_APPLICABLE	No X markers

@@ -64,7 +64,7 @@ output:
           description: Metadata associated with participant-level retain/filter decisions.
       - ${meta.cohort}.sample_decisions.tsv:
           type: file
-          description: Participant-level retain/filter decisions.
+          description: Baseline missingness and actual retained_after_qc membership for every original participant.
   sex_check:
     - - meta:
           type: map

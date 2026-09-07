@@ -395,15 +395,20 @@ if [[ "$pruned_count" -ge 2 ]]; then
                 sd=(finite > 1 ? sqrt(square / (finite - 1)) : 0)
                 for (i=1; i<=n; i++) {
                     key=fid_value[i] SUBSEP iid_value[i]
-                    z=(rate[i] != "" && sd > 0 ? (rate[i] - mean) / sd : 0)
-                    status=(sd > 0 && (z < -3 || z > 3) ? "REVIEW" : "PASS")
+                    z=(rate[i] == "" ? "NA" : (sd > 0 ? (rate[i] - mean) / sd : 0))
+                    status=(rate[i] == "" ? "FAIL" : (z < -3 || z > 3 ? "REVIEW" : "PASS"))
                     print cohort, fid_value[i], iid_value[i], observed[i], expected[i], observations[i], coefficient[i], rate[i], missing[key], z, status
                 }
             }
         ' "${analysis_prefix}.smiss" "${analysis_prefix}_heterozygosity.het" > "${cohort}.heterozygosity.tsv"
         heterozygosity_status="PASS"
         heterozygosity_reason="Autosomal heterozygosity was calculated from the LD-pruned marker set."
+        if awk -F '\t' 'NR > 1 && $11 == "FAIL" {failed=1} END {exit !failed}' "${cohort}.heterozygosity.tsv"; then
+            heterozygosity_status="FAIL"
+            heterozygosity_reason="Heterozygosity could not be calculated for every participant; inspect the stage log."
+        fi
     else
+        heterozygosity_status="FAIL"
         heterozygosity_reason="PLINK could not calculate autosomal heterozygosity; inspect the stage log."
     fi
 fi
@@ -503,6 +508,7 @@ if [[ "$pruned_count" -ge 2 ]]; then
         relatedness_status=$([[ "$related_problem_count" -gt 0 ]] && printf 'REVIEW' || printf 'PASS')
         relatedness_reason="PLINK 1 identity by descent was calculated from the LD-pruned exploratory marker set; PI_HAT >= 0.1875 was flagged."
     else
+        relatedness_status="FAIL"
         relatedness_reason="PLINK could not calculate identity by descent; inspect the stage log."
     fi
 

@@ -1,5 +1,5 @@
 name: finalise_target
-description: Extract retained source markers, apply rsIDs, and orient the corrected target to GRCh37.
+description: Extract retained source markers, apply rsIDs and orient native genotypes to GRCh37 without a sample VCF reimport.
 keywords:
   - genotype
   - prs

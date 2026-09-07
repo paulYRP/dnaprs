@@ -186,6 +186,28 @@ European distance percentile. Participant decisions
 separate technical eligibility, relatedness, ancestry, score eligibility, and primary
 analysis.
 
+Raw marker preparation counts stored calls before excluding all-missing probes. It
+counts Y calls separately from sex-aware missingness. Duplicate rsID groups must share
+one manifest-derived assay pair and have completely concordant overlapping calls.
+The retained probe has the highest call rate, then an exact source-rsID match, then
+the earliest source row. Groups without overlapping calls are excluded.
+
+GRCh37 orientation preserves native genotypes, dosages and sample metadata for QC.
+For array inputs, `bcftools +fixref` determines the TOP-to-forward transformation from
+marker alleles and reference sequence; PLINK applies the allele recoding to PGEN.
+Reference checks remain required before imputation.
+
+Required post-QC calculations must complete for retained participants. Missing or
+invalid heterozygosity, relatedness or ancestry results stop scoring. Participants
+already removed by sample QC remain in the decision table without requiring those
+downstream results. A sex check without X data or recorded sex is `NOT_APPLICABLE`,
+not a completed calculation.
+
+Existing PLINK PRS columns are preserved as `_NIMP` when no archive exists. If both
+columns already exist, the output preserves `_NIMP` and replaces the current score.
+The pipeline does not edit the phenotype input. It preserves non-score values and
+all timepoints; model selection still uses the declared `timepoint_values`.
+
 Each available autosome is emitted as one independent Beagle task. Nextflow schedules
 these tasks concurrently when executor capacity is available and merges them only after
 all expected chromosome checks pass. PLINK C+T is also calculated from the stricter

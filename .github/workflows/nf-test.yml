@@ -126,6 +126,15 @@ jobs:
             --profile test,docker \
             --ci
 
+      - name: Test participant QC and existing phenotype scores
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
+            Rscript tests/scripts/test_participant_inputs.R
+
       - name: Run minimal real-tool workflow test
         if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |

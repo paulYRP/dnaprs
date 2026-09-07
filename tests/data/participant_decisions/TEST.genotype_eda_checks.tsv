@@ -1,0 +1,3 @@
+cohort	check	status	value	reason
+TEST	heterozygosity	PASS	4 participants	Completed
+TEST	relatedness	REVIEW	6 pairs	Completed with a flagged pair

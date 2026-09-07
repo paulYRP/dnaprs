@@ -16,6 +16,7 @@ nextflow_process {
                 input[0] = [[cohort: 'TEST'], file("${projectDir}/tests/data/participant_decisions/TEST.sample_decisions.tsv"), [
                     file("${projectDir}/tests/data/participant_decisions/TEST.heterozygosity.tsv"),
                     file("${projectDir}/tests/data/participant_decisions/TEST.sex_check.tsv"),
+                    file("${projectDir}/tests/data/participant_decisions/TEST.genotype_eda_checks.tsv"),
                     file("${projectDir}/tests/data/participant_decisions/TEST.relatedness.tsv")
                 ], file("${projectDir}/tests/data/participant_decisions/TEST.target_ancestry.tsv")]
                 input[1] = file("${projectDir}/bin/participant_decisions.R")

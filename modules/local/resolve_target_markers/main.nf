@@ -25,7 +25,7 @@ process RESOLVE_TARGET_MARKERS {
 
     stub:
     """
-    printf 'source_id\tfinal_id\tsource_chr\tsource_pos\tfinal_chr\tfinal_pos\tsource_ref\tsource_alt\tfinal_ref\tfinal_alt\tdecision\treason\n1:100:A:G\t1:100:A:G\t1\t100\t1\t100\tA\tG\tA\tG\tINHERITED\tStub target\n' > ${meta.cohort}.marker_decisions.tsv
+    printf 'source_id\tfinal_id\tsource_chr\tsource_pos\tfinal_chr\tfinal_pos\tsource_ref\tsource_alt\tfinal_ref\tfinal_alt\tdecision\treason\tcall_count\tcall_rate\tassay_ref_a\tassay_ref_b\tassay_pair\tassay_status\n1:100:A:G\t1:100:A:G\t1\t100\t1\t100\tA\tG\tA\tG\tINHERITED\tStub target\t2\t1\tA\tG\tA/G\tNOT_SUPPLIED\n' > ${meta.cohort}.marker_decisions.tsv
     printf '1:100:A:G\n' > ${meta.cohort}.retained_markers.txt
     printf '1:100:A:G\t1:100:A:G\n' > ${meta.cohort}.rename_markers.tsv
     touch ${meta.cohort}.duplicate_markers.txt

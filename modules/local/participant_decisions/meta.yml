@@ -19,14 +19,14 @@ input:
         type: map
         description: Target cohort metadata.
     - sample_decisions:
-        type: list
-        description: Sample-level decisions from target QC checkpoints.
+        type: file
+        description: Original participants, baseline missingness and actual retained-sample membership from target QC.
     - eda_tables:
         type: list
-        description: Post-QC heterozygosity and PLINK 1 identity-by-descent tables plus the corrected X-chromosome sex check.
+        description: Post-QC heterozygosity, complete PLINK 1 identity-by-descent pairs, calculation-status table and corrected X-chromosome sex check.
     - target_ancestry:
         type: file
-        description: Projected ancestry assignments and distance flags for target participants.
+        description: Projected ancestry assignments and distance flags for every retained target participant.
   - decision_script:
       type: file
       description: R script that integrates technical, relatedness, and ancestry decisions.
@@ -37,7 +37,7 @@ output:
           description: Metadata associated with participant decisions and score-eligible plink keep file.
       - ${meta.cohort}.participant_decisions.tsv:
           type: file
-          description: Technical, relatedness, ancestry, scoring, and primary-analysis decisions for each participant.
+          description: Retention, technical, relatedness, ancestry, scoring and primary-analysis decisions for each original participant, with sex-check applicability.
       - ${meta.cohort}.score_eligible.keep:
           type: file
           description: Two-column PLINK keep file for score-eligible participants.

@@ -4,6 +4,18 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Corrected stored Y-call counts before marker eligibility and restored manifest-based
+  duplicate-assay grouping and allele-oriented concordance.
+- Preserved native hard calls, dosages and sample metadata through GRCh37 orientation,
+  including TOP strand correction, without reimporting participant VCF genotypes.
+- Tracked actual retained participants and required complete post-QC calculations
+  before scoring. Distinguished sample exclusions from missing downstream results.
+- Supported phenotype inputs containing both current PRS and `_NIMP` columns without
+  modifying their archives, non-score fields or biological timepoints.
+- Added regression tests for marker orientation, stored calls, failed QC, excluded
+  participants and repeat-run phenotype score layouts.
+- Handled unavailable sex-check and relatedness plots and corrected faceted relatedness
+  heatmap rendering. Expanded synthetic workflow fixtures to exercise completed QC.
 - Split target import, marker resolution and GRCh37 finalisation into separately
   cached processes. Replaced per-marker lookups with keyed joins and restricted
   genotype concordance export to repeated rsID groups.

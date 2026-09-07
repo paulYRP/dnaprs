@@ -83,7 +83,7 @@ if [[ "$x_variants" -gt 0 && "$recorded_sex" -gt 0 ]]; then
             }
             next
         }
-        { print $(column_index["FID"]), $(column_index["IID"]) }
+        { print (column_index["FID"] ? $(column_index["FID"]) : "0"), $(column_index["IID"]) }
     ' "${imputation_prefix}.psam" > retained_participants.keep
     plink2 --pfile "$source_prefix" --keep retained_participants.keep --chr X --freq \
         --threads "$threads" --out "${cohort}.corrected_x"
@@ -110,19 +110,29 @@ if [[ "$x_variants" -gt 0 && "$recorded_sex" -gt 0 ]]; then
             print cohort, fid, $(column_index["IID"]), recorded, inferred, coefficient, status, reason
         }
     ' "${cohort}.corrected_x.sexcheck" >> "${cohort}.sex_check.tsv"
+else
+    awk -v cohort="$cohort" 'BEGIN { FS=OFS="\t" }
+        NR == 1 { for(i=1;i<=NF;i++) { name=$i; sub(/^#/, "", name); ix[name]=i }; next }
+        { print cohort, (ix["FID"] ? $(ix["FID"]) : "0"), $(ix["IID"]),
+            (ix["SEX"] ? $(ix["SEX"]) : "NA"), "NA", "NA", "NOT_APPLICABLE",
+            "Recorded sex or X-chromosome variants were unavailable." }
+    ' "${imputation_prefix}.psam" >> "${cohort}.sex_check.tsv"
 fi
 
 awk -v cohort="$cohort" -v stage="$input_stage" -v threshold="$mind" '
-BEGIN{FS=OFS="\t"; print "cohort","FID","IID","missingness","decision","reason"}
-/^#FID/ {for(i=1;i<=NF;i++) ix[$i]=i; next}
+BEGIN{FS=OFS="\t"; print "cohort","FID","IID","missingness","retained_after_qc","decision","reason"}
+FNR == 1 { delete ix; for(i=1;i<=NF;i++) { name=$i; sub(/^#/, "", name); ix[name]=i }; next }
+FILENAME == ARGV[1] { fid=(ix["FID"] ? $(ix["FID"]) : "0"); retained[fid SUBSEP $(ix["IID"])]=1; next }
 !/^#/ {
-    fid=$(ix["#FID"]); iid=$(ix["IID"]); missing=$(ix["F_MISS"])+0
+    fid=(ix["FID"] ? $(ix["FID"]) : "0"); iid=$(ix["IID"]); missing=$(ix["F_MISS"])+0
+    kept=((fid SUBSEP iid) in retained)
     if(stage=="raw" || stage=="corrected") {
         decision=(missing>threshold ? "FILTER" : "RETAIN")
         reason=(missing>threshold ? "Sample missingness exceeds sample_missingness" : "Sample missingness within threshold")
     } else {decision="INHERITED"; reason="Participant eligibility inherited from declared checkpoint"}
-    print cohort,fid,iid,missing,decision,reason
-}' "${baseline}.smiss" > "${cohort}.sample_decisions.tsv"
+    if(!kept) reason=reason "; excluded from the retained genotype dataset"
+    print cohort,fid,iid,missing,(kept ? "TRUE" : "FALSE"),decision,reason
+}' "${imputation_prefix}.psam" "${baseline}.smiss" > "${cohort}.sample_decisions.tsv"
 
 awk -v cohort="$cohort" -v stage="$input_stage" -v impute_geno="$imputation_geno" -v direct_geno="$direct_geno" -v mafmin="$maf" -v hwemin="$hwe" '
 BEGIN{FS=OFS="\t"; print "cohort","ID","chromosome","position","ref","alt","missingness","maf","hwe_midp","imputation_decision","direct_decision","decision","reason"}

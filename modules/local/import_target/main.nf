@@ -26,6 +26,6 @@ process IMPORT_TARGET {
     printf 'stub\n' > ${meta.cohort}.imported/${meta.cohort}.pgen
     printf '#CHROM\tPOS\tID\tREF\tALT\n1\t100\t1:100:A:G\tA\tG\n' > ${meta.cohort}.imported/${meta.cohort}.pvar
     printf '#FID\tIID\nTEST01\tTEST01\nTEST02\tTEST02\n' > ${meta.cohort}.imported/${meta.cohort}.psam
-    printf 'source_id\tfinal_id\n1:100:A:G\t1:100:A:G\n' > ${meta.cohort}.initial_marker_decisions.tsv
+    printf 'source_id\tfinal_id\tsource_chr\tsource_pos\tfinal_chr\tfinal_pos\tsource_ref\tsource_alt\tfinal_ref\tfinal_alt\tdecision\treason\tmanifest_a\tmanifest_b\ttop_a\ttop_b\tilmn_strand\tref_strand\tassay_ref_a\tassay_ref_b\tassay_status\n1:100:A:G\t1:100:A:G\t1\t100\t1\t100\tA\tG\tA\tG\tREVIEW\tStub target\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNA\tNOT_SUPPLIED\n' > ${meta.cohort}.initial_marker_decisions.tsv
     """
 }

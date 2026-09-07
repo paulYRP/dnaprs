@@ -73,16 +73,25 @@ fi
 plink2 --pfile "$imported/$cohort" --missing variant-only vcols=nmissdosage,nobs \
     --threads "$threads" --out "$cohort.missingness"
 sample_count=$(awk '!/^#/ && NF {n++} END {print n+0}' "$imported/$cohort.psam")
+awk '!/^#/ { chr=toupper($1); sub(/^CHR/, "", chr); if (chr == "Y" || chr == "24") print $3 }' \
+    "$imported/$cohort.pvar" > "$cohort.y_markers.txt"
+: > "$cohort.y_calls.traw"
+if [[ -s "$cohort.y_markers.txt" ]]; then
+    plink2 --pfile "$imported/$cohort" --extract "$cohort.y_markers.txt" \
+        --export Av --threads "$threads" --out "$cohort.y_calls"
+fi
 Rscript "$marker_resolver" --action match --threads "$threads" \
     --pvar "$imported/$cohort.pvar" --initial-decisions "$initial" \
     --missingness "$cohort.missingness.vmiss" --sample-count "$sample_count" \
+    --psam "$imported/$cohort.psam" --y-calls "$cohort.y_calls.traw" \
     --dbsnp-records dbsnp_records.tsv --chromosome-map chromosome_refseq.tsv \
     --candidates "$cohort.marker_candidates.rds" --duplicate-markers "$cohort.duplicate_markers.txt"
 if [[ -s "$cohort.duplicate_markers.txt" ]]; then
     plink2 --pfile "$imported/$cohort" --extract "$cohort.duplicate_markers.txt" \
-        --export A-transpose --threads "$threads" --out "$cohort.duplicate_calls"
+        --export Av --threads "$threads" --out "$cohort.duplicate_calls"
 fi
 Rscript "$marker_resolver" --action finalise --threads "$threads" \
     --candidates "$cohort.marker_candidates.rds" --calls "$cohort.duplicate_calls.traw" \
+    --psam "$imported/$cohort.psam" \
     --output-decisions "$cohort.marker_decisions.tsv" \
     --keep "$cohort.retained_markers.txt" --rename "$cohort.rename_markers.tsv"

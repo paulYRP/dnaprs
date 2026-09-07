@@ -57,9 +57,7 @@ if [[ "$input_stage" == "raw" ]]; then
 
     cp "$cohort/${cohort}_resolved.psam" resolved.psam
     export_prefix="$cohort/${cohort}_resolved"
-    export_args=(--export vcf bgz id-paste=iid)
     if [[ -z "$assay_manifest" ]]; then
-        export_args+=(vcf-dosage=DS)
         awk -F '\t' 'BEGIN { OFS="\t" }
             NR == 1 { for (i=1; i<=NF; i++) column[$i]=i; next }
             $(column["decision"]) ~ /^RETAINED_/ {
@@ -87,30 +85,68 @@ if [[ "$input_stage" == "raw" ]]; then
             --make-pgen --threads "$threads" --out "$cohort/${cohort}_oriented"
         export_prefix="$cohort/${cohort}_oriented"
     fi
-    plink2 --pfile "$export_prefix" "${export_args[@]}" \
-        --threads "$threads" --out "$cohort/${cohort}_top"
+    # A task-local marker VCF tracks where the original REF allele moves. The 0/0
+    # index is not a participant genotype. Keep it outside the published PGEN directory.
+    awk 'BEGIN { FS=OFS="\t"; print "##fileformat=VCFv4.2" }
+        !/^#/ { chromosome[$1]=1 }
+        END {
+            for (chr in chromosome) print "##contig=<ID=" chr ">"
+            print "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Original REF allele index\">"
+            print "#CHROM","POS","ID","REF","ALT","QUAL","FILTER","INFO","FORMAT","ALLELE_INDEX"
+        }
+    ' "$export_prefix.pvar" > "$cohort.allele_orientation.vcf"
+    awk 'BEGIN { FS=OFS="\t" } !/^#/ { print $1,$2,$3,$4,$5,".","PASS",".","GT","0/0" }' \
+        "$export_prefix.pvar" >> "$cohort.allele_orientation.vcf"
     if [[ -n "$assay_manifest" ]]; then
-        bcftools +fixref "$cohort/${cohort}_top.vcf.gz" -Oz -o "$cohort/${cohort}_forward.vcf.gz" -- \
+        bcftools +fixref "$cohort.allele_orientation.vcf" -Oz -o "$cohort.forward.vcf.gz" -- \
             -f "$reference_fasta" -m top
     else
-        cp "$cohort/${cohort}_top.vcf.gz" "$cohort/${cohort}_forward.vcf.gz"
+        bcftools view -Oz -o "$cohort.forward.vcf.gz" "$cohort.allele_orientation.vcf"
     fi
     bcftools norm -f "$reference_fasta" -c e -Oz \
-        -o "$cohort/${cohort}_forward.checked.vcf.gz" "$cohort/${cohort}_forward.vcf.gz"
-    tabix -f -p vcf "$cohort/${cohort}_forward.checked.vcf.gz"
-    plink2 --vcf "$cohort/${cohort}_forward.checked.vcf.gz" dosage=DS --double-id \
-        --make-pgen --threads "$threads" --out "$cohort/${cohort}_referenced"
-
-    awk '!/^#/ { print $2 }' resolved.psam > expected_iids.txt
-    awk '!/^#/ { print $2 }' "$cohort/${cohort}_referenced.psam" > observed_iids.txt
-    if ! cmp -s expected_iids.txt observed_iids.txt; then
-        echo "Participant identifiers changed during GRCh37 orientation for cohort '$cohort'." >&2
+        -o "$cohort.forward.checked.vcf.gz" "$cohort.forward.vcf.gz"
+    tabix -f -p vcf "$cohort.forward.checked.vcf.gz"
+    if [[ -n "$assay_manifest" ]]; then
+        # Use the reference-checked TOP transformation, including ambiguous SNPs.
+        # Apply its strand change to allele labels without changing PGEN indices.
+        bcftools query -f '%ID\t%REF\t%ALT[\t%GT]\n' \
+            "$cohort.forward.checked.vcf.gz" > reference_alleles.tsv
+        awk -F '\t' 'BEGIN { OFS="\t"; complement["A"]="T"; complement["T"]="A"; complement["C"]="G"; complement["G"]="C" }
+            NR == FNR {
+                if ($4 != "0/0" && $4 != "1/1") {
+                    printf "Marker %s has no completed TOP-to-forward transformation.\n", $1 > "/dev/stderr"
+                    exit 5
+                }
+                ref[$1]=$2; alt[$1]=$3; original_ref[$1]=($4 == "0/0" ? $2 : $3); next
+            }
+            /^#/ { print; next }
+            {
+                if ($4 != original_ref[$3]) { $4=complement[$4]; $5=complement[$5] }
+                if ($4 != original_ref[$3]) {
+                    printf "Marker %s has an invalid original REF transformation.\n", $3 > "/dev/stderr"
+                    exit 5
+                }
+                if (!(($4 == ref[$3] && $5 == alt[$3]) || ($5 == ref[$3] && $4 == alt[$3]))) {
+                    printf "Marker %s disagrees with its reference-checked TOP transformation.\n", $3 > "/dev/stderr"
+                    exit 5
+                }
+                print
+            }
+        ' reference_alleles.tsv "$export_prefix.pvar" > strand.pvar
+        mv strand.pvar "$export_prefix.pvar"
+        # PLINK recodes hard calls and dosages together when changing REF order.
+        plink2 --pfile "$export_prefix" --ref-allele force reference_alleles.tsv 2 1 \
+            --make-pgen --threads "$threads" --out "$cohort/${cohort}_oriented"
+        export_prefix="$cohort/${cohort}_oriented"
+    fi
+    # Keep native genotypes for QC. A VCF reimport can lose raw dosages or sex metadata.
+    if ! cmp -s resolved.psam "$export_prefix.psam"; then
+        echo "Sample metadata changed during GRCh37 orientation for cohort '$cohort'." >&2
         exit 5
     fi
-    cp resolved.psam "$cohort/${cohort}_referenced.psam"
-    mv "$cohort/${cohort}_referenced.pgen" "$cohort/${cohort}.pgen"
-    mv "$cohort/${cohort}_referenced.pvar" "$cohort/${cohort}.pvar"
-    mv "$cohort/${cohort}_referenced.psam" "$cohort/${cohort}.psam"
+    for extension in pgen pvar psam; do
+        cp "$export_prefix.$extension" "$cohort/${cohort}.$extension"
+    done
     duplicate_count=$(awk '!/^#/ {count[$3]++} END {n=0; for (id in count) if (count[id] > 1) n++; print n}' "$cohort/${cohort}.pvar")
     [[ "$duplicate_count" == "0" ]] || { echo "Resolved target for cohort '$cohort' contains repeated marker identifiers." >&2; exit 5; }
     invalid_alleles=$(awk '!/^#/ && ($4 !~ /^[ACGT]$/ || $5 !~ /^[ACGT]$/ || $4 == $5) { count++ } END { print count + 0 }' "$cohort/${cohort}.pvar")

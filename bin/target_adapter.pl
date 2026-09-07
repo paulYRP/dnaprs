@@ -66,6 +66,8 @@ sub read_manifest {
             top_b => $top_b // '',
             reference_a => $reference_a // '',
             reference_b => $reference_b // '',
+            ilmn_strand => $strand,
+            ref_strand => $ref_strand,
         };
     }
     close $handle;
@@ -178,7 +180,7 @@ sub annotate_pvar {
     open my $input, '<', $input_path or die "Cannot read $input_path: $!\n";
     open my $output, '>', $output_path or die "Cannot write $output_path: $!\n";
     open my $decision, '>', $decision_path or die "Cannot write $decision_path: $!\n";
-    print {$decision} join("\t", qw(source_id final_id source_chr source_pos final_chr final_pos source_ref source_alt final_ref final_alt decision reason)), "\n";
+    print {$decision} join("\t", qw(source_id final_id source_chr source_pos final_chr final_pos source_ref source_alt final_ref final_alt decision reason manifest_a manifest_b top_a top_b ilmn_strand ref_strand assay_ref_a assay_ref_b assay_status)), "\n";
     my %seen_id;
     while (my $line = <$input>) {
         if ($line =~ /^##/) {
@@ -196,6 +198,7 @@ sub annotate_pvar {
         my ($final_chr, $final_pos, $final_id, $final_ref, $final_alt) =
             ($source_chr, $source_pos, $source_id, uc($source_ref), uc($source_alt));
         my (@reason, $matched);
+        my @assay_metadata = (('') x 8, 'NOT_SUPPLIED');
         if (exists $marker_map->{$source_id}) {
             my $record = $marker_map->{$source_id};
             $final_id = $record->{new_id} if $record->{new_id} ne '';
@@ -210,16 +213,25 @@ sub annotate_pvar {
             $final_chr = $record->{chromosome} if $record->{chromosome} ne '';
             $final_pos = $record->{position} if $record->{position} ne '';
             my @assay = ($record->{top_a}, $record->{top_b});
-            if (($final_ref eq '' || $final_ref eq '.' || $final_ref eq '0') && $final_alt =~ /^[ACGT]$/) {
+            my $has_ref = scalar grep { $_ ne '' && $_ eq $final_ref } @assay;
+            my $has_alt = scalar grep { $_ ne '' && $_ eq $final_alt } @assay;
+            if (($final_ref eq '' || $final_ref eq '.' || $final_ref eq '0') && $has_alt) {
                 my ($other) = grep { $_ ne $final_alt } @assay;
                 $final_ref = $other if defined $other;
             }
-            if (($final_alt eq '' || $final_alt eq '.' || $final_alt eq '0') && $final_ref =~ /^[ACGT]$/) {
+            if (($final_alt eq '' || $final_alt eq '.' || $final_alt eq '0') && $has_ref) {
                 my ($other) = grep { $_ ne $final_ref } @assay;
                 $final_alt = $other if defined $other;
             }
+            my $compatible = $final_ref =~ /^[ACGT]$/ && $final_alt =~ /^[ACGT]$/ &&
+                $final_ref ne $final_alt &&
+                (grep { $_ eq $final_ref } @assay) && (grep { $_ eq $final_alt } @assay);
+            @assay_metadata = (@{$record}{qw(assay_a assay_b top_a top_b ilmn_strand ref_strand reference_a reference_b)},
+                $compatible ? 'COMPATIBLE' : 'INCOMPATIBLE');
             push @reason, 'Illumina assay manifest';
             $matched = 1;
+        } elsif (defined($manifest_path) && $manifest_path ne '') {
+            $assay_metadata[-1] = 'MISSING_MANIFEST_RECORD';
         }
         my $decision_value = $matched ? 'CORRECTED_OR_VERIFIED' : 'REVIEW';
         push @reason, 'no marker annotation supplied' if !$matched;
@@ -231,7 +243,7 @@ sub annotate_pvar {
         print {$output} join("\t", @value), "\n";
         print {$decision} join("\t", $source_id, $final_id, $source_chr, $source_pos, $final_chr,
             $final_pos, $source_ref, $source_alt, $final_ref, $final_alt, $decision_value,
-            join('; ', @reason)), "\n";
+            join('; ', @reason), @assay_metadata), "\n";
     }
     close $input;
     close $output;

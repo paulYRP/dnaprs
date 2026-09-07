@@ -43,13 +43,25 @@ key counts and `unique_compatible`. Ambiguous keys remain in the index for trait
 QC but are not used for scoring. Reference preparation records chromosome source
 SHA-256 checksums and population-selection identity alongside its summary.
 
+`marker_decisions.tsv` records stored `call_count` and `call_rate`, manifest/TOP alleles,
+strand fields, the reference-oriented `assay_pair`, final genomic `REF/ALT`, and duplicate
+decisions. Raw call rate uses all input participants, including for Y. It is distinct
+from sex-aware biological QC.
+
 `participant_decisions.tsv` reports sample missingness, heterozygosity, sex-check,
 relatedness, and ancestry results separately. `score_eligible` requires the technical
 checks. `primary_analysis` also requires compatible ancestry and no PLINK 1 pair with
 `PI_HAT >= 0.1875`; both members of a flagged pair are excluded.
+`retained_after_qc` records actual genotype membership. Removed participants remain
+in the table but cannot be score-eligible; their ancestry and sex-check statuses are
+`NOT_ASSESSED`. `sex_check_status` distinguishes a passing check from
+`NOT_APPLICABLE`. Required calculation failures stop participant selection.
 
 `phenotype_with_prs.tsv` retains every phenotype row in source order and attaches the
-participant decisions plus raw and standardised scores. `phenotype_participant_level.tsv`
+raw and standardised scores. Existing `_NIMP` archives and non-score values remain
+unchanged. New decision fields are attached only where they do not replace input
+phenotype columns; the separate participant-decision table contains current QC.
+`phenotype_participant_level.tsv`
 contains the records selected for each model after timepoint and technical-record checks.
 `phenotype_timepoint_completeness.tsv` reports selected and missing requested visits.
 `phenotype_associations.tsv` includes Student-t confidence intervals for fixed Gaussian

@@ -25,3 +25,83 @@ awk 'NR==2 { if ($5 != "A" || $7 != 1.25 || $8 != 0.75) exit 1 }
      END { if (NR != 3) exit 1 }' observed.traw
 test ! -s DOSAGE.duplicate_markers.txt
 printf 'Marker resolution preserves dosages and corrects reversed reference alleles.\n'
+
+mkdir manifest_dosages
+cp -r DOSAGE.imported manifest_dosages/
+cp DOSAGE.retained_markers.txt DOSAGE.rename_markers.tsv DOSAGE.marker_decisions.tsv manifest_dosages/
+(
+    cd manifest_dosages
+    bash "$repo_root/bin/finalise_target.sh" DOSAGE DOSAGE.imported raw top \
+        "$repo_root/tests/data/reference/human_g1k_v37.fasta" 1
+    plink2 --pfile DOSAGE/DOSAGE --export Av --threads 1 --memory 1024 --out observed
+    cmp ../observed.traw observed.traw
+)
+printf 'TOP-to-forward correction preserves raw dosages.\n'
+
+# Retained calls on sex chromosomes must survive preparation before biological QC.
+printf '%s\n' \
+    'F M 0 0 1 -9 A G A G A G G G' \
+    'F W 0 0 2 -9 G G A G A A A G' \
+    'F U 0 0 0 -9 A A A A G G 0 0' > chromosomes.ped
+printf '%b\n' '1\tauto\t0\t100' '23\tx\t0\t100' '24\ty\t0\t100' '26\tmt\t0\t100' > chromosomes.map
+mkdir -p CHROM.imported
+plink2 --pedmap chromosomes --make-pgen --threads 1 --memory 1024 --out CHROM.imported/CHROM
+plink2 --pfile CHROM.imported/CHROM --export Av --threads 1 --memory 1024 --out before
+plink2 --pfile CHROM.imported/CHROM --missing variant-only vcols=nmissdosage,nobs \
+    --threads 1 --memory 1024 --out before
+Rscript -e '
+    library(data.table)
+    calls <- fread("before.traw"); missing <- fread("before.vmiss")
+    count <- rowSums(!is.na(as.matrix(calls[, 7:ncol(calls), with=FALSE])))
+    fast <- missing$OBS_CT - missing$MISSING_DOSAGE_CT
+    stopifnot(all(count[calls$CHR != "Y"] == fast[calls$CHR != "Y"]), count[calls$CHR == "Y"] > fast[calls$CHR == "Y"])
+'
+awk '!/^#/ {print $3}' CHROM.imported/CHROM.pvar > CHROM.retained_markers.txt
+awk 'BEGIN {OFS="\t"} !/^#/ {print $3,$3}' CHROM.imported/CHROM.pvar > CHROM.rename_markers.tsv
+printf 'final_id\tfinal_chr\tfinal_pos\tfinal_ref\tfinal_alt\tdecision\n' > CHROM.marker_decisions.tsv
+awk 'BEGIN {OFS="\t"} !/^#/ {print $3,$1,$2,"A","G","RETAINED_UNIQUE"}' CHROM.imported/CHROM.pvar >> CHROM.marker_decisions.tsv
+for chromosome in 1 X Y MT; do
+    printf '>%s\n' "$chromosome"
+    printf '%01000d\n' 0 | tr '0' 'A'
+done > chromosomes.fasta
+awk 'BEGIN {OFS="\t"} /^>/ {name=substr($0,2); offset+=length($0)+1; next}
+     {print name,length($0),offset,length($0),length($0)+1; offset+=length($0)+1}' chromosomes.fasta > chromosomes.fasta.fai
+bash "$repo_root/bin/finalise_target.sh" CHROM CHROM.imported raw top chromosomes.fasta 1
+plink2 --pfile CHROM/CHROM --export Av --threads 1 --memory 1024 --out after
+Rscript -e '
+    library(data.table)
+    before <- fread("before.traw"); after <- fread("after.traw")
+    after <- after[match(before$SNP, SNP)]
+    stopifnot(identical(names(before), names(after)), identical(before$SNP, after$SNP))
+    first <- as.matrix(before[, 7:ncol(before), with=FALSE])
+    second <- as.matrix(after[, 7:ncol(after), with=FALSE])
+    reverse <- which(before$COUNTED != after$COUNTED)
+    second[reverse,] <- 2 - second[reverse,,drop=FALSE]
+    stopifnot(identical(is.na(first), is.na(second)), isTRUE(all.equal(first, second, check.attributes=FALSE)))
+'
+cmp CHROM.imported/CHROM.psam CHROM/CHROM.psam
+printf 'Autosomal, X, Y and mitochondrial stored calls and sample metadata are preserved.\n'
+
+# An ambiguous A/T SNP can require a strand change despite an unchanged REF/ALT pair.
+mkdir ambiguous
+cd ambiguous
+printf '%s\n' 'F A 0 0 2 -9 A A' 'F B 0 0 1 -9 A T' 'F C 0 0 0 -9 T T' > input.ped
+printf '1\tambiguous\t0\t100\n' > input.map
+mkdir AMBIG.imported
+plink2 --pedmap input --make-pgen --threads 1 --memory 1024 --out AMBIG.imported/AMBIG
+printf 'ambiguous\n' > AMBIG.retained_markers.txt
+printf 'ambiguous\tambiguous\n' > AMBIG.rename_markers.tsv
+printf 'final_id\tfinal_chr\tfinal_pos\tfinal_ref\tfinal_alt\tdecision\nambiguous\t1\t100\tA\tT\tRETAINED_UNIQUE\n' > AMBIG.marker_decisions.tsv
+printf '>1\n' > reference.fasta
+awk 'BEGIN {for(i=1;i<=1000;i++) printf (i == 99 ? "C" : "A"); printf "\n"}' >> reference.fasta
+printf '1\t1000\t3\t1000\t1001\n' > reference.fasta.fai
+bash "$repo_root/bin/finalise_target.sh" AMBIG AMBIG.imported raw top reference.fasta 1
+plink2 --pfile AMBIG/AMBIG --export Av --threads 1 --memory 1024 --out observed
+Rscript -e '
+    library(data.table)
+    calls <- fread("observed.traw")
+    value <- as.numeric(calls[1, 7:9, with=FALSE])
+    if (calls$COUNTED == "A") value <- 2 - value
+    stopifnot(identical(value, c(2, 1, 0)))
+'
+printf 'Ambiguous TOP alleles follow the reference-context strand transformation.\n'

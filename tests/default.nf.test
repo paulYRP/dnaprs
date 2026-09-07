@@ -21,6 +21,11 @@ nextflow_pipeline {
             def association = path("$runDir/data/phenotype/phenotype_associations.tsv")
             def scores = path("$runDir/data/scores/combined/prs_scores_long.tsv")
             def participants = path("$runDir/data/target_qc/TEST/TEST.participant_decisions.tsv")
+            def participantLines = participants.text.readLines()
+            def participantHeader = participantLines[0].replace('"', '').split('\t', -1)
+            def participantRows = participantLines.tail().collect { line ->
+                [participantHeader, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
             def variants = path("$runDir/data/target_qc/TEST/TEST.variant_decisions.tsv")
             def report = path("$runDir/reports/index.html")
             def logsPage = path("$runDir/reports/logs.html")
@@ -55,8 +60,8 @@ nextflow_pipeline {
                 { assert coverageFields[9] == 'PASS' },
                 { assert scoreByParticipant == [TEST01: -0.08d, TEST02: -0.06d, TEST03: 0.20d, TEST04: -0.16d, TEST05: 0.10d, TEST06: 0.12d] },
                 { assert participants.text.readLines().tail().size() == 6 },
-                { assert participants.text.readLines().tail().every { it.contains('\tTRUE\tTRUE\tFALSE\t"PASS"') } },
-                { assert variants.text.readLines().tail().size() == 2 },
+                { assert participantRows.every { it.retained_after_qc == 'TRUE' && it.score_eligible == 'TRUE' && it.related_flag == 'FALSE' && it.ancestry_flag == 'PASS' && it.sex_check_status == 'NOT_APPLICABLE' } },
+                { assert variants.text.readLines().tail().size() == 6 },
                 { assert variants.text.readLines().tail().every { it.endsWith('\tRETAIN\tVariant passes both technical checkpoints') } },
                 { assert association.exists() },
                 { assert associationRecord.family == 'gaussian' },

@@ -1,5 +1,5 @@
 name: resolve_target_markers
-description: Resolve target rsIDs with keyed allele joins and assess concordance only for repeated probes.
+description: Resolve target rsIDs with keyed allele joins, stored-call counts and manifest-defined duplicate-assay concordance.
 keywords:
   - genotype
   - prs
@@ -49,7 +49,7 @@ output:
           description: "Imported PGEN directory, preserved unchanged across downstream tasks."
       - "${meta.cohort}.marker_decisions.tsv":
           type: file
-          description: "Source-order marker resolution audit."
+          description: "Source-order audit with raw call counts, assay identity, genomic REF/ALT, duplicate concordance and retention decisions."
       - "${meta.cohort}.retained_markers.txt":
           type: file
           description: "Source identifiers selected for extraction."

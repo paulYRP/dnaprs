@@ -74,19 +74,16 @@ if (length(participantCOLUMN) == 1L) {
   for (column in intersect(plinkCOLUMN, names(phenotype))) {
     archivedCOLUMN <- paste0(column, "_NIMP")
     if (archivedCOLUMN %in% names(phenotype)) {
-      stop(sprintf("Phenotype data already contain both '%s' and '%s'.", column, archivedCOLUMN), call. = FALSE)
-    }
-    data.table::setnames(phenotype, column, archivedCOLUMN)
-  }
-  if (length(scoreCOLUMN) > 0L) {
-    collision <- intersect(scoreCOLUMN, names(phenotype))
-    for (column in collision) {
-      archivedCOLUMN <- paste0(column, "_INPUT")
-      if (archivedCOLUMN %in% names(phenotype)) {
-        stop(sprintf("Phenotype data already contain both '%s' and '%s'.", column, archivedCOLUMN), call. = FALSE)
-      }
+      phenotype[, (column) := NULL]
+    } else {
       data.table::setnames(phenotype, column, archivedCOLUMN)
     }
+  }
+  generatedCOLUMN <- unique(c(score$score_name, score$raw_score_name))
+  # Preserve original non-score fields. Current participant decisions remain in the
+  # score table used for model eligibility and in the separate QC outputs.
+  scoreCOLUMN <- setdiff(scoreCOLUMN, intersect(setdiff(scoreCOLUMN, generatedCOLUMN), names(phenotype)))
+  if (length(scoreCOLUMN) > 0L) {
     if ("cohort" %in% names(phenotype)) {
       scoreKEY <- paste(scoreWIDE$cohort, scoreWIDE$IID, sep = "\r")
       phenotypeKEY <- paste(phenotype$cohort, phenotype[[participantCOLUMN]], sep = "\r")

@@ -535,8 +535,10 @@ if (nrow(heterozygosity) && all(c("heterozygosity_rate", "missingness") %in% nam
   )
 }
 
-if (nrow(sexCHECK) && "x_inbreeding_coefficient" %in% names(sexCHECK)) {
+if ("x_inbreeding_coefficient" %in% names(sexCHECK)) {
   sexCHECK[, x_inbreeding_coefficient := suppressWarnings(as.numeric(x_inbreeding_coefficient))]
+}
+if (nrow(sexCHECK) && "x_inbreeding_coefficient" %in% names(sexCHECK) && any(is.finite(sexCHECK$x_inbreeding_coefficient))) {
   sexPLOT <- ggplot(
     sexCHECK[is.finite(x_inbreeding_coefficient)],
     aes(x = reorder(IID, x_inbreeding_coefficient), y = x_inbreeding_coefficient, colour = recorded_sex)
@@ -556,8 +558,10 @@ if (nrow(sexCHECK) && "x_inbreeding_coefficient" %in% names(sexCHECK)) {
   )
 }
 
-if (nrow(relatedness) && "pi_hat" %in% names(relatedness)) {
+if ("pi_hat" %in% names(relatedness)) {
   relatedness[, pi_hat_numeric := suppressWarnings(as.numeric(pi_hat))]
+}
+if (nrow(relatedness) && "pi_hat_numeric" %in% names(relatedness) && any(is.finite(relatedness$pi_hat_numeric))) {
   relatednessPLOT <- ggplot(relatedness[is.finite(pi_hat_numeric)], aes(x = pi_hat_numeric)) +
     geom_histogram(bins = 40, fill = "#111111", colour = "white") +
     geom_vline(xintercept = .1875, linetype = 2, colour = "#777777") +
@@ -587,11 +591,11 @@ if (nrow(relatedness) && "pi_hat" %in% names(relatedness)) {
   ) +
     geom_tile() +
     scale_fill_gradient(low = "white", high = "#111111", limits = c(0, 1), oob = squish) +
-    coord_equal() +
     facet_wrap(~cohort, scales = "free") +
     labs(x = "Participant", y = "Participant", fill = "PI_HAT") +
     theme_minimal(base_size = 9) +
     theme(
+      aspect.ratio = 1,
       axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5),
       panel.grid = element_blank()
     )
