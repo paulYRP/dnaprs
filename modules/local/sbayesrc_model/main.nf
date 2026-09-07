@@ -1,6 +1,6 @@
 process SBAYESRC_MODEL {
     tag "${meta.trait_id}"
-    label 'process_high'
+    label 'process_medium'
 
     container 'docker.io/zhiliz/sbayesrc:0.2.6'
 

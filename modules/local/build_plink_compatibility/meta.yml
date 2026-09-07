@@ -1,0 +1,84 @@
+name: build_plink_compatibility
+description: Prepare target and reference allele compatibility once for all GWAS traits.
+keywords:
+  - genotype
+  - prs
+  - reference
+tools:
+  - "R":
+      description: "Statistical computing."
+      homepage: "https://www.r-project.org/"
+  - "data.table":
+      description: "Keyed table operations."
+      homepage: "https://rdatatable.gitlab.io/data.table/"
+input:
+  - - "target":
+        type: map
+        description: "Target cohort and scoring-stage metadata."
+    - "target_pvar":
+        type: file
+        description: "Final scoring-target PVAR."
+    - "reference":
+        type: map
+        description: "Prepared European reference metadata."
+    - "reference_pvar":
+        type: file
+        description: "Prepared European reference PVAR."
+  - "index_script":
+      type: file
+      description: "Staged implementation script."
+output:
+  index:
+    - - "target":
+          type: map
+          description: "Target cohort and scoring-stage metadata."
+      - "reference":
+          type: map
+          description: "Prepared European reference metadata."
+      - "${target.cohort}.${reference.reference_id}.compatibility.tsv":
+          type: file
+          description: "Shared target/reference allele compatibility table."
+  versions_r:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "R":
+          type: string
+          description: "Recorded value."
+      - "Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+  versions_data_table:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "data.table":
+          type: string
+          description: "Recorded value."
+      - 'Rscript -e ''cat(as.character(packageVersion("data.table")))'' 2>/dev/null || printf stub':
+          type: eval
+          description: "Command that reports the software version."
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "R":
+          type: string
+          description: "Recorded value."
+      - "Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "data.table":
+          type: string
+          description: "Recorded value."
+      - 'Rscript -e ''cat(as.character(packageVersion("data.table")))'' 2>/dev/null || printf stub':
+          type: eval
+          description: "Command that reports the software version."
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

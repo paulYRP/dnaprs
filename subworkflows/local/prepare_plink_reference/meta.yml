@@ -1,0 +1,51 @@
+name: prepare_plink_reference
+description: Balance reference chromosomes by source size, convert groups in parallel and merge complete results.
+keywords:
+  - reference
+  - plink
+  - chromosome
+components:
+  - prepare/plink/reference
+  - assemble/plink/reference
+input:
+  - panel_source:
+      type: channel
+      description: Reference panel metadata and chromosome source files or directories.
+  - population_source:
+      type: channel
+      description: Population metadata and source table.
+  - related_source:
+      type: channel
+      description: Related-sample exclusion metadata and table.
+  - unbref3_source:
+      type: channel
+      description: unbref3 metadata and JAR.
+  - prepare_script:
+      type: file
+      description: Chromosome group conversion script.
+  - genome_build:
+      type: string
+      description: Reference genome build; GRCh37.
+  - assemble_script:
+      type: file
+      description: Completeness validation and reference merge script.
+output:
+  - reference:
+      type: channel
+      description: Reference metadata and merged European and ancestry PGEN directory.
+  - summary:
+      type: channel
+      description: Reference metadata and sample and variant counts.
+  - source_qc:
+      type: channel
+      description: Reference metadata and chromosome counts and source SHA-256 checksums.
+  - logs:
+      type: channel
+      description: Reference metadata and grouped conversion and merge logs.
+  - identity:
+      type: channel
+      description: Reference metadata, selection rules and population and related-sample checksums.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

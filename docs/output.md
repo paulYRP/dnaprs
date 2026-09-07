@@ -37,6 +37,12 @@ model1/
 Large public source references remain in `--reference_dir`; the run records their
 validated receipt rather than publishing a second source copy.
 
+`reference/plink_ct/compatibility/<cohort>/` contains the shared allele index. It records
+canonical chromosome-position-allele keys, target and reference identifiers and alleles,
+key counts and `unique_compatible`. Ambiguous keys remain in the index for trait-specific
+QC but are not used for scoring. Reference preparation records chromosome source
+SHA-256 checksums and population-selection identity alongside its summary.
+
 `participant_decisions.tsv` reports sample missingness, heterozygosity, sex-check,
 relatedness, and ancestry results separately. `score_eligible` requires the technical
 checks. `primary_analysis` also requires compatible ancestry and no PLINK 1 pair with
@@ -64,6 +70,10 @@ Logs are grouped by target, reference, imputation, GWAS, PRS method, and report 
 The report Logs page displays supported text/HTML artifacts inline in expandable,
 collapsible, scrollable panels. Execution trace, timeline, report, and DAG files are
 also copied into report provenance when enabled.
+
+The execution trace includes submission, start and completion times, allocated CPUs,
+memory and walltime, execution duration, peak memory, input/output counts and attempts.
+Use submission-to-start time to assess queue delays and `realtime` to assess computation.
 
 ## `reports/`
 

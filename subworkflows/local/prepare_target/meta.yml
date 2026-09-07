@@ -1,0 +1,55 @@
+name: prepare_target
+description: Prepare a corrected target through separately cached import, marker resolution and finalisation.
+keywords:
+  - genotype
+  - prs
+  - markers
+components:
+  - import/target
+  - resolve/target/markers
+  - finalise/target
+input:
+  - target_files:
+      type: channel
+      description: Target metadata and declared genotype and assay files.
+  - dbsnp:
+      type: channel
+      description: dbSNP metadata and source files.
+  - reference_fasta:
+      type: channel
+      description: GRCh37 FASTA metadata and indexed source files.
+  - import_script:
+      type: file
+      description: Target import script.
+  - adapter_script:
+      type: file
+      description: Assay annotation adapter.
+  - marker_resolver:
+      type: file
+      description: Keyed marker and repeated-probe resolver.
+  - resolve_script:
+      type: file
+      description: dbSNP query and restricted genotype export script.
+  - finalise_script:
+      type: file
+      description: Retained-marker extraction and GRCh37 orientation script.
+output:
+  - prepared:
+      type: channel
+      description: Target metadata, corrected PGEN directory and preparation summary.
+  - prep:
+      type: channel
+      description: Target metadata and preparation summary.
+  - marker_decisions:
+      type: channel
+      description: Target metadata and source-order marker decisions.
+  - checkpoint:
+      type: channel
+      description: Target metadata, corrected PGEN directory and reusable manifest.
+  - duplicate_markers:
+      type: channel
+      description: Target metadata and source identifiers exported for repeated-probe concordance.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

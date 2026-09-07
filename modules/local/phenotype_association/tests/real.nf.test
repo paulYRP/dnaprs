@@ -38,7 +38,7 @@ nextflow_process {
         }
     }
 
-    test("repeated phenotype selects one declared timepoint - real") {
+    test("different biological visits and identical technical records select timepoint 1 - real") {
 
         when {
             process {
@@ -101,27 +101,6 @@ nextflow_process {
             assert process.failed
             assert process.errorReport.contains(
                 "Model 'baseline' has conflicting values for participant 'TEST01', field 'OUTCOME', timepoint '1': 4, 4.5."
-            )
-        }
-    }
-
-    test("fixed-model repeated-value agreement checks every timepoint - real") {
-
-        when {
-            process {
-                """
-                input[0] = [[cohort: 'TEST', role: 'target', trait_id: 'MDD', prs_name: 'MDD_PRS', method: 'plink_ct'], file("${projectDir}/tests/data/scores/test_timepoint.score.tsv"), file("${projectDir}/tests/data/phenotype_models_timepoint_agreement.tsv"), 'baseline_agreement']
-                input[1] = file("${projectDir}/tests/data/phenotype_repeated.tsv")
-                input[2] = file("${projectDir}/bin/phenotype_association.R")
-                input[3] = 22
-                """
-            }
-        }
-
-        then {
-            assert process.failed
-            assert process.errorReport.contains(
-                "Model 'baseline_agreement' requires repeated values to agree before timepoint selection, but participant 'TEST01' has conflicting field 'OUTCOME' values across timepoints 1, 2: 4, 5.1."
             )
         }
     }

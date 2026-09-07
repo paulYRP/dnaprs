@@ -22,6 +22,12 @@ while IFS= read -r module_dir; do
         printf 'ERROR: %s must use exactly one bundled process label.\n' "$module" >&2
         failed=1
     fi
+    while IFS= read -r resource_label; do
+        if ! grep -Eq "withLabel:[[:space:]]+${resource_label}[[:space:]]*\\{" "$repo_root/conf/base.config"; then
+            printf 'ERROR: %s uses resource label %s without a base configuration.\n' "$module" "$resource_label" >&2
+            failed=1
+        fi
+    done < <(sed -n "s/^[[:space:]]*label '\\(process_[a-z_]*\\)'.*/\\1/p" "$main")
     if ! grep -Eq '^[[:space:]]+stub:' "$main"; then
         printf 'ERROR: %s has no stub block.\n' "$module" >&2
         failed=1

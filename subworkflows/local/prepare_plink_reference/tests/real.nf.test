@@ -1,0 +1,57 @@
+nextflow_workflow {
+    name "Balanced reference chromosome preparation"
+    script "../../../../tests/workflows/reference_groups.nf"
+    workflow "TEST_REFERENCE_GROUPS"
+    tag "reference_groups"
+
+    for (count in [1, 2, 22]) {
+        test("prepare ${count} reference chromosomes with one deterministic merge") {
+            when {
+                workflow {
+                    """
+                    input[0] = ${count}
+                    input[1] = false
+                    input[2] = file("${projectDir}/tests/data/reference/source_panel/chr1.vcf")
+                    input[3] = [[path: 'population.tsv'], file("${projectDir}/tests/data/reference/population.tsv")]
+                    input[4] = [[path: 'related.txt'], file("${projectDir}/tests/data/reference/related.txt")]
+                    input[5] = [[path: 'unbref3.test.jar'], file("${projectDir}/tests/data/reference/unbref3.test.jar")]
+                    input[6] = file("${projectDir}/bin/prepare_plink_reference.sh")
+                    input[7] = file("${projectDir}/bin/assemble_plink_reference.sh")
+                    """
+                }
+            }
+            then {
+                assert workflow.success
+                def reference = workflow.out.reference[0]
+                def qc = file(workflow.out.source_qc[0][1]).text.readLines().tail()
+                assert reference[0].group_count == Math.min(6, count)
+                assert reference[0].chromosomes == (1..count).toList()
+                assert qc.collect { it.split('\t')[0] as Integer }.sort() == (1..count).toList()
+                assert qc.every { it.split('\t')[5] ==~ /[a-f0-9]{64}/ }
+                def pvar = file("${reference[1]}/eur_reference.pvar").text.readLines().findAll { !it.startsWith('#') }
+                assert pvar.collect { it.split('\t')[0] as Integer }.unique() == (1..count).toList()
+            }
+        }
+    }
+
+    test("reject repeated chromosome sources before conversion") {
+        when {
+            workflow {
+                """
+                input[0] = 2
+                input[1] = true
+                input[2] = file("${projectDir}/tests/data/reference/source_panel/chr1.vcf")
+                input[3] = [[path: 'population.tsv'], file("${projectDir}/tests/data/reference/population.tsv")]
+                input[4] = [[path: 'related.txt'], file("${projectDir}/tests/data/reference/related.txt")]
+                input[5] = [[path: 'unbref3.test.jar'], file("${projectDir}/tests/data/reference/unbref3.test.jar")]
+                input[6] = file("${projectDir}/bin/prepare_plink_reference.sh")
+                input[7] = file("${projectDir}/bin/assemble_plink_reference.sh")
+                """
+            }
+        }
+        then {
+            assert workflow.failed
+            assert workflow.errorReport.contains('Reference panel contains repeated chromosome files: 1.')
+        }
+    }
+}

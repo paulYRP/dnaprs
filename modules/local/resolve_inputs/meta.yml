@@ -77,9 +77,6 @@ input:
   - timepoint_values_spec:
       type: string
       description: Base64-encoded list of timepoint values retained for phenotype models.
-  - require_repeated_value_agreement:
-      type: boolean
-      description: Require declared fixed-model fields to agree across a participant's timepoints before selection.
   - group_column:
       type: string
       description: Grouping column required by mixed models.

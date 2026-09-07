@@ -1,17 +1,18 @@
 include { VALIDATE_MANIFESTS } from '../modules/local/validate_manifests/main'
 include { HARMONISE_GWAS } from '../modules/local/harmonise_gwas/main'
-include { PREPARE_TARGET } from '../modules/local/prepare_target/main'
+include { PREPARE_TARGET } from '../subworkflows/local/prepare_target/main'
 include { TARGET_QC } from '../modules/local/target_qc/main'
 include { PARTICIPANT_DECISIONS } from '../modules/local/participant_decisions/main'
 include { REFERENCE_ANCESTRY } from '../modules/local/reference_ancestry/main'
 include { TARGET_IMPUTE_CHROMOSOME } from '../modules/local/target_impute/main'
 include { ASSEMBLE_TARGET_IMPUTATION } from '../modules/local/assemble_target_imputation/main'
-include { PREPARE_PLINK_REFERENCE } from '../modules/local/prepare_plink_reference/main'
+include { PREPARE_PLINK_REFERENCE } from '../subworkflows/local/prepare_plink_reference/main'
 include { PREPARE_SBAYESRC_REFERENCE } from '../modules/local/prepare_sbayesrc_reference/main'
 include { GENOTYPE_EDA } from '../modules/local/genotype_eda/main'
 include { GENOTYPE_EDA as TARGET_QC_REVIEW } from '../modules/local/genotype_eda/main'
 include { PLINK_REFERENCE_FREQ } from '../modules/local/plink_reference_freq/main'
 include { ALIGN_PLINK_GWAS } from '../modules/local/align_plink_gwas/main'
+include { BUILD_PLINK_COMPATIBILITY } from '../modules/local/build_plink_compatibility/main'
 include { PLINK_CLUMP } from '../modules/local/plink_clump/main'
 include { BUILD_CT_WEIGHTS } from '../modules/local/build_ct_weights/main'
 include { PLINK_SCORE } from '../modules/local/plink_score/main'
@@ -287,9 +288,11 @@ workflow DNAPRS {
         target_inputs,
         dbsnp_source,
         reference_fasta_source,
-        script_files.prepare_target,
+        script_files.import_target,
         script_files.target_adapter,
         script_files.marker_resolver,
+        script_files.resolve_target_markers_shell,
+        script_files.finalise_target,
     )
     TARGET_QC(
         PREPARE_TARGET.out.prepared,
@@ -332,6 +335,7 @@ workflow DNAPRS {
         unbref3_jar_source,
         script_files.prepare_plink_reference,
         genome_build,
+        script_files.assemble_plink_reference,
     )
     plink_reference = PREPARE_PLINK_REFERENCE.out.reference.map { source, reference_dir ->
         def prepared = source + [
@@ -412,6 +416,9 @@ workflow DNAPRS {
         .mix(PARTICIPANT_DECISIONS.out.decisions.map { meta, decisions, _keep -> tuple("target_qc/${meta.cohort}", decisions) })
         .mix(PREPARE_PLINK_REFERENCE.out.summary.map { _meta, summary -> tuple('reference/plink_ct', summary) })
         .mix(PREPARE_PLINK_REFERENCE.out.source_qc.map { _meta, source_qc -> tuple('reference/plink_ct', source_qc) })
+        .mix(PREPARE_PLINK_REFERENCE.out.identity.flatMap { _meta, identity, selection_checksums ->
+            [tuple('reference/plink_ct', identity), tuple('reference/plink_ct', selection_checksums)]
+        })
         .mix(PREPARE_PLINK_REFERENCE.out.logs.map { _meta, log -> tuple('logs/reference/plink_ct', log) })
         .mix(REFERENCE_ANCESTRY.out.target.map { meta, ancestry -> tuple("target_qc/${meta.cohort}/ancestry", ancestry) })
         .mix(REFERENCE_ANCESTRY.out.reference.map { meta, projection -> tuple("target_qc/${meta.cohort}/ancestry", projection) })
@@ -516,9 +523,13 @@ workflow DNAPRS {
     if (run_prs && methods.contains('plink_ct')) {
         PLINK_REFERENCE_FREQ(plink_reference)
 
-        plink_alignment_input = score_target_files
-            .combine(HARMONISE_GWAS.out.harmonised)
+        compatibility_input = score_target_files
             .combine(plink_reference)
+            .map { target, target_dir, _qc, reference, reference_dir ->
+                tuple(target, target_dir.resolve("${target.cohort}.pvar"), reference, reference_dir.resolve('eur_reference.pvar'))
+            }
+        BUILD_PLINK_COMPATIBILITY(compatibility_input, script_files.build_plink_compatibility)
+        plink_alignment_input = BUILD_PLINK_COMPATIBILITY.out.index.combine(HARMONISE_GWAS.out.harmonised)
         ALIGN_PLINK_GWAS(plink_alignment_input, script_files.align_plink_gwas)
         PLINK_CLUMP(ALIGN_PLINK_GWAS.out.aligned.combine(plink_reference))
         BUILD_CT_WEIGHTS(PLINK_CLUMP.out.clumped, script_files.ct_weights)
@@ -545,6 +556,7 @@ workflow DNAPRS {
         )
 
         result_files = result_files
+            .mix(BUILD_PLINK_COMPATIBILITY.out.index.map { target, _reference, index -> tuple("reference/plink_ct/compatibility/${target.cohort}", index) })
             .mix(PLINK_REFERENCE_FREQ.out.frequency.map { _reference, frequency, _reference_log -> tuple('reference/plink_ct', frequency) })
             .mix(PLINK_REFERENCE_FREQ.out.frequency.map { _reference, _frequency, reference_log -> tuple('logs/plink_ct/reference', reference_log) })
             .mix(ALIGN_PLINK_GWAS.out.qc.map { target, meta, alignment_qc -> tuple("qc/plink_ct/${target.cohort}/${meta.trait_id}", alignment_qc) })

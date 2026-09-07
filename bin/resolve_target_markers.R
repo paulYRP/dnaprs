@@ -1,223 +1,159 @@
 #!/usr/bin/env Rscript
 
+suppressPackageStartupMessages(library(data.table))
 argument <- commandArgs(trailingOnly = TRUE)
 if (length(argument) %% 2L != 0L) stop("Arguments must be --name value pairs.", call. = FALSE)
-option <- stats::setNames(as.list(argument[seq.int(2L, length(argument), 2L)]), sub("^--", "", argument[seq.int(1L, length(argument), 2L)]))
-
-readTSV <- function(path, ...) utils::read.delim(
-  path, sep = "\t", header = TRUE, quote = "", comment.char = "", check.names = FALSE,
-  stringsAsFactors = FALSE, ...
-)
-readPVAR <- function(path) {
-  connection <- file(path, open = "rt")
-  on.exit(close(connection), add = TRUE)
-  metadataLINES <- 0L
-  repeat {
-    line <- readLines(connection, n = 1L, warn = FALSE)
-    if (length(line) == 0L) stop("PVAR has no #CHROM header.", call. = FALSE)
-    if (startsWith(line, "#CHROM\t")) break
-    if (!startsWith(line, "##")) {
-      stop("PVAR contains content before its #CHROM header that is not VCF metadata.", call. = FALSE)
-    }
-    metadataLINES <- metadataLINES + 1L
-  }
-  readTSV(path, skip = metadataLINES)
-}
-writeTSV <- function(value, path, header = TRUE) utils::write.table(
-  value, path, sep = "\t", quote = FALSE, row.names = FALSE, col.names = header, na = ""
-)
+option <- setNames(as.list(argument[seq.int(2L, length(argument), 2L)]), sub("^--", "", argument[seq.int(1L, length(argument), 2L)]))
+setDTthreads(as.integer(option[["threads"]]))
+readTSV <- function(path, ...) fread(path, sep = "\t", quote = "", na.strings = c("", "NA"), ...)
+writeTSV <- function(value, path, header = TRUE) fwrite(value, path, sep = "\t", quote = FALSE, col.names = header, na = "")
 complement <- function(value) chartr("ACGT", "TGCA", value)
-validALLELE <- function(value) grepl("^[ACGT]$", value)
-samePAIR <- function(first, second) identical(sort(first), sort(second))
+pairKEY <- function(ref, alt) paste(pmin(ref, alt), pmax(ref, alt), sep = "/")
+validPAIR <- function(ref, alt) !is.na(ref) & !is.na(alt) & grepl("^[ACGT]$", ref) & grepl("^[ACGT]$", alt) & ref != alt
 
-pvar <- readPVAR(option[["pvar"]])
-names(pvar)[names(pvar) == "#CHROM"] <- "CHROM"
-requiredPVAR <- c("CHROM", "POS", "ID", "REF", "ALT")
-if (!all(requiredPVAR %in% names(pvar))) stop("PVAR is missing CHROM, POS, ID, REF, or ALT.", call. = FALSE)
-if (anyDuplicated(pvar$ID)) {
-  stop("Raw marker identifiers must be unique before dbSNP resolution; duplicate source IDs cannot be audited safely.", call. = FALSE)
+if (option[["action"]] == "match") {
+  pvar <- readTSV(option[["pvar"]], skip = "#CHROM", colClasses = "character")
+  setnames(pvar, "#CHROM", "CHROM")
+  if (!all(c("CHROM", "POS", "ID", "REF", "ALT") %in% names(pvar))) {
+    stop("PVAR requires CHROM, POS, ID, REF and ALT.", call. = FALSE)
+  }
+  if (anyNA(pvar$ID) || anyDuplicated(pvar$ID)) {
+    stop("Raw marker identifiers must be present and unique before dbSNP resolution.", call. = FALSE)
+  }
+  initial <- readTSV(option[["initial-decisions"]], colClasses = "character")
+  if (!identical(initial$final_id, pvar$ID)) {
+    stop("Initial marker decisions must follow the annotated PVAR source order.", call. = FALSE)
+  }
+  missing <- readTSV(option[["missingness"]])
+  setnames(missing, "#ID", "ID", skip_absent = TRUE)
+  setnames(missing, "MISSING_DOSAGE_CT", "MISSING_CT", skip_absent = TRUE)
+  if (!all(c("ID", "MISSING_CT", "OBS_CT") %in% names(missing)) || !identical(as.character(missing$ID), pvar$ID)) {
+    stop("PLINK variant missingness must contain ID, MISSING_CT and OBS_CT in PVAR order.", call. = FALSE)
+  }
+  sampleCOUNT <- as.integer(option[["sample-count"]])
+  if (sampleCOUNT < 1L || anyNA(missing$OBS_CT) || anyNA(missing$MISSING_CT) ||
+      any(missing$MISSING_CT < 0 | missing$OBS_CT < missing$MISSING_CT | missing$OBS_CT > sampleCOUNT)) {
+    stop("PLINK missingness counts are invalid for the imported participant count.", call. = FALSE)
+  }
+  pvar[, source_row := .I]
+  pvar[, c("CHROM", "REF", "ALT") := .(sub("^chr", "", CHROM, ignore.case = TRUE), toupper(REF), toupper(ALT))]
+  pvar[, POS := as.integer(POS)]
+  pvar[, direct_pair := pairKEY(REF, ALT)]
+  pvar[, allele_key := pmin(direct_pair, pairKEY(complement(REF), complement(ALT)))]
+
+  chromosomeMAP <- readTSV(option[["chromosome-map"]], header = FALSE, col.names = c("chromosome", "accession"), colClasses = "character")
+  candidate <- data.table(chromosome = character(), position = integer(), candidate = character(), candidate_ref = character(), candidate_alt = character())
+  if (file.info(option[["dbsnp-records"]])$size > 0) {
+    dbsnp <- readTSV(option[["dbsnp-records"]], header = FALSE,
+      col.names = c("accession", "position", "candidate", "reference", "alternate"), colClasses = "character")
+    dbsnp[, chromosome := chromosomeMAP$chromosome[match(accession, chromosomeMAP$accession)]]
+    dbsnp <- dbsnp[!is.na(chromosome) & grepl("^rs[0-9]+$", candidate)]
+    if (nrow(dbsnp)) {
+      alt <- strsplit(toupper(dbsnp$alternate), ",", fixed = TRUE)
+      candidate <- dbsnp[rep(seq_len(.N), lengths(alt)), .(chromosome, position = as.integer(position), candidate, candidate_ref = toupper(reference))]
+      candidate[, candidate_alt := unlist(alt, use.names = FALSE)]
+      candidate <- unique(candidate[validPAIR(candidate_ref, candidate_alt)])
+    }
+  }
+  candidate[, direct_pair := pairKEY(candidate_ref, candidate_alt)]
+  candidate[, allele_key := pmin(direct_pair, pairKEY(complement(candidate_ref), complement(candidate_alt)))]
+  coordinateCOUNT <- candidate[, .(coordinate_candidates = uniqueN(candidate)), by = .(chromosome, position)]
+  target <- pvar[validPAIR(REF, ALT)]
+  compatible <- merge(target[, .(source_row, chromosome = CHROM, position = POS, allele_key, source_pair = direct_pair)],
+    candidate, by = c("chromosome", "position", "allele_key"), allow.cartesian = TRUE, sort = FALSE)
+  compatible[, allele_compatible_candidates := uniqueN(candidate), by = source_row]
+  compatible[, direct := source_pair == direct_pair]
+  setorderv(compatible, c("source_row", "direct", "candidate_ref", "candidate_alt"), c(1L, -1L, 1L, 1L))
+  selected <- compatible[allele_compatible_candidates == 1L][!duplicated(source_row)]
+
+  result <- data.table(
+    source_id = initial$source_id, final_id = "", source_chr = initial$source_chr,
+    source_pos = initial$source_pos, final_chr = pvar$CHROM, final_pos = pvar$POS,
+    source_ref = initial$source_ref, source_alt = initial$source_alt,
+    final_ref = pvar$REF, final_alt = pvar$ALT,
+    coordinate_candidates = 0L, allele_compatible_candidates = 0L,
+    call_count = missing$OBS_CT - missing$MISSING_CT,
+    call_rate = (missing$OBS_CT - missing$MISSING_CT) / sampleCOUNT,
+    probe_count = 0L, assay_count = 0L, overlap_count = 0L, concordance = NA_real_,
+    decision = "EXCLUDED_UNRESOLVED_MARKER", reason = "No dbSNP coordinate match",
+    source_row = pvar$source_row, import_id = pvar$ID, match_type = ""
+  )
+  counts <- merge(target[, .(source_row, chromosome = CHROM, position = POS)],
+    coordinateCOUNT, by = c("chromosome", "position"), sort = FALSE)
+  result[counts$source_row, coordinate_candidates := counts$coordinate_candidates]
+  counts <- unique(compatible[, .(source_row, allele_compatible_candidates)])
+  result[counts$source_row, allele_compatible_candidates := counts$allele_compatible_candidates]
+  result[coordinate_candidates > 0L, reason := "No allele-compatible dbSNP match"]
+  result[allele_compatible_candidates > 1L, reason := "Multiple allele-compatible dbSNP matches"]
+  result[!validPAIR(pvar$REF, pvar$ALT), reason := "Incompatible assay alleles"]
+  result[pvar$REF %in% c("0", ".") & pvar$ALT %in% c("0", "."), reason := "All genotypes or assay alleles missing"]
+  result[selected$source_row, c("final_id", "final_chr", "final_pos", "final_ref", "final_alt", "match_type", "reason") :=
+    .(selected$candidate, selected$chromosome, selected$position, selected$candidate_ref, selected$candidate_alt,
+      ifelse(selected$direct, "DIRECT", "COMPLEMENT"), "Unique allele-compatible dbSNP match")]
+  result[nzchar(final_id) & call_count == 0L, c("final_id", "reason") := .("", "All genotypes missing")]
+  result[nzchar(final_id), c("probe_count", "assay_count") := .(.N, uniqueN(pairKEY(final_ref, final_alt))), by = final_id]
+  result[probe_count == 1L, decision := "RETAINED_UNIQUE"]
+  result[probe_count > 1L & assay_count > 1L, c("decision", "reason") :=
+    .("EXCLUDED_DIFFERENT_ASSAY_DUPLICATE_GROUP", "Repeated rsID has more than one reference-oriented assay pair")]
+  saveRDS(result, option[["candidates"]])
+  writeTSV(result[probe_count > 1L & assay_count == 1L, .(import_id)], option[["duplicate-markers"]], FALSE)
+} else if (option[["action"]] == "finalise") {
+  result <- readRDS(option[["candidates"]])
+  duplicates <- result[probe_count > 1L & assay_count == 1L]
+  if (nrow(duplicates)) {
+    calls <- readTSV(option[["calls"]])
+    if (!all(c("SNP", "COUNTED", "ALT") %in% names(calls)) ||
+        !identical(as.character(calls$SNP), duplicates$import_id)) {
+      stop("PLINK duplicate-probe export must contain exactly the requested source markers in PVAR order.", call. = FALSE)
+    }
+    sampleCOLUMN <- setdiff(names(calls), c("#CHROM", "CHROM", "CHR", "SNP", "(C)M", "CM", "POS", "COUNTED", "ALT"))
+    if (!length(sampleCOLUMN)) stop("Duplicate-probe export contains no participant calls.", call. = FALSE)
+    dosage <- as.matrix(calls[, lapply(.SD, as.numeric), .SDcols = sampleCOLUMN])
+    counted <- toupper(calls$COUNTED)
+    counted[duplicates$match_type == "COMPLEMENT"] <- complement(counted[duplicates$match_type == "COMPLEMENT"])
+    anchor <- pmin(duplicates$final_ref, duplicates$final_alt)
+    other <- pmax(duplicates$final_ref, duplicates$final_alt)
+    if (any(!counted %in% c("A", "C", "G", "T")) || any(counted != anchor & counted != other)) {
+      stop("PLINK counted alleles do not match the selected dbSNP pairs for duplicate probes.", call. = FALSE)
+    }
+    reverse <- which(counted == other)
+    dosage[reverse, ] <- 2 - dosage[reverse, , drop = FALSE]
+    if (!identical(as.numeric(rowSums(is.finite(dosage))), as.numeric(duplicates$call_count))) {
+      stop("Duplicate-probe calls disagree with PLINK variant missingness counts.", call. = FALSE)
+    }
+    # Group once; only repeated probes need participant-level comparisons.
+    groups <- split(seq_len(nrow(duplicates)), duplicates$final_id)
+    for (index in groups) {
+      sourceROW <- duplicates$source_row[index]
+      exactID <- duplicates$source_id[index] == duplicates$final_id[index]
+      representative <- index[order(-duplicates$call_rate[index], -as.integer(exactID), sourceROW)][[1L]]
+      observed <- is.finite(dosage[index, , drop = FALSE]) &
+        matrix(is.finite(dosage[representative, ]), nrow = length(index), ncol = ncol(dosage), byrow = TRUE)
+      difference <- abs(sweep(dosage[index, , drop = FALSE], 2L, dosage[representative, ], "-"))
+      overlap <- rowSums(observed)
+      concordance <- rowSums(observed & difference < 1e-8, na.rm = TRUE) / overlap
+      result[sourceROW, c("overlap_count", "concordance") := .(overlap, concordance)]
+      if (any(!is.finite(concordance) | concordance != 1)) {
+        result[sourceROW, c("decision", "reason") :=
+          .("EXCLUDED_DISCORDANT_DUPLICATE_GROUP", "Same-assay duplicate probes are not completely concordant over observed calls")]
+      } else {
+        result[sourceROW, c("decision", "reason") :=
+          .("EXCLUDED_REDUNDANT_DUPLICATE_PROBE", "Completely concordant duplicate represented by higher-call-rate probe")]
+        result[duplicates$source_row[representative], c("decision", "reason") :=
+          .("RETAINED_DUPLICATE_REPRESENTATIVE", "Highest call rate, then exact rsID, then original row order")]
+      }
+    }
+  }
+  retained <- result[startsWith(decision, "RETAINED_")]
+  if (nrow(retained) && (anyNA(retained$final_id) || any(!nzchar(retained$final_id)) ||
+      anyDuplicated(retained$final_id) || anyDuplicated(retained$import_id) ||
+      any(!validPAIR(retained$final_ref, retained$final_alt)))) {
+    stop("Retained markers require unique source and final IDs and distinct A/C/G/T REF and ALT alleles.", call. = FALSE)
+  }
+  writeTSV(result[, !c("source_row", "import_id", "match_type"), with = FALSE], option[["output-decisions"]])
+  if (!nrow(retained)) stop("Raw marker resolution retained no variants; inspect the marker decision reasons.", call. = FALSE)
+  writeTSV(retained[, .(import_id)], option[["keep"]], FALSE)
+  writeTSV(retained[, .(import_id, final_id)], option[["rename"]], FALSE)
+} else {
+  stop("Marker resolution action must be match or finalise.", call. = FALSE)
 }
-
-initial <- readTSV(option[["initial-decisions"]])
-if (nrow(initial) != nrow(pvar)) stop("Initial marker decisions and PVAR row counts differ.", call. = FALSE)
-if (!identical(as.character(initial$final_id), as.character(pvar$ID))) {
-  stop("Initial marker decisions are not in the same order as the annotated PVAR.", call. = FALSE)
-}
-
-calls <- readTSV(option[["calls"]])
-names(calls)[names(calls) == "#CHROM"] <- "CHROM"
-if (!all(c("SNP", "COUNTED", "ALT") %in% names(calls)) || nrow(calls) != nrow(pvar)) {
-  stop("PLINK A-transpose calls do not correspond one-to-one with the annotated PVAR.", call. = FALSE)
-}
-if (!identical(as.character(calls$SNP), as.character(pvar$ID))) {
-  stop("PLINK A-transpose marker order differs from the annotated PVAR.", call. = FALSE)
-}
-sampleCOLUMN <- setdiff(names(calls), c("CHROM", "CHR", "SNP", "(C)M", "CM", "POS", "COUNTED", "ALT"))
-if (length(sampleCOLUMN) == 0L) stop("PLINK A-transpose output contains no participant dosages.", call. = FALSE)
-dosage <- as.matrix(data.frame(lapply(calls[sampleCOLUMN], as.numeric), check.names = FALSE))
-
-chromosomeMAP <- utils::read.delim(
-  option[["chromosome-map"]], sep = "\t", header = FALSE, quote = "", comment.char = "",
-  stringsAsFactors = FALSE, col.names = c("chromosome", "accession")
-)
-dbsnp <- utils::read.delim(
-  option[["dbsnp-records"]], sep = "\t", header = FALSE, quote = "", comment.char = "",
-  stringsAsFactors = FALSE, col.names = c("accession", "position", "candidate", "reference", "alternate")
-)
-dbsnp$chromosome <- chromosomeMAP$chromosome[match(dbsnp$accession, chromosomeMAP$accession)]
-dbsnp <- dbsnp[
-  !is.na(dbsnp$chromosome) & grepl("^rs[0-9]+$", dbsnp$candidate) &
-    validALLELE(toupper(dbsnp$reference)),
-  , drop = FALSE
-]
-
-# Expand multiallelic dbSNP records so each compatible biallelic pair is assessed
-# independently while retaining the candidate rsID.
-expanded <- list()
-for (row in seq_len(nrow(dbsnp))) {
-  alternate <- strsplit(toupper(dbsnp$alternate[[row]]), ",", fixed = TRUE)[[1L]]
-  alternate <- alternate[validALLELE(alternate)]
-  for (allele in alternate) {
-    expanded[[length(expanded) + 1L]] <- data.frame(
-      chromosome = as.character(dbsnp$chromosome[[row]]),
-      position = as.integer(dbsnp$position[[row]]),
-      candidate = dbsnp$candidate[[row]],
-      candidate_ref = toupper(dbsnp$reference[[row]]),
-      candidate_alt = allele,
-      stringsAsFactors = FALSE
-    )
-  }
-}
-candidate <- if (length(expanded) > 0L) unique(do.call(rbind, expanded)) else data.frame(
-  chromosome = character(), position = integer(), candidate = character(),
-  candidate_ref = character(), candidate_alt = character(), stringsAsFactors = FALSE
-)
-candidateKEY <- paste(candidate$chromosome, candidate$position, sep = ":")
-candidateINDEX <- split(seq_len(nrow(candidate)), candidateKEY)
-
-result <- data.frame(
-  source_id = initial$source_id,
-  final_id = "",
-  source_chr = initial$source_chr,
-  source_pos = initial$source_pos,
-  final_chr = pvar$CHROM,
-  final_pos = pvar$POS,
-  source_ref = initial$source_ref,
-  source_alt = initial$source_alt,
-  final_ref = pvar$REF,
-  final_alt = pvar$ALT,
-  coordinate_candidates = integer(nrow(pvar)),
-  allele_compatible_candidates = integer(nrow(pvar)),
-  call_count = integer(nrow(pvar)),
-  call_rate = numeric(nrow(pvar)),
-  probe_count = integer(nrow(pvar)),
-  assay_count = integer(nrow(pvar)),
-  overlap_count = integer(nrow(pvar)),
-  concordance = rep(NA_real_, nrow(pvar)),
-  decision = "EXCLUDED_UNRESOLVED_MARKER",
-  reason = "No allele-compatible dbSNP match",
-  stringsAsFactors = FALSE
-)
-matchTYPE <- rep("", nrow(pvar))
-canonicalDOSAGE <- matrix(NA_real_, nrow = nrow(pvar), ncol = ncol(dosage))
-
-for (row in seq_len(nrow(pvar))) {
-  chromosome <- sub("^chr", "", as.character(pvar$CHROM[[row]]), ignore.case = TRUE)
-  position <- suppressWarnings(as.integer(pvar$POS[[row]]))
-  sourcePAIR <- toupper(c(pvar$REF[[row]], pvar$ALT[[row]]))
-  result$call_count[[row]] <- sum(is.finite(dosage[row, ]))
-  result$call_rate[[row]] <- result$call_count[[row]] / ncol(dosage)
-  if (!all(validALLELE(sourcePAIR))) {
-    result$reason[[row]] <- if (all(sourcePAIR %in% c("0", "."))) "All genotypes or assay alleles missing" else "Incompatible assay alleles"
-    next
-  }
-  lookupKEY <- paste(chromosome, position, sep = ":")
-  candidateROW <- candidateINDEX[[lookupKEY]]
-  atCOORDINATE <- if (is.null(candidateROW)) candidate[FALSE, , drop = FALSE] else candidate[candidateROW, , drop = FALSE]
-  result$coordinate_candidates[[row]] <- length(unique(atCOORDINATE$candidate))
-  if (nrow(atCOORDINATE) == 0L) {
-    result$reason[[row]] <- "No dbSNP coordinate match"
-    next
-  }
-  compatible <- vapply(seq_len(nrow(atCOORDINATE)), function(index) {
-    pair <- c(atCOORDINATE$candidate_ref[[index]], atCOORDINATE$candidate_alt[[index]])
-    samePAIR(sourcePAIR, pair) || samePAIR(complement(sourcePAIR), pair)
-  }, logical(1L))
-  atCOORDINATE <- atCOORDINATE[compatible, , drop = FALSE]
-  compatibleID <- unique(atCOORDINATE$candidate)
-  result$allele_compatible_candidates[[row]] <- length(compatibleID)
-  if (length(compatibleID) != 1L) {
-    result$reason[[row]] <- if (length(compatibleID) == 0L) "No allele-compatible dbSNP match" else "Multiple allele-compatible dbSNP matches"
-    next
-  }
-  selected <- atCOORDINATE[atCOORDINATE$candidate == compatibleID[[1L]], , drop = FALSE]
-  selected$direct <- vapply(seq_len(nrow(selected)), function(index) {
-    samePAIR(sourcePAIR, c(selected$candidate_ref[[index]], selected$candidate_alt[[index]]))
-  }, logical(1L))
-  selected <- selected[order(!selected$direct, selected$candidate_ref, selected$candidate_alt), , drop = FALSE][1L, , drop = FALSE]
-  result$final_id[[row]] <- selected$candidate[[1L]]
-  result$final_chr[[row]] <- chromosome
-  result$final_pos[[row]] <- position
-  result$final_ref[[row]] <- selected$candidate_ref[[1L]]
-  result$final_alt[[row]] <- selected$candidate_alt[[1L]]
-  matchTYPE[[row]] <- if (selected$direct[[1L]]) "DIRECT" else "COMPLEMENT"
-
-  counted <- toupper(as.character(calls$COUNTED[[row]]))
-  if (matchTYPE[[row]] == "COMPLEMENT") counted <- complement(counted)
-  anchor <- min(result$final_ref[[row]], result$final_alt[[row]])
-  other <- max(result$final_ref[[row]], result$final_alt[[row]])
-  if (counted == anchor) canonicalDOSAGE[row, ] <- dosage[row, ]
-  if (counted == other) canonicalDOSAGE[row, ] <- 2 - dosage[row, ]
-  if (!counted %in% c(anchor, other)) {
-    result$final_id[[row]] <- ""
-    result$reason[[row]] <- "PLINK counted allele is incompatible with selected dbSNP alleles"
-  } else if (result$call_count[[row]] == 0L) {
-    result$final_id[[row]] <- ""
-    result$reason[[row]] <- "All genotypes missing"
-  } else {
-    result$reason[[row]] <- "Unique allele-compatible dbSNP match"
-  }
-}
-
-eligible <- which(nzchar(result$final_id))
-for (rsid in unique(result$final_id[eligible])) {
-  index <- eligible[result$final_id[eligible] == rsid]
-  assayKEY <- paste(pmin(result$final_ref[index], result$final_alt[index]), pmax(result$final_ref[index], result$final_alt[index]), sep = "/")
-  result$probe_count[index] <- length(index)
-  result$assay_count[index] <- length(unique(assayKEY))
-  if (length(index) == 1L) {
-    result$decision[index] <- "RETAINED_UNIQUE"
-    next
-  }
-  if (length(unique(assayKEY)) != 1L) {
-    result$decision[index] <- "EXCLUDED_DIFFERENT_ASSAY_DUPLICATE_GROUP"
-    result$reason[index] <- "Repeated rsID has more than one reference-oriented assay pair"
-    next
-  }
-  exactID <- result$source_id[index] == rsid
-  representative <- index[order(-result$call_rate[index], -as.integer(exactID), index)][[1L]]
-  groupCONCORDANT <- TRUE
-  for (row in index) {
-    observed <- is.finite(canonicalDOSAGE[representative, ]) & is.finite(canonicalDOSAGE[row, ])
-    result$overlap_count[[row]] <- sum(observed)
-    result$concordance[[row]] <- if (any(observed)) mean(abs(canonicalDOSAGE[representative, observed] - canonicalDOSAGE[row, observed]) < 1e-8) else NA_real_
-    if (!is.finite(result$concordance[[row]]) || result$concordance[[row]] != 1) groupCONCORDANT <- FALSE
-  }
-  if (!groupCONCORDANT) {
-    result$decision[index] <- "EXCLUDED_DISCORDANT_DUPLICATE_GROUP"
-    result$reason[index] <- "Same-assay duplicate probes are not completely concordant over observed calls"
-  } else {
-    result$decision[index] <- "EXCLUDED_REDUNDANT_DUPLICATE_PROBE"
-    result$reason[index] <- "Completely concordant duplicate represented by higher-call-rate probe"
-    result$decision[representative] <- "RETAINED_DUPLICATE_REPRESENTATIVE"
-    result$reason[representative] <- "Highest call rate, then exact rsID, then original row order"
-  }
-}
-
-retained <- result$decision %in% c("RETAINED_UNIQUE", "RETAINED_DUPLICATE_REPRESENTATIVE")
-if (!any(retained)) stop("Raw marker resolution retained no variants.", call. = FALSE)
-if (anyDuplicated(result$final_id[retained])) stop("Raw marker resolution did not produce unique final rsIDs.", call. = FALSE)
-
-writeTSV(result, option[["output-decisions"]])
-writeTSV(data.frame(id = pvar$ID[retained]), option[["keep"]], header = FALSE)
-writeTSV(data.frame(source_id = pvar$ID[retained], final_id = result$final_id[retained]), option[["rename"]], header = FALSE)

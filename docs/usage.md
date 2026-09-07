@@ -76,14 +76,13 @@ For repeated phenotype records, declare the visit column and retained values tog
 participant_id: Sample_Name
 timepoint_column: Timepoint
 timepoint_values: [1]
-require_repeated_value_agreement: true
 ```
 
 A fixed model requires one value. The pipeline checks agreeing outcome and covariate
 values within each participant and requested timepoint, then selects the first source
-record. Set `require_repeated_value_agreement: true` when these fields must also agree
-across timepoints. It reports a participant who lacks the requested value. Mixed models may select
-several values and retain one agreeing record per participant and value; the declared
+record. Analysis values may differ between visits. It reports a participant who lacks
+the requested value. Mixed models may select several values and retain one agreeing
+record per participant and value; the declared
 covariates still determine whether time is included in the model.
 
 ## Configured `params.yml`
@@ -201,6 +200,17 @@ Nextflow executor in the installed environment or an external Nextflow configura
 Nextflow submits independent cohorts, traits, methods, references, and model-score pairs
 as capacity allows.
 
+Target import, marker resolution and GRCh37 finalisation are cached separately.
+Reference chromosomes run in up to six groups balanced by source-file size, then merge
+once. PLINK alignment reuses one compatibility index per target/reference pair across
+traits. The scientific filters and scoring methods remain unchanged.
+
+Default resource limits are 32 CPUs, 144 GB memory and 72 hours per task. Target
+preparation has a 30-hour allowance while full-cohort performance is measured.
+Compatibility indexing and trait alignment retain 72 GB until the full GWAS trace
+supports a lower request.
+Institutional configuration may lower these limits to match the scheduler.
+
 Keep site-specific module commands, queue/account settings, and scheduler launchers
 outside the pipeline repository. A scheduler launcher should request a small Nextflow
 driver job; the selected executor then submits the independent pipeline tasks with the
@@ -212,3 +222,8 @@ pipeline configuration.
 Use `-resume` with the same revision, parameters, inputs, launch directory, and work
 directory. Both the Nextflow cache and work directory are required. Published result
 copies are never consumed by downstream tasks.
+
+After a pipeline update, resume from the existing launch and work directories. Nextflow
+reruns tasks whose inputs, scripts, parameters or containers changed. Keep the cache
+and work files until the resumed run completes; deleting published results is not
+required. Reuse of prepared references and compatibility indexes uses this task cache.

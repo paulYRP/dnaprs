@@ -1,117 +1,108 @@
 name: align_plink_gwas
-description: Align harmonised GWAS variants to the final target ALT allele and European LD reference.
+description: Align one GWAS to the shared target and European reference compatibility index.
 keywords:
-  - gwas
-  - harmonisation
-  - plink
+  - genotype
   - prs
+  - reference
 tools:
-  - r:
-      description: R statistical computing environment
-      identifier: ""
-      homepage: https://www.r-project.org/
-  - data.table:
-      description: High-performance tabular data processing in R
-      identifier: ""
-      homepage: https://r-datatable.com/
+  - "R":
+      description: "Statistical computing."
+      homepage: "https://www.r-project.org/"
+  - "data.table":
+      description: "Keyed table operations."
+      homepage: "https://rdatatable.gitlab.io/data.table/"
 input:
-  - - target:
+  - - "target":
         type: map
-        description: Target cohort and scoring-stage metadata.
-    - target_dir:
-        type: directory
-        description: Final target PGEN used to select and orient candidate variants.
-    - target_qc:
-        type: file
-        description: Target QC summary associated with the final target PGEN.
-    - meta:
+        description: "Target cohort and scoring-stage metadata."
+    - "reference":
         type: map
-        description: GWAS trait and PRS metadata.
-    - cojo:
+        description: "Prepared European reference metadata."
+    - "compatibility_index":
         type: file
-        description: Harmonised GWAS table in COJO format.
-    - clump_input:
-        type: file
-        description: Harmonised GWAS table prepared for PLINK clumping.
-    - harmonisation_qc:
-        type: file
-        description: QC summary from GWAS harmonisation.
-    - reference:
+        description: "Shared canonical allele index, including ambiguous target and reference key counts."
+    - "meta":
         type: map
-        description: LD reference identifier, type, and source metadata.
-    - reference_files:
-        type: list
-        description: LD reference genotype files used for coordinate and allele alignment.
-  - align_script:
+        description: "Target cohort, source format, build, role and input-stage metadata."
+    - "cojo":
+        type: file
+        description: "Harmonised GWAS in COJO format."
+    - "clump_input":
+        type: file
+        description: "Harmonised clumping input, also used by the stub."
+    - "harmonisation_qc":
+        type: file
+        description: "Harmonisation QC table passed to clumping."
+  - "align_script":
       type: file
-      description: R script that aligns GWAS coordinates and alleles to the LD reference.
+      description: "Staged implementation script."
 output:
   aligned:
-    - - target:
+    - - "target":
           type: map
-          description: Target cohort and scoring-stage metadata.
-      - meta:
+          description: "Target cohort and scoring-stage metadata."
+      - "meta":
           type: map
-          description: GWAS trait and PRS metadata.
-      - ${meta.trait_id}.plink.cojo.ma:
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.trait_id}.plink.cojo.ma":
           type: file
-          description: Reference-aligned COJO and clumping tables with common QC.
-      - ${meta.trait_id}.plink.clump.tsv:
+          description: "GWAS effects and frequencies aligned to unique target/reference variants."
+      - "${meta.trait_id}.plink.clump.tsv":
           type: file
-          description: Reference-aligned COJO and clumping tables with common QC.
-      - harmonisation_qc:
+          description: "Aligned variant identifiers, effect alleles and p-values for PLINK clumping."
+      - "harmonisation_qc":
           type: file
-          description: Reference-aligned COJO and clumping tables with common QC.
+          description: "Harmonisation QC table passed to clumping."
   qc:
-    - - target:
+    - - "target":
           type: map
-          description: Target cohort and scoring-stage metadata.
-      - meta:
+          description: "Target cohort and scoring-stage metadata."
+      - "meta":
           type: map
-          description: GWAS trait and PRS metadata.
-      - ${meta.trait_id}.plink.reference_alignment_qc.tsv:
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.trait_id}.plink.reference_alignment_qc.tsv":
           type: file
-          description: Counts of aligned, absent, ambiguous, duplicate, and complemented variants.
+          description: "Trait-specific alignment counts, allele flips and exclusion reasons."
   versions_r:
-    - - ${task.process}:
+    - - "${task.process}":
           type: string
-          description: The name of the process
-      - R:
+          description: "Fully qualified process name."
+      - "R":
           type: string
-          description: The name of the tool
-      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          description: "Recorded value."
+      - "Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub":
           type: eval
-          description: The expression to obtain the version of the tool
+          description: "Command that reports the software version."
   versions_data_table:
-    - - ${task.process}:
+    - - "${task.process}":
           type: string
-          description: The name of the process
-      - data.table:
+          description: "Fully qualified process name."
+      - "data.table":
           type: string
-          description: The name of the tool
-      - Rscript -e 'cat(as.character(packageVersion("data.table")))' 2>/dev/null || printf stub:
+          description: "Recorded value."
+      - 'Rscript -e ''cat(as.character(packageVersion("data.table")))'' 2>/dev/null || printf stub':
           type: eval
-          description: The expression to obtain the version of the tool
+          description: "Command that reports the software version."
 topics:
   versions:
-    - - ${task.process}:
+    - - "${task.process}":
           type: string
-          description: The name of the process
-      - R:
+          description: "Fully qualified process name."
+      - "R":
           type: string
-          description: The name of the tool
-      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          description: "Recorded value."
+      - "Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub":
           type: eval
-          description: The expression to obtain the version of the tool
-    - - ${task.process}:
+          description: "Command that reports the software version."
+    - - "${task.process}":
           type: string
-          description: The name of the process
-      - data.table:
+          description: "Fully qualified process name."
+      - "data.table":
           type: string
-          description: The name of the tool
-      - Rscript -e 'cat(as.character(packageVersion("data.table")))' 2>/dev/null || printf stub:
+          description: "Recorded value."
+      - 'Rscript -e ''cat(as.character(packageVersion("data.table")))'' 2>/dev/null || printf stub':
           type: eval
-          description: The expression to obtain the version of the tool
+          description: "Command that reports the software version."
 authors:
   - "@paulYRP"
 maintainers:

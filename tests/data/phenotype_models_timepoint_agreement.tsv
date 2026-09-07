@@ -1,2 +1,0 @@
-model_id	outcome	prs_name	family	model_type	covariates	participant_id	timepoint_column	timepoint_values	require_repeated_value_agreement	group_id	expected_direction	primary	control_value	case_value
-baseline_agreement	OUTCOME	MDD_PRS	gaussian	gaussian	Age	IID	Timepoint	1	TRUE		positive	TRUE	NA	NA

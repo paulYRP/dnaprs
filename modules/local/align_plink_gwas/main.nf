@@ -1,11 +1,12 @@
 process ALIGN_PLINK_GWAS {
     tag "${target.cohort}:${meta.trait_id}"
-    label 'process_medium'
+    label 'process_low'
+    label 'process_high_memory'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
     input:
-    tuple val(target), path(target_dir), path(target_qc), val(meta), path(cojo), path(clump_input), path(harmonisation_qc), val(reference), path(reference_files)
+    tuple val(target), val(reference), path(compatibility_index), val(meta), path(cojo), path(clump_input), path(harmonisation_qc)
     path align_script
 
     output:
@@ -17,8 +18,8 @@ process ALIGN_PLINK_GWAS {
     """
     Rscript ${align_script} \
         --cojo '${cojo}' \
-        --target-pvar '${target_dir}/${target.cohort}.pvar' \
-        --reference-pvar '${reference.path}.pvar' \
+        --compatibility-index '${compatibility_index}' \
+        --threads '${task.cpus}' \
         --cohort '${target.cohort}' \
         --trait-id '${meta.trait_id}' \
         --prs-name '${meta.prs_name}' \

@@ -166,11 +166,6 @@
                     "minItems": 1,
                     "uniqueItems": true
                 },
-                "require_repeated_value_agreement": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Require outcomes and covariates used by fixed models to agree across a participant's timepoints before selection."
-                },
                 "group_column": {
                     "type": ["string", "null"],
                     "description": "Grouping column required by a mixed model."

@@ -45,7 +45,6 @@ if (any(grepl("|", timepointVALUE, fixed = TRUE))) {
   stop("timepoint_values cannot contain vertical bars.", call. = FALSE)
 }
 timepointTEXT <- paste(timepointVALUE, collapse = "|")
-requireREPEATEDAGREEMENT <- tolower(trimws(option[["require-repeated-value-agreement"]])) == "true"
 genomeBUILD <- option[["genome-build"]]
 method <- strsplit(option[["methods"]], ",", fixed = TRUE)[[1L]]
 method <- unique(trimws(method[nzchar(trimws(method))]))
@@ -639,7 +638,6 @@ emptyMODELS <- function() data.frame(
   model_id = character(), outcome = character(), prs_name = character(), family = character(),
   model_type = character(), covariates = character(), participant_id = character(),
   timepoint_column = character(), timepoint_values = character(), group_id = character(),
-  require_repeated_value_agreement = logical(),
   expected_direction = character(), primary = logical(), control_value = character(),
   case_value = character(), stringsAsFactors = FALSE
 )
@@ -718,7 +716,6 @@ buildMODELS <- function(specification, gwas) {
         participant_id = recordVALUE(record, "participant_id", option[["participant-id"]]),
         timepoint_column = timepointCOLUMN,
         timepoint_values = timepointTEXT,
-        require_repeated_value_agreement = requireREPEATEDAGREEMENT,
         group_id = group,
         expected_direction = recordVALUE(record, "expected_direction"),
         primary = as.logical(recordVALUE(record, "primary", TRUE)),

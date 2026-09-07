@@ -1,6 +1,6 @@
 process PLINK_CLUMP {
     tag "${target.cohort}:${meta.trait_id}"
-    label 'process_high'
+    label 'process_low'
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container ?

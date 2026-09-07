@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+plink2() {
+    command plink2 --memory "${PLINK_MEMORY_MB:-1024}" "$@"
+}
+
 panel="$1"
 population_panel="$2"
 related_samples="$3"
 output_dir="$4"
 threads="$5"
 genome_build="$6"
+expected_chromosomes="$7"
 
 unbref3_jar="${UNBREF3_JAR:-/opt/beagle/unbref3.jar}"
 log_file="${output_dir}.prepare.log"
@@ -48,18 +53,12 @@ grep -Fvx -f related.samples.txt reference.samples.all.txt > unrelated.samples.t
 [[ -s eur.samples.txt ]] || { echo "No unrelated European samples were selected." >&2; exit 3; }
 [[ -s unrelated.samples.txt ]] || { echo "No unrelated reference samples were selected." >&2; exit 3; }
 
-mapfile -t panel_files < <(
-    if [[ -d "$panel" ]]; then
-        find -L "$panel" -maxdepth 2 -type f \( -name 'chr*.bref3' -o -name 'chr*.vcf.gz' -o -name 'chr*.vcf' -o -name 'chr*.bcf' \) -print
-    else
-        printf '%s\n' "$panel"
-    fi | sort -V
-)
+mapfile -t panel_files < "$panel"
 [[ "${#panel_files[@]}" -gt 0 ]] || { echo "No chromosome reference files were found in $panel." >&2; exit 3; }
 
 prefixes=()
 all_prefixes=()
-printf 'chromosome\tsource\tsamples\tvariants\tstatus\n' > "${output_dir}.source_qc.tsv"
+printf 'chromosome\tsource\tsamples\tvariants\tstatus\tsource_sha256\n' > "${output_dir}.source_qc.tsv"
 for source_file in "${panel_files[@]}"; do
     base_name=$(basename "$source_file")
     chromosome=$(sed -nE 's/^chr([0-9]+).*/\1/p' <<< "$base_name")
@@ -87,50 +86,26 @@ for source_file in "${panel_files[@]}"; do
     tabix -f -p vcf "$all_vcf"
 
     chromosome_prefix="${output_dir}/chromosomes/eur_chr${chromosome}"
+    # PLINK expands these allele placeholders.
+    # shellcheck disable=SC2016
     plink2 --vcf "$filtered_vcf" --double-id --set-all-var-ids '@:#:$r:$a' \
         --make-pgen --threads "$threads" --out "$chromosome_prefix" >> "$log_file" 2>&1
     prefixes+=("$chromosome_prefix")
     all_chromosome_prefix="${output_dir}/chromosomes/all_chr${chromosome}"
+    # shellcheck disable=SC2016
     plink2 --vcf "$all_vcf" --double-id --set-all-var-ids '@:#:$r:$a' \
         --make-pgen --threads "$threads" --out "$all_chromosome_prefix" >> "$log_file" 2>&1
     all_prefixes+=("$all_chromosome_prefix")
 
     sample_count=$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "${chromosome_prefix}.psam")
     variant_count=$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "${chromosome_prefix}.pvar")
-    printf '%s\t%s\t%s\t%s\tPASS\n' "$chromosome" "$base_name" "$sample_count" "$variant_count" \
+    printf '%s\t%s\t%s\t%s\tPASS\t%s\n' "$chromosome" "$base_name" "$sample_count" "$variant_count" "$(sha256sum "$source_file" | cut -d ' ' -f1)" \
         >> "${output_dir}.source_qc.tsv"
 done
 
-[[ "${#prefixes[@]}" -gt 0 ]] || { echo "No autosomal PLINK reference chromosomes were prepared." >&2; exit 4; }
-printf '%s\n' "${prefixes[@]}" > reference.merge_list.txt
-if [[ "${#prefixes[@]}" -eq 1 ]]; then
-    cp "${prefixes[0]}.pgen" "$output_dir/eur_reference.pgen"
-    cp "${prefixes[0]}.pvar" "$output_dir/eur_reference.pvar"
-    cp "${prefixes[0]}.psam" "$output_dir/eur_reference.psam"
-else
-    plink2 --pmerge-list reference.merge_list.txt pfile --make-pgen \
-        --threads "$threads" --out "$output_dir/eur_reference" >> "$log_file" 2>&1
-fi
 
-printf '%s\n' "${all_prefixes[@]}" > reference.all_merge_list.txt
-if [[ "${#all_prefixes[@]}" -eq 1 ]]; then
-    cp "${all_prefixes[0]}.pgen" "$output_dir/all_reference.pgen"
-    cp "${all_prefixes[0]}.pvar" "$output_dir/all_reference.pvar"
-    cp "${all_prefixes[0]}.psam" "$output_dir/all_reference.psam"
-else
-    plink2 --pmerge-list reference.all_merge_list.txt pfile --make-pgen \
-        --threads "$threads" --out "$output_dir/all_reference" >> "$log_file" 2>&1
-fi
-cp "$population_panel" "$output_dir/population.tsv"
-
-printf 'reference_type\tbuild\tancestry\tchromosomes\tsamples\tvariants\tstatus\n' > "${output_dir}.summary.tsv"
-printf 'plink_ld\t%s\tEuropean\t%s\t%s\t%s\tPASS\n' \
-    "$genome_build" "${#prefixes[@]}" \
-    "$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "$output_dir/eur_reference.psam")" \
-    "$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "$output_dir/eur_reference.pvar")" \
-    >> "${output_dir}.summary.tsv"
-printf 'ancestry_reference\t%s\tMultiple\t%s\t%s\t%s\tPASS\n' \
-    "$genome_build" "${#all_prefixes[@]}" \
-    "$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "$output_dir/all_reference.psam")" \
-    "$(awk 'BEGIN { count=0 } !/^#/ && NF { count++ } END { print count }' "$output_dir/all_reference.pvar")" \
-    >> "${output_dir}.summary.tsv"
+observed=$(cut -f1 "$output_dir.source_qc.tsv" | tail -n +2 | sort -n | paste -sd, -)
+[[ "$expected_chromosomes" == "$observed" ]] || {
+    echo "Reference group expected chromosomes $expected_chromosomes; prepared $observed." >&2
+    exit 4
+}

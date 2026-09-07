@@ -1,0 +1,59 @@
+name: import_target
+description: Import target genotypes to PGEN and apply declared assay annotations without resolving rsIDs.
+keywords:
+  - genotype
+  - prs
+  - markers
+tools:
+  - "plink2":
+      description: "Genotype conversion and analysis."
+      homepage: "https://www.cog-genomics.org/plink/2.0/"
+input:
+  - - "meta":
+        type: map
+        description: "Target cohort, source format, build, role and input-stage metadata."
+    - "target_files":
+        type: list
+        description: "Genotype files and declared assay companions."
+  - "import_script":
+      type: file
+      description: "Staged implementation script."
+  - "adapter_script":
+      type: file
+      description: "Staged implementation script."
+output:
+  imported:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.cohort}.imported":
+          type: directory
+          description: "Imported PGEN files with source-order assay annotation."
+      - "${meta.cohort}.initial_marker_decisions.tsv":
+          type: file
+          description: "Source-order marker resolution audit."
+  versions_plink2:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

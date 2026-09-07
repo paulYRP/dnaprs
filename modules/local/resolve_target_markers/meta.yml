@@ -1,0 +1,147 @@
+name: resolve_target_markers
+description: Resolve target rsIDs with keyed allele joins and assess concordance only for repeated probes.
+keywords:
+  - genotype
+  - prs
+  - markers
+tools:
+  - "bcftools":
+      description: "VCF processing and allele orientation."
+      homepage: "https://samtools.github.io/bcftools/"
+  - "plink2":
+      description: "Genotype conversion and analysis."
+      homepage: "https://www.cog-genomics.org/plink/2.0/"
+  - "R":
+      description: "Statistical computing."
+      homepage: "https://www.r-project.org/"
+  - "data.table":
+      description: "Keyed table joins and grouped marker resolution."
+      homepage: "https://rdatatable.gitlab.io/data.table/"
+input:
+  - - "meta":
+        type: map
+        description: "Target cohort, source format, build, role and input-stage metadata."
+    - "imported":
+        type: directory
+        description: "Imported PGEN directory, preserved unchanged across downstream tasks."
+    - "initial":
+        type: file
+        description: "Source-order assay annotation decisions."
+  - - "dbsnp":
+        type: map
+        description: "dbSNP source metadata."
+    - "dbsnp_files":
+        type: list
+        description: "dbSNP VCF, index and assembly report."
+  - "resolve_script":
+      type: file
+      description: "Staged implementation script."
+  - "marker_resolver":
+      type: file
+      description: "Staged implementation script."
+output:
+  resolved:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "imported":
+          type: directory
+          description: "Imported PGEN directory, preserved unchanged across downstream tasks."
+      - "${meta.cohort}.marker_decisions.tsv":
+          type: file
+          description: "Source-order marker resolution audit."
+      - "${meta.cohort}.retained_markers.txt":
+          type: file
+          description: "Source identifiers selected for extraction."
+      - "${meta.cohort}.rename_markers.tsv":
+          type: file
+          description: "Source-to-final identifier mapping for retained markers."
+  duplicate_markers:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.cohort}.duplicate_markers.txt":
+          type: file
+          description: "Source identifiers exported for repeated-probe concordance."
+  versions_bcftools:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "bcftools":
+          type: string
+          description: "Recorded value."
+      - "command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+  versions_plink2:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+  versions_r:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "R":
+          type: string
+          description: "Recorded value."
+      - "Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+  versions_data_table:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "data.table":
+          type: string
+          description: "Software name."
+      - 'Rscript -e ''cat(as.character(packageVersion("data.table")))'' 2>/dev/null || printf stub':
+          type: eval
+          description: "Command that reports the software version."
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "bcftools":
+          type: string
+          description: "Recorded value."
+      - "command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "R":
+          type: string
+          description: "Recorded value."
+      - "Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "data.table":
+          type: string
+          description: "Software name."
+      - 'Rscript -e ''cat(as.character(packageVersion("data.table")))'' 2>/dev/null || printf stub':
+          type: eval
+          description: "Command that reports the software version."
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

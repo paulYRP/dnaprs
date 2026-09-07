@@ -1,0 +1,117 @@
+name: finalise_target
+description: Extract retained source markers, apply rsIDs, and orient the corrected target to GRCh37.
+keywords:
+  - genotype
+  - prs
+  - markers
+tools:
+  - "bcftools":
+      description: "VCF processing and allele orientation."
+      homepage: "https://samtools.github.io/bcftools/"
+  - "plink2":
+      description: "Genotype conversion and analysis."
+      homepage: "https://www.cog-genomics.org/plink/2.0/"
+input:
+  - - "meta":
+        type: map
+        description: "Target cohort, source format, build, role and input-stage metadata."
+    - "imported":
+        type: directory
+        description: "Imported PGEN directory, preserved unchanged across downstream tasks."
+    - "decisions":
+        type: file
+        description: "Marker resolution and duplicate-probe decisions."
+    - "retained":
+        type: file
+        description: "Retained source identifiers, before renaming."
+    - "rename":
+        type: file
+        description: "Two-column retained source-to-final identifier mapping."
+  - - "reference_fasta":
+        type: map
+        description: "GRCh37 FASTA metadata."
+    - "reference_fasta_files":
+        type: list
+        description: "GRCh37 FASTA and index."
+  - "finalise_script":
+      type: file
+      description: "Staged implementation script."
+output:
+  prepared:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.cohort}":
+          type: directory
+          description: "Corrected target PGEN files and autosomal chromosome datasets."
+      - "${meta.cohort}.target_prep_summary.tsv":
+          type: file
+          description: "Preparation counts and status."
+  prep:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.cohort}.target_prep_summary.tsv":
+          type: file
+          description: "Preparation counts and status."
+  marker_decisions:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.cohort}.marker_decisions.tsv":
+          type: file
+          description: "Source-order marker resolution audit."
+  checkpoint:
+    - - "meta":
+          type: map
+          description: "Target cohort, source format, build, role and input-stage metadata."
+      - "${meta.cohort}":
+          type: directory
+          description: "Corrected target PGEN files and autosomal chromosome datasets."
+      - "${meta.cohort}.corrected_target_manifest.tsv":
+          type: file
+          description: "Reusable target checkpoint manifest."
+  versions_bcftools:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "bcftools":
+          type: string
+          description: "Recorded value."
+      - "command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+  versions_plink2:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "bcftools":
+          type: string
+          description: "Recorded value."
+      - "command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

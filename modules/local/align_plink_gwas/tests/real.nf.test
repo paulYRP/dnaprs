@@ -1,8 +1,8 @@
-nextflow_process {
+nextflow_workflow {
 
     name "Test ALIGN_PLINK_GWAS target and reference alignment with real software"
-    script "../main.nf"
-    process "ALIGN_PLINK_GWAS"
+    script "../../../../tests/workflows/plink_alignment.nf"
+    workflow "TEST_PLINK_ALIGNMENT"
     tag "modules"
     tag "modules_local"
     tag "modules_real"
@@ -11,23 +11,24 @@ nextflow_process {
     test("effects are oriented to target ALT after method-specific filtering - real") {
 
         when {
-            process {
+            workflow {
                 """
-                input[0] = [[cohort: 'ALIGN', scoring_stage: 'imputed'], file("${projectDir}/tests/data/plink_alignment_target"), file("${projectDir}/assets/empty_input"), [trait_id: 'ALIGNMENT', prs_name: 'ALIGNMENT_PRS'], file("${projectDir}/tests/data/gwas/plink_alignment.cojo.ma"), file("${projectDir}/tests/data/gwas/plink_alignment.cojo.ma"), file("${projectDir}/tests/data/generation_qc/harmonisation_qc.tsv"), [reference_id: 'EUR', path: 'plink_alignment_reference/eur_reference'], file("${projectDir}/tests/data/plink_alignment_reference")]
+                input[0] = [[cohort: 'ALIGN', scoring_stage: 'imputed'], file("${projectDir}/tests/data/plink_alignment_target"), file("${projectDir}/assets/empty_input"), [trait_id: 'ALIGNMENT', prs_name: 'ALIGNMENT_PRS'], file("${projectDir}/tests/data/gwas/plink_alignment.cojo.ma"), file("${projectDir}/assets/empty_input"), file("${projectDir}/tests/data/generation_qc/harmonisation_qc.tsv"), [reference_id: 'EUR', path: 'plink_alignment_reference/eur_reference'], file("${projectDir}/tests/data/plink_alignment_reference")]
                 input[1] = file("${projectDir}/bin/align_plink_gwas.R")
+                input[2] = file("${projectDir}/bin/build_plink_compatibility.R")
                 """
             }
         }
 
         then {
-            def output = process.out.aligned[0]
+            def output = workflow.out.aligned[0]
             def cojoLines = file(output[2]).text.readLines()
             def header = cojoLines[0].split('\t', -1)
             def rows = cojoLines.tail().collect { line -> [header, line.split('\t', -1)].transpose().collectEntries() }
-            def qcLines = file(process.out.qc[0][2]).text.readLines()
+            def qcLines = file(workflow.out.qc[0][2]).text.readLines()
             def qc = [qcLines[0].split('\t', -1), qcLines[1].split('\t', -1)].transpose().collectEntries()
             assertAll(
-                { assert process.success },
+                { assert workflow.success },
                 { assert rows*.SNP == ['1:100:A:G', '1:200:C:T'] },
                 { assert rows.every { it.A1 == (it.SNP == '1:100:A:G' ? 'G' : 'T') } },
                 { assert (rows[0].b as Double) == -0.20d },
@@ -36,6 +37,29 @@ nextflow_process {
                 { assert qc.filtered_reference_missing_or_mismatched == '1' },
                 { assert qc.effect_flips == '1' }
             )
+        }
+    }
+
+    test("two traits reuse one target-reference compatibility index - real") {
+        when {
+            workflow {
+                """
+                target_record = [[cohort: 'ALIGN', scoring_stage: 'imputed'], file("${projectDir}/tests/data/plink_alignment_target"), file("${projectDir}/assets/empty_input"), [trait_id: 'ALIGNMENT', prs_name: 'ALIGNMENT_PRS'], file("${projectDir}/tests/data/gwas/plink_alignment.cojo.ma"), file("${projectDir}/assets/empty_input"), file("${projectDir}/tests/data/generation_qc/harmonisation_qc.tsv"), [reference_id: 'EUR', path: 'plink_alignment_reference/eur_reference'], file("${projectDir}/tests/data/plink_alignment_reference")]
+                second_record = target_record.collect { value -> value }
+                second_record[3] = [trait_id: 'SECOND', prs_name: 'SECOND_PRS']
+                input[0] = channel.of(target_record, second_record)
+                input[1] = file("${projectDir}/bin/align_plink_gwas.R")
+                input[2] = file("${projectDir}/bin/build_plink_compatibility.R")
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.index.size() == 1
+            assert workflow.out.aligned.size() == 2
+            assert workflow.out.aligned.collect { record -> record[1].trait_id }.sort() == ['ALIGNMENT', 'SECOND']
+            assert workflow.out.aligned.collect { record -> file(record[2]).text }.unique().size() == 1
+            assert workflow.trace.tasks().count { task -> task.name.contains('BUILD_PLINK_COMPATIBILITY') } == 1
         }
     }
 }

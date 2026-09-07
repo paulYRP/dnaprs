@@ -1,0 +1,127 @@
+name: assemble_plink_reference
+description: Validate chromosome completeness and merge the prepared reference groups in numeric order.
+keywords:
+  - genotype
+  - prs
+  - reference
+tools:
+  - "bcftools":
+      description: "VCF processing and allele orientation."
+      homepage: "https://samtools.github.io/bcftools/"
+  - "plink2":
+      description: "Genotype conversion and analysis."
+      homepage: "https://www.cog-genomics.org/plink/2.0/"
+input:
+  - - "panel":
+        type: map
+        description: "Reference source metadata, expected chromosomes and group count."
+    - "group_dirs":
+        type: list
+        description: "Prepared chromosome directories in stable group order."
+    - "group_qc":
+        type: list
+        description: "Group QC tables including source checksums."
+    - "group_logs":
+        type: list
+        description: "Group conversion logs."
+  - - "population":
+        type: map
+        description: "Population metadata source record."
+    - "population_files":
+        type: file
+        description: "Sample population metadata table."
+  - - "related":
+        type: map
+        description: "Related-sample exclusion source record."
+    - "related_files":
+        type: file
+        description: "Related-sample exclusion table."
+  - "assemble_script":
+      type: file
+      description: "Staged implementation script."
+  - "genome_build":
+      type: string
+      description: "Declared reference build; GRCh37."
+output:
+  reference:
+    - - "panel":
+          type: map
+          description: "Reference source metadata, expected chromosomes and group count."
+      - "${panel.reference_id}.plink_ld":
+          type: directory
+          description: "Merged European and ancestry PGEN files, chromosome datasets and population metadata."
+  summary:
+    - - "panel":
+          type: map
+          description: "Reference source metadata, expected chromosomes and group count."
+      - "${panel.reference_id}.plink_ld.summary.tsv":
+          type: file
+          description: "Preparation counts and status."
+  source_qc:
+    - - "panel":
+          type: map
+          description: "Reference source metadata, expected chromosomes and group count."
+      - "${panel.reference_id}.plink_ld.source_qc.tsv":
+          type: file
+          description: "Chromosome preparation counts and source SHA-256 checksums."
+  logs:
+    - - "panel":
+          type: map
+          description: "Reference source metadata, expected chromosomes and group count."
+      - "${panel.reference_id}.plink_ld.prepare.log":
+          type: file
+          description: "Software execution log."
+  identity:
+    - - "panel":
+          type: map
+          description: "Reference source metadata, expected chromosomes and group count."
+      - "${panel.reference_id}.plink_ld.identity.tsv":
+          type: file
+          description: "Genome build, population selection and related-sample exclusion rules."
+      - "${panel.reference_id}.plink_ld.selection_sources.sha256":
+          type: file
+          description: "SHA-256 checksums of population and related-sample source tables."
+  versions_bcftools:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "bcftools":
+          type: string
+          description: "Recorded value."
+      - "command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+  versions_plink2:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+topics:
+  versions:
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "bcftools":
+          type: string
+          description: "Recorded value."
+      - "command -v bcftools >/dev/null && bcftools --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2 || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+    - - "${task.process}":
+          type: string
+          description: "Fully qualified process name."
+      - "plink2":
+          type: string
+          description: "Recorded value."
+      - "command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub":
+          type: eval
+          description: "Command that reports the software version."
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

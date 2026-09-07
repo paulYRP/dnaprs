@@ -1,6 +1,6 @@
 process HARMONISE_GWAS {
     tag "${meta.trait_id}"
-    label 'process_medium'
+    label 'process_low'
 
     container 'ghcr.io/paulyrp/dnaprs-analysis:1.0.1'
 
@@ -15,7 +15,7 @@ process HARMONISE_GWAS {
     tuple val("${task.process}"), val('R.utils'), eval("Rscript -e 'cat(as.character(packageVersion(\"R.utils\")))' 2>/dev/null || printf stub"), emit: versions_r_utils, topic: versions
     script:
     """
-    Rscript ${harmonise_script} \
+    R_DATATABLE_NUM_THREADS='${task.cpus}' Rscript ${harmonise_script} \
         --input '${gwas_file}' \
         --trait-id '${meta.trait_id}' \
         --prs-name '${meta.prs_name}' \

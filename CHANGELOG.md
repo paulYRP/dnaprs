@@ -4,6 +4,18 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Split target import, marker resolution and GRCh37 finalisation into separately
+  cached processes. Replaced per-marker lookups with keyed joins and restricted
+  genotype concordance export to repeated rsID groups.
+- Used resolved reference alleles to orient non-array inputs, including reversed BGEN
+  allele order, while preserving genotype dosages.
+- Prepared reference chromosomes in size-balanced groups with completeness checks,
+  source checksums and one deterministic merge.
+- Reused a target/reference compatibility index across GWAS traits while retaining
+  trait-specific allele orientation and QC.
+- Added internal resource limits, long-task protection and allocation fields in the
+  execution trace. Reduced CPU requests for GWAS harmonisation, clumping and SBayesRC
+  model fitting.
 - Corrected raw array-marker recovery to retain Illumina TOP alleles, extract selected
   probes by source identifier, rename them in a separate PLINK step, and orient the
   retained genotypes to GRCh37 with `bcftools +fixref`.
@@ -11,8 +23,8 @@ All notable changes to dnaprs are recorded here.
   sex checking, and the R Markdown marker rules for sample diagnostics and ancestry.
 - Separated common GWAS QC from method-specific alignment and made PLINK C+T alignment,
   clumping, weights, and complete-weight checks specific to each final target cohort.
-- Added optional repeated-value agreement checks before fixed timepoint selection and
-  configured the UKR run to select timepoint 1 after this validation.
+- Selected the declared phenotype timepoint without comparing values across visits.
+  Retained agreement checks for technical records within the selected visit.
 - Added tested gzip and block-gzip GWAS harmonisation, declared the required `R.utils`
   dependency, and added direct R dependency checks for the analysis and report images.
 - Replaced Aqua-incompatible `tag@digest` process references with stable versioned

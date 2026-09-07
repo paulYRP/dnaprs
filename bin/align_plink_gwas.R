@@ -14,33 +14,12 @@ canonicalPAIR <- function(first, second) {
   reverse <- paste(pmin(complement(first), complement(second)), pmax(complement(first), complement(second)), sep = "/")
   pmin(direct, reverse)
 }
-readPVAR <- function(path, prefix) {
-  value <- data.table::fread(path, skip = "#CHROM", colClasses = "character")
-  data.table::setnames(value, "#CHROM", "CHR", skip_absent = TRUE)
-  required <- c("CHR", "POS", "ID", "REF", "ALT")
-  if (!all(required %in% names(value))) stop(sprintf("%s PVAR is missing CHR, POS, ID, REF, or ALT.", prefix), call. = FALSE)
-  value <- value[
-    ID != "" & ID != "." & grepl("^[ACGT]$", toupper(REF)) & grepl("^[ACGT]$", toupper(ALT)) & toupper(REF) != toupper(ALT),
-    .(
-      CHR = sub("^chr", "", as.character(CHR), ignore.case = TRUE),
-      BP = as.integer(POS),
-      ID = as.character(ID),
-      REF = toupper(REF),
-      ALT = toupper(ALT)
-    )
-  ]
-  value[, canonical_pair := canonicalPAIR(REF, ALT)]
-  value[, canonical_key := paste(CHR, BP, canonical_pair, sep = ":")]
-  value
-}
 
+data.table::setDTthreads(as.integer(option[["threads"]]))
 gwas <- data.table::fread(option[["cojo"]])
-target <- readPVAR(option[["target-pvar"]], "Target")
-reference <- readPVAR(option[["reference-pvar"]], "PLINK reference")
+index <- data.table::fread(option[["compatibility-index"]])
 requiredGWAS <- c("SNP", "CHR", "BP", "A1", "A2", "freq", "b", "se", "p", "N")
 if (!all(requiredGWAS %in% names(gwas))) stop("Harmonised GWAS is missing required COJO columns.", call. = FALSE)
-if (anyDuplicated(target$ID)) stop("Target PVAR variant IDs must be unique before PLINK alignment.", call. = FALSE)
-if (anyDuplicated(reference$ID)) stop("PLINK reference PVAR variant IDs must be unique.", call. = FALSE)
 
 gwas[, `:=`(
   CHR = sub("^chr", "", as.character(CHR), ignore.case = TRUE),
@@ -54,12 +33,11 @@ positiveP <- is.finite(gwas$p) & gwas$p > 0
 eligible <- gwas[!palindromic & positiveP]
 eligibleROWS <- eligible$source_row
 
-target[, target_key_count := .N, by = canonical_key]
-targetDUPLICATEKEY <- unique(target[target_key_count != 1L, canonical_key])
-targetUNIQUE <- target[target_key_count == 1L]
+targetDUPLICATEKEY <- index[target_key_count != 1L, canonical_key]
+targetUNIQUE <- index[target_key_count == 1L]
 selected <- merge(
   eligible,
-  targetUNIQUE[, .(canonical_key, target_id = ID, target_ref = REF, target_alt = ALT)],
+  targetUNIQUE[, .(canonical_key, target_id, target_ref, target_alt)],
   by = "canonical_key", all = FALSE, sort = FALSE
 )
 selected[, orientation := data.table::fcase(
@@ -83,14 +61,13 @@ targetAMBIGUOUS <- eligible[canonical_key %in% targetDUPLICATEKEY, source_row]
 selected <- selected[!source_row %in% targetAMBIGUOUS]
 selected <- selected[, .SD[1L], by = source_row]
 
-reference[, reference_key_count := .N, by = canonical_key]
-referenceDUPLICATEKEY <- unique(reference[reference_key_count != 1L, canonical_key])
-referenceUNIQUE <- reference[reference_key_count == 1L]
+referenceDUPLICATEKEY <- index[reference_key_count > 1L, canonical_key]
+referenceUNIQUE <- index[reference_key_count == 1L]
 referenceAMBIGUOUS <- selected[canonical_key %in% referenceDUPLICATEKEY, source_row]
 selected <- selected[!source_row %in% referenceAMBIGUOUS]
 selected <- merge(
   selected,
-  referenceUNIQUE[, .(canonical_key, reference_id = ID, reference_ref = REF, reference_alt = ALT)],
+  referenceUNIQUE[, .(canonical_key, reference_id, reference_ref, reference_alt)],
   by = "canonical_key", all = FALSE, sort = FALSE
 )
 selected <- selected[target_ref == reference_ref & target_alt == reference_alt]

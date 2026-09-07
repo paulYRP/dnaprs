@@ -783,16 +783,12 @@ if (length(missingREFERENCE) > 0L) {
 modelREQUIRED <- c(
   "model_id", "outcome", "prs_name", "family", "model_type", "covariates",
   "participant_id", "timepoint_column", "timepoint_values", "group_id",
-  "require_repeated_value_agreement",
   "expected_direction", "primary"
 )
 if (nrow(phenotypeMODEL) > 0L) {
   if (!runPHENOTYPE) stop("Phenotype models were resolved for a run without phenotype analysis enabled.", call. = FALSE)
   for (column in setdiff(c("control_value", "case_value"), names(phenotypeMODEL))) {
     phenotypeMODEL[[column]] <- ""
-  }
-  if (!"require_repeated_value_agreement" %in% names(phenotypeMODEL)) {
-    phenotypeMODEL$require_repeated_value_agreement <- FALSE
   }
   requireCOLUMN(phenotypeMODEL, modelREQUIRED, "Generated phenotype-model records")
   for (column in c("model_id", "outcome", "prs_name", "family", "primary")) {
@@ -868,38 +864,6 @@ if (nrow(phenotypeMODEL) > 0L) {
   phenotypeMODEL$model_type <- tolower(trimws(phenotypeMODEL$model_type))
   if (any(!phenotypeMODEL$model_type %in% c("gaussian", "binomial", "mixed"))) {
     stop("Phenotype model_type must be gaussian, binomial, or mixed.", call. = FALSE)
-  }
-  repeatedAGREEMENT <- tolower(as.character(phenotypeMODEL$require_repeated_value_agreement)) == "true"
-  fixedTIMEPOINT <- repeatedAGREEMENT & phenotypeMODEL$model_type != "mixed" &
-    !is.na(phenotypeMODEL$timepoint_values) & nzchar(trimws(phenotypeMODEL$timepoint_values))
-  if (any(fixedTIMEPOINT)) {
-    timepointCOLUMN <- unique(phenotypeMODEL$timepoint_column[fixedTIMEPOINT])
-    if (length(timepointCOLUMN) != 1L || is.na(timepointCOLUMN) || !nzchar(timepointCOLUMN)) {
-      stop("Fixed timepoint models must use one timepoint column.", call. = FALSE)
-    }
-    covariateCOLUMN <- trimws(unlist(strsplit(phenotypeMODEL$covariates, ",", fixed = TRUE)))
-    sexCOLUMN <- phenotypeHEADER[tolower(phenotypeHEADER) == "sex"]
-    agreementCOLUMN <- unique(c(phenotypeMODEL$outcome, covariateCOLUMN, sexCOLUMN))
-    agreementCOLUMN <- intersect(agreementCOLUMN[nzchar(agreementCOLUMN)], phenotypeHEADER)
-    participant <- as.character(phenotypeDATA[[declaredPARTICIPANT[[1L]]]])
-    repeatedPARTICIPANT <- unique(participant[duplicated(participant) | duplicated(participant, fromLast = TRUE)])
-    for (participantID in repeatedPARTICIPANT) {
-      index <- which(participant == participantID)
-      for (column in agreementCOLUMN) {
-        observedVALUE <- unique(as.character(phenotypeDATA[[column]][index]))
-        observedVALUE <- observedVALUE[!is.na(observedVALUE) & nzchar(observedVALUE)]
-        if (length(observedVALUE) > 1L) {
-          observedTIMEPOINT <- unique(as.character(phenotypeDATA[[timepointCOLUMN]][index]))
-          stop(
-            sprintf(
-              "Fixed timepoint models require repeated values to agree, but participant '%s' has conflicting field '%s' values across timepoints %s: %s.",
-              participantID, column, paste(observedTIMEPOINT, collapse = ", "), paste(observedVALUE, collapse = ", ")
-            ),
-            call. = FALSE
-          )
-        }
-      }
-    }
   }
   for (row in seq_len(nrow(phenotypeMODEL))) {
     modelID <- phenotypeMODEL$model_id[[row]]
