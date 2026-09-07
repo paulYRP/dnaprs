@@ -17,8 +17,21 @@ printf '%b\n' \
 bash "$repo_root/bin/import_target.sh" DOSAGE vcf dosage.vcf '' '' DS 1 raw '' '' "$repo_root/bin/target_adapter.pl"
 bash "$repo_root/bin/resolve_target_markers.sh" DOSAGE DOSAGE.imported DOSAGE.initial_marker_decisions.tsv raw \
     "$repo_root/tests/data/reference/dbsnp_source" "$repo_root/bin/resolve_target_markers.R" 1
+mkdir upstream
+mv DOSAGE.marker_decisions.tsv upstream/
+ln -s upstream/DOSAGE.marker_decisions.tsv DOSAGE.marker_decisions.tsv
+sha256sum upstream/DOSAGE.marker_decisions.tsv DOSAGE.imported/DOSAGE.* > upstream.sha256
 bash "$repo_root/bin/finalise_target.sh" DOSAGE DOSAGE.imported raw '' \
     "$repo_root/tests/data/reference/human_g1k_v37.fasta" 1
+sha256sum --check --strict upstream.sha256
+test ! -L DOSAGE.marker_decisions.tsv
+Rscript -e '
+    library(data.table)
+    decisions <- fread("DOSAGE.marker_decisions.tsv")[startsWith(decision, "RETAINED_")]
+    variants <- fread("DOSAGE/DOSAGE.pvar")
+    variants <- variants[match(decisions$final_id, ID)]
+    stopifnot(identical(decisions$final_ref, variants$REF), identical(decisions$final_alt, variants$ALT))
+'
 plink2 --pfile DOSAGE/DOSAGE --export A-transpose --threads 1 --memory 1024 --out observed
 awk 'NR==2 { if ($5 != "A" || $7 != 1.25 || $8 != 0.75) exit 1 }
      NR==3 { if ($5 != "C" || $7 != 0.25 || $8 != 1.75) exit 1 }
@@ -105,3 +118,24 @@ Rscript -e '
     stopifnot(identical(value, c(2, 1, 0)))
 '
 printf 'Ambiguous TOP alleles follow the reference-context strand transformation.\n'
+
+# A unique ALT/ALT candidate must not introduce the unobserved genomic REF base.
+mkdir ../reference_conflict
+cd ../reference_conflict
+printf '%s\n' 'F A 0 0 2 -9 C C' 'F B 0 0 1 -9 C G' > conflict.ped
+printf '1\tconflict\t0\t100\n' > conflict.map
+mkdir panel
+cp "$repo_root/tests/data/reference/dbsnp_source/assembly_report.txt" panel/
+printf '%s\n' '##fileformat=VCFv4.2' '##contig=<ID=NC_000001.10,length=1000>' > panel/dbsnp.vcf
+printf '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\nNC_000001.10\t100\trs100\tA\tC,G\t.\tPASS\t.\n' >> panel/dbsnp.vcf
+bash "$repo_root/bin/import_target.sh" CONFLICT ped conflict.ped '' '' DS 1 raw '' '' "$repo_root/bin/target_adapter.pl"
+bash "$repo_root/bin/resolve_target_markers.sh" CONFLICT CONFLICT.imported CONFLICT.initial_marker_decisions.tsv raw panel "$repo_root/bin/resolve_target_markers.R" 1
+grep -q '^conflict' CONFLICT.retained_markers.txt
+if bash "$repo_root/bin/finalise_target.sh" CONFLICT CONFLICT.imported raw top \
+    "$repo_root/tests/data/reference/human_g1k_v37.fasta" 1 > conflict.log 2>&1; then
+    echo 'An ALT/ALT assay with an incompatible genomic reference was accepted.' >&2
+    exit 1
+fi
+grep -q 'assay/reference conflict' conflict.log
+grep -q 'Source marker conflict, rsID rs100' conflict.log
+printf 'ALT/ALT matching preserves the fail-fast reference policy.\n'

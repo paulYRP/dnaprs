@@ -110,6 +110,7 @@ cojo <- data.table::data.table(
   N = suppressWarnings(as.numeric(extractCOLUMN(option[["n-col"]], option[["sample-size"]])))
 )
 information <- suppressWarnings(as.numeric(extractCOLUMN(option[["info-col"]])))
+cojo[, INFO := information]
 
 # Apply one common PRS-specific QC contract after format adaptation.
 validALLELE <- grepl("^[ACGT]$", cojo$A1) & grepl("^[ACGT]$", cojo$A2) & cojo$A1 != cojo$A2
@@ -152,6 +153,7 @@ cojo <- cojo[!conflictingROW]
 filteredDUPLICATE <- collapsedEXACT + filteredCONFLICTING
 if (nrow(cojo) == 0L) stop(sprintf("GWAS '%s' retained no unique canonical variants.", option[["trait-id"]]), call. = FALSE)
 duplicatedSNP <- sum(duplicated(cojo$SNP) | duplicated(cojo$SNP, fromLast = TRUE))
+cojo[, INFO := NULL]
 
 data.table::setorder(cojo, CHR, BP)
 data.table::fwrite(cojo, paste0(option[["trait-id"]], ".cojo.ma"), sep = "\t", quote = FALSE, na = "NA")

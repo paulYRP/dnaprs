@@ -69,6 +69,9 @@ input:
   - impute_script:
       type: file
       description: Shell script that phases, imputes, filters, and converts one chromosome.
+  - dosage_validator:
+      type: file
+      description: Streaming check for complete finite retained dosages between zero and two.
   - imputation_dr2:
       type: float
       description: Minimum imputation dosage quality retained.

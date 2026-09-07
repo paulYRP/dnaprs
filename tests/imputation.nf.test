@@ -18,6 +18,19 @@ nextflow_pipeline {
                 stop_after = "imputation"
                 report_enabled = false
                 beagle_jar = System.getenv("DNAPRS_TEST_BEAGLE_JAR")
+                references = [
+                    root: "${projectDir}/tests/data/reference",
+                    assets: [
+                        dbsnp: 'dbsnp_source',
+                        fasta: 'human_g1k_v37.fasta',
+                        fasta_index: 'human_g1k_v37.fasta.fai',
+                        imputation_panel: 'real_imputation_panel',
+                        genetic_maps: 'real_imputation_map',
+                        population_metadata: 'population.tsv',
+                        related_samples: 'related.txt',
+                        unbref3_jar: 'unbref3.test.jar',
+                    ],
+                ]
             }
         }
 
@@ -27,10 +40,13 @@ nextflow_pipeline {
             def manifest = path("$runDir/data/target_imputation/TEST/TEST.imputation_manifest.tsv")
 
             assert workflow.success
+            def qcRows = qc.text.readLines().collect { it.split("\t") }
+            def imputedColumn = qcRows.first().toList().indexOf("imputed_variants")
             assertAll(
                 { assert qc.exists() },
                 { assert qc.text.contains("sample_order\tunique_variant_keys\tdosage_range\treference_alleles\tstatus") },
                 { assert qc.text.contains("PASS\tPASS\tPASS\tPASS\tPASS") },
+                { assert imputedColumn >= 0 && qcRows.drop(1).every { it[imputedColumn].toInteger() > 0 } },
                 { assert manifest.exists() },
                 { assert manifest.text.contains("GRCh37\t0.80\tPASS") },
                 { assert path("$runDir/data/checkpoints/imputed/TEST.imputed/TEST.pgen").exists() },

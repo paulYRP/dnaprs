@@ -466,7 +466,7 @@ workflow DNAPRS {
             .combine(beagle_jar)
             .combine(reference_fasta_source)
             .combine(plink_reference)
-        TARGET_IMPUTE_CHROMOSOME(target_impute_input, script_files.target_impute_chromosome, imputation_dr2)
+        TARGET_IMPUTE_CHROMOSOME(target_impute_input, script_files.target_impute_chromosome, script_files.validate_imputed_dosages, imputation_dr2)
         target_impute_gather = TARGET_IMPUTE_CHROMOSOME.out.chromosomes
             .groupTuple(sort: 'deep')
             .map { group_key, chromosomes, chromosome_dirs, chromosome_manifests, chromosome_qc, chromosome_dr2, chromosome_logs ->

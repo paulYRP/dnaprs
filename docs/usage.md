@@ -26,8 +26,10 @@ including effect scale, study size, build, and source-column mapping.
 
 Common GWAS QC requires finite effects, uncertainty, P values, frequencies and sample
 sizes; autosomal single-base alleles; MAF at least 0.01; and the declared INFO threshold.
-It collapses exact records and excludes conflicting canonical variant keys. PLINK C+T
-then removes every palindromic variant and orients effects to the final target ALT allele.
+It includes INFO when collapsing exact records and excludes conflicting canonical
+variant keys. PLINK C+T then removes every palindromic variant and orients effects to
+the final target ALT allele. A target-aligned candidate with `P=0` stops clumping;
+review the source P-value rather than dropping or replacing it automatically.
 SBayesRC receives the common clean GWAS without this PLINK-specific filter.
 
 ## Minimal commands
@@ -186,6 +188,11 @@ European distance percentile. Participant decisions
 separate technical eligibility, relatedness, ancestry, score eligibility, and primary
 analysis.
 
+Raw marker matching requires the complete assay pair, or its strand complement, to
+occur within one complete dbSNP SNP record. Two ALT alleles can therefore identify a
+candidate. Records containing non-SNP alleles are excluded as a whole. Exactly one
+compatible rsID is required; matching does not establish the final genomic REF allele.
+
 Raw marker preparation counts stored calls before excluding all-missing probes. It
 counts Y calls separately from sex-aware missingness. Duplicate rsID groups must share
 one manifest-derived assay pair and have completely concordant overlapping calls.
@@ -196,6 +203,9 @@ GRCh37 orientation preserves native genotypes, dosages and sample metadata for Q
 For array inputs, `bcftools +fixref` determines the TOP-to-forward transformation from
 marker alleles and reference sequence; PLINK applies the allele recoding to PGEN.
 Reference checks remain required before imputation.
+An assay/reference conflict stops preparation without replacing an observed allele.
+After imputation filtering, every retained participant dosage must be present, finite
+and between zero and two. Missing or invalid retained dosages stop scoring.
 
 Required post-QC calculations must complete for retained participants. Missing or
 invalid heterozygosity, relatedness or ancestry results stop scoring. Participants

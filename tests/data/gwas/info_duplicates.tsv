@@ -1,0 +1,7 @@
+SNP	CHR	BP	A1	A2	BETA	SE	P	EAF	N	INFO
+rsExact	1	100	G	A	0.1	0.03	0.01	0.3	1000	0.9
+rsExact	1	100	G	A	0.1	0.03	0.01	0.3	1000	0.9
+rsInfoConflict	1	200	T	C	0.2	0.04	0.02	0.4	1000	0.85
+rsInfoConflict	1	200	T	C	0.2	0.04	0.02	0.4	1000	0.95
+rsPassing	1	300	C	A	0.3	0.05	0.03	0.2	1000	0.8
+rsPassing	1	300	C	A	0.3	0.05	0.03	0.2	1000	0.7

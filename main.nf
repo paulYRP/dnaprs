@@ -66,6 +66,7 @@ workflow NFCORE_DNAPRS {
         reference_ancestry: file("${projectDir}/bin/reference_ancestry.sh"),
         classify_ancestry: file("${projectDir}/bin/classify_ancestry.R"),
         target_impute_chromosome: file("${projectDir}/bin/target_impute_chromosome.sh"),
+        validate_imputed_dosages: file("${projectDir}/bin/validate_imputed_dosages.sh"),
         assemble_target_imputation: file("${projectDir}/bin/assemble_target_imputation.sh"),
         prepare_plink_reference: file("${projectDir}/bin/prepare_plink_reference.sh"),
         assemble_plink_reference: file("${projectDir}/bin/assemble_plink_reference.sh"),

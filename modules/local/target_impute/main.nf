@@ -7,6 +7,7 @@ process TARGET_IMPUTE_CHROMOSOME {
     input:
     tuple val(group_key), val(chromosome), path(target_pgen), path(target_pvar), path(target_psam), path(target_qc), val(panel), path(panel_files), val(genetic_map), path(genetic_map_files), val(beagle), path(beagle_files), val(reference_fasta), path(reference_fasta_files), val(prepared_reference), path(prepared_reference_dir)
     path impute_script
+    path dosage_validator
     val imputation_dr2
 
     output:
@@ -21,7 +22,7 @@ process TARGET_IMPUTE_CHROMOSOME {
     BEAGLE_JAR='${beagle.path}' bash ${impute_script} \
         '${meta.cohort}' '${chromosome}' '${target_pgen}' '${target_pvar}' '${target_psam}' \
         '${panel.path}' '${genetic_map.path}' '${imputation_dr2}' '${task.cpus}' '${memory_mb}' '${panel.build}' \
-        '${reference_fasta.path}' '${prepared_reference_dir}/all_reference.pvar'
+        '${reference_fasta.path}' '${prepared_reference_dir}/all_reference.pvar' '${dosage_validator}'
     """
 
     stub:

@@ -47,6 +47,11 @@ SHA-256 checksums and population-selection identity alongside its summary.
 strand fields, the reference-oriented `assay_pair`, final genomic `REF/ALT`, and duplicate
 decisions. Raw call rate uses all input participants, including for Y. It is distinct
 from sex-aware biological QC.
+For raw inputs, `matched_rsid`, `candidate_ref` and `candidate_alt` describe the selected
+compatible dbSNP record; `candidate_alt` retains its complete ALT list. Mapping counts
+use distinct rsIDs. These fields are separate from the assay pair and the final genomic
+alleles. Retained `final_chr`, `final_pos`, `final_ref` and `final_alt` match the
+reference-checked PVAR. Excluded raw markers have no final REF/ALT assignment.
 
 `participant_decisions.tsv` reports sample missingness, heterozygosity, sex-check,
 relatedness, and ancestry results separately. `score_eligible` requires the technical

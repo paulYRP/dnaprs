@@ -14,6 +14,7 @@ memory_mb="${10}"
 genome_build="${11}"
 reference_fasta="${12}"
 reference_pvar="${13}"
+dosage_validator="${14}"
 output_dir="${cohort}.chr${chromosome}.imputed"
 log_file="${cohort}.chr${chromosome}.target_imputation.log"
 mkdir -p "$output_dir"
@@ -106,8 +107,6 @@ unexpected_chromosome=$(bcftools query -f '%CHROM\n' "${cohort}.chr${chromosome}
 [[ -z "$unexpected_chromosome" ]] || { echo "Beagle output contains the wrong chromosome: ${unexpected_chromosome}" >&2; exit 5; }
 duplicate_key=$(bcftools query -f '%CHROM:%POS:%REF:%ALT\n' "${cohort}.chr${chromosome}.beagle.vcf.gz" | sort | uniq -d | head -n 1)
 [[ -z "$duplicate_key" ]] || { echo "Beagle output contains a duplicate variant key: ${duplicate_key}" >&2; exit 5; }
-invalid_dosage=$(bcftools query -f '[\t%DS]\n' "${cohort}.chr${chromosome}.beagle.vcf.gz" | awk -F '[\t,]' '{for(i=1;i<=NF;i++) if($i!="." && $i!="" && ($i+0<0 || $i+0>2)){print $i; exit}}')
-[[ -z "$invalid_dosage" ]] || { echo "Beagle output contains a dosage outside [0,2]: ${invalid_dosage}" >&2; exit 5; }
 
 printf 'cohort\tchromosome\tdr2_bin\tvariants\n' > "${cohort}.chr${chromosome}.imputation_dr2.tsv"
 bcftools query -i 'INFO/IMP=1' -f '%INFO/DR2\n' "${cohort}.chr${chromosome}.beagle.vcf.gz" |
@@ -117,6 +116,7 @@ bcftools query -i 'INFO/IMP=1' -f '%INFO/DR2\n' "${cohort}.chr${chromosome}.beag
 bcftools view -m2 -M2 -v snps -i "INFO/IMP!=1 || INFO/DR2>=${dr2}" -Oz \
     -o "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" "${cohort}.chr${chromosome}.beagle.vcf.gz"
 tabix -f -p vcf "${output_dir}/${cohort}_chr${chromosome}.vcf.gz"
+bash "$dosage_validator" "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" "$cohort" "$chromosome"
 bcftools norm --check-ref e --fasta-ref "$reference_fasta" -Ou "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" >/dev/null
 retained_variants=$(bcftools index --nrecords "${output_dir}/${cohort}_chr${chromosome}.vcf.gz")
 imputed_variants=$(bcftools query -f '%INFO/IMP\n' "${output_dir}/${cohort}_chr${chromosome}.vcf.gz" | awk '$1==1{n++} END{print n+0}')

@@ -118,6 +118,11 @@ jobs:
             --workdir /work/dnaprs \
             ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
             bash tests/scripts/test_marker_dosages.sh
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
+            bash tests/scripts/test_imputation_dosages.sh
 
       - name: Test target preparation and grouped references
         if: ${{ matrix.NXF_VER == '25.10.4' }}

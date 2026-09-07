@@ -151,7 +151,8 @@ if (
     cd "$runtime_root"
     BEAGLE_JAR="$runtime_root/beagle.jar" bash "$imputation_script" \
         TEST 1 "$runtime_root/target.pgen" "$runtime_root/target.pvar" "$runtime_root/target.psam" \
-        "$runtime_root/panel" "$runtime_root/map-missing" 0.8 1 1024 GRCh37 "$runtime_root/reference.fasta" "$runtime_root/reference.pvar"
+        "$runtime_root/panel" "$runtime_root/map-missing" 0.8 1 1024 GRCh37 "$runtime_root/reference.fasta" "$runtime_root/reference.pvar" \
+        "$repo_root/bin/validate_imputed_dosages.sh"
 ) 2> "$test_root/runtime-missing.err"; then
     printf 'ERROR: chromosome imputation accepted a missing chromosome 1 map.\n' >&2
     exit 1
@@ -164,7 +165,8 @@ if (
     cd "$runtime_root"
     BEAGLE_JAR="$runtime_root/beagle.jar" bash "$imputation_script" \
         TEST 1 "$runtime_root/target.pgen" "$runtime_root/target.pvar" "$runtime_root/target.psam" \
-        "$runtime_root/panel" "$runtime_root/map-duplicate" 0.8 1 1024 GRCh37 "$runtime_root/reference.fasta" "$runtime_root/reference.pvar"
+        "$runtime_root/panel" "$runtime_root/map-duplicate" 0.8 1 1024 GRCh37 "$runtime_root/reference.fasta" "$runtime_root/reference.pvar" \
+        "$repo_root/bin/validate_imputed_dosages.sh"
 ) 2> "$test_root/runtime-duplicate.err"; then
     printf 'ERROR: chromosome imputation accepted duplicate chromosome 1 maps.\n' >&2
     exit 1

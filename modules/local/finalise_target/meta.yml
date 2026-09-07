@@ -20,7 +20,7 @@ input:
         description: "Imported PGEN directory, preserved unchanged across downstream tasks."
     - "decisions":
         type: file
-        description: "Marker resolution and duplicate-probe decisions."
+        description: "Marker resolution and duplicate-probe decisions, staged separately from the final output."
     - "retained":
         type: file
         description: "Retained source identifiers, before renaming."
@@ -60,7 +60,7 @@ output:
           description: "Target cohort, source format, build, role and input-stage metadata."
       - "${meta.cohort}.marker_decisions.tsv":
           type: file
-          description: "Source-order marker resolution audit."
+          description: "Source-order marker audit with retained coordinates and REF/ALT validated against the final PVAR."
   checkpoint:
     - - "meta":
           type: map

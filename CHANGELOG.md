@@ -4,6 +4,15 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Matched assay pairs against complete dbSNP allele sets using coordinate joins and
+  compact masks. Kept candidate matching separate from genomic allele validation.
+- Published final marker alleles from the reference-checked PVAR without changing
+  upstream decision files or native genotypes.
+- Preserved INFO during exact GWAS duplicate assessment and rejected zero-P
+  target-aligned clumping candidates with an actionable error.
+- Required complete, finite dosages between zero and two after imputation filtering.
+- Added regression tests for complete allele sets, reference conflicts, staged-input
+  preservation, INFO-only conflicts and retained dosage validation.
 - Corrected path-resolution test fixtures to support participant QC and match BED
   marker IDs to their manifest. Added checks for participant counts and exact scores.
 - Corrected stored Y-call counts before marker eligibility and restored manifest-based

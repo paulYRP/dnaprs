@@ -6,7 +6,7 @@ process FINALISE_TARGET {
     container 'ghcr.io/paulyrp/dnaprs-imputation:1.1.0'
 
     input:
-    tuple val(meta), path(imported), path(decisions), path(retained), path(rename)
+    tuple val(meta), path(imported), path(decisions, stageAs: 'marker_resolution/*'), path(retained), path(rename)
     tuple val(reference_fasta), path(reference_fasta_files)
     path finalise_script
 
@@ -21,7 +21,7 @@ process FINALISE_TARGET {
     checkpoint_stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
     """
     PLINK_MEMORY_MB=${Math.max(640, (task.memory.toMega() * 0.8).intValue())} bash ${finalise_script} '${meta.cohort}' '${imported}' '${meta.input_stage ?: 'raw'}' \
-        '${meta.assay_manifest ?: ''}' '${reference_fasta.path}' '${task.cpus}'
+        '${meta.assay_manifest ?: ''}' '${reference_fasta.path}' '${task.cpus}' '${decisions}'
 
     printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\\n' > ${meta.cohort}.corrected_target_manifest.tsv
     printf '%s\t%s\tpgen\t%s\t\t\t%s\t%s\tDS\t%s\t\t\\n' \
@@ -35,6 +35,7 @@ process FINALISE_TARGET {
     checkpoint_stage = meta.input_stage == 'raw' ? 'corrected' : meta.input_stage
     """
     mkdir -p ${meta.cohort}
+    cp '${decisions}' '${meta.cohort}.marker_decisions.tsv'
     printf 'stub\n' > ${meta.cohort}/${meta.cohort}.pgen
     printf '#CHROM\tPOS\tID\tREF\tALT\n1\t100\t1:100:A:G\tA\tG\n' > ${meta.cohort}/${meta.cohort}.pvar
     printf '#FID\tIID\nTEST01\tTEST01\nTEST02\tTEST02\n' > ${meta.cohort}/${meta.cohort}.psam

@@ -29,8 +29,7 @@ gwas[, canonical_pair := canonicalPAIR(A1, A2)]
 gwas[, canonical_key := paste(CHR, BP, canonical_pair, sep = ":")]
 
 palindromic <- paste0(pmin(gwas$A1, gwas$A2), pmax(gwas$A1, gwas$A2)) %in% c("AT", "CG")
-positiveP <- is.finite(gwas$p) & gwas$p > 0
-eligible <- gwas[!palindromic & positiveP]
+eligible <- gwas[!palindromic]
 eligibleROWS <- eligible$source_row
 
 targetDUPLICATEKEY <- index[target_key_count != 1L, canonical_key]
@@ -48,6 +47,11 @@ selected[, orientation := data.table::fcase(
   default = "INCOMPATIBLE"
 )]
 selected <- selected[orientation != "INCOMPATIBLE"]
+invalidP <- selected[!is.finite(p) | p <= 0 | p > 1]
+if (nrow(invalidP)) {
+  stop(sprintf("GWAS '%s', cohort '%s': target-aligned variant '%s' (%s:%s) has P=%s. PLINK clumping requires 0 < P <= 1. Review the source P-value; no replacement or exclusion was applied.",
+    option[["trait-id"]], option[["cohort"]], invalidP$SNP[[1L]], invalidP$CHR[[1L]], invalidP$BP[[1L]], invalidP$p[[1L]]), call. = FALSE)
+}
 selected[, `:=`(
   b = ifelse(orientation %in% c("DIRECT_REF", "COMPLEMENT_REF"), -b, b),
   freq = ifelse(orientation %in% c("DIRECT_REF", "COMPLEMENT_REF"), 1 - freq, freq),
@@ -95,8 +99,8 @@ data.table::fwrite(
     trait_id = option[["trait-id"]],
     prs_name = option[["prs-name"]],
     input_variants = nrow(gwas),
-    filtered_nonpositive_p = sum(!positiveP),
-    filtered_palindromic = sum(palindromic & positiveP),
+    filtered_nonpositive_p = 0L,
+    filtered_palindromic = sum(palindromic),
     target_aligned_variants = length(targetALIGNED),
     filtered_target_missing_or_mismatched = length(eligibleROWS) - length(targetALIGNED),
     filtered_target_ambiguous = length(targetAMBIGUOUS),

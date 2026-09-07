@@ -10,6 +10,9 @@ input_stage="$3"
 assay_manifest="$4"
 reference_fasta="$5"
 threads="$6"
+decisions="${7:-$cohort.marker_decisions.tsv}"
+decision_input="$cohort.marker_decisions.input.tsv"
+cp "$decisions" "$decision_input"
 
 mkdir -p "$cohort"
 for extension in pgen pvar psam; do
@@ -48,7 +51,7 @@ if [[ "$input_stage" == "raw" ]]; then
             next
         }
         $decision ~ /^RETAINED_/ { print $final_id }
-    ' "$cohort.marker_decisions.tsv" | sort > expected_final_ids.txt
+    ' "$decision_input" | sort > expected_final_ids.txt
     awk '!/^#/ { print $3 }' "$cohort/${cohort}_resolved.pvar" | sort > observed_final_ids.txt
     if ! cmp -s expected_final_ids.txt observed_final_ids.txt; then
         echo "Resolved PVAR identifiers for cohort '$cohort' do not match the retained marker decisions." >&2
@@ -61,9 +64,9 @@ if [[ "$input_stage" == "raw" ]]; then
         awk -F '\t' 'BEGIN { OFS="\t" }
             NR == 1 { for (i=1; i<=NF; i++) column[$i]=i; next }
             $(column["decision"]) ~ /^RETAINED_/ {
-                print $(column["final_id"]), $(column["final_ref"]), $(column["final_alt"])
+                print $(column["final_id"]), $(column["assay_ref_a"]), $(column["assay_ref_b"])
             }
-        ' "$cohort.marker_decisions.tsv" > reference_alleles.tsv
+        ' "$decision_input" > reference_alleles.tsv
         # Complement both allele labels together without changing their PGEN indices.
         # PLINK then changes REF order and recodes genotypes and dosages together.
         awk -F '\t' 'BEGIN { OFS="\t"; complement["A"]="T"; complement["T"]="A"; complement["C"]="G"; complement["G"]="C" }
@@ -103,8 +106,24 @@ if [[ "$input_stage" == "raw" ]]; then
     else
         bcftools view -Oz -o "$cohort.forward.vcf.gz" "$cohort.allele_orientation.vcf"
     fi
-    bcftools norm -f "$reference_fasta" -c e -Oz \
-        -o "$cohort.forward.checked.vcf.gz" "$cohort.forward.vcf.gz"
+    if ! bcftools norm -f "$reference_fasta" -c e -Oz \
+        -o "$cohort.forward.checked.vcf.gz" "$cohort.forward.vcf.gz" 2> reference_check.log; then
+        cat reference_check.log >&2
+        awk -F '\t' '
+            NR == FNR {
+                if (FNR == 1) { for(i=1;i<=NF;i++) column[$i]=i; next }
+                if ($(column["decision"]) ~ /^RETAINED_/) {
+                    key=$(column["final_chr"]) ":" $(column["final_pos"])
+                    context[key]="Source marker " $(column["source_id"]) ", rsID " $(column["final_id"]) ", coordinate " key ", assay " $(column["assay_ref_a"]) "/" $(column["assay_ref_b"])
+                }
+                next
+            }
+            { count=split($0, token, /[[:space:]]+/); for(i=1;i<=count;i++) if(token[i] in context) print context[token[i]] }
+        ' "$decision_input" reference_check.log >&2
+        echo "Cohort '$cohort' has an assay/reference conflict. Review its source alleles, genome build and FASTA; candidate rsID matching does not validate genomic REF/ALT." >&2
+        exit 5
+    fi
+    cat reference_check.log >&2
     tabix -f -p vcf "$cohort.forward.checked.vcf.gz"
     if [[ -n "$assay_manifest" ]]; then
         # Use the reference-checked TOP transformation, including ambiguous SNPs.
@@ -154,6 +173,27 @@ if [[ "$input_stage" == "raw" ]]; then
         echo "Resolved target for cohort '$cohort' contains $invalid_alleles invalid REF and ALT allele pairs." >&2
         exit 5
     }
+    # Write a new decision table; never edit a staged upstream symlink.
+    awk -F '\t' -v cohort="$cohort" 'BEGIN { OFS="\t" }
+        NR == FNR {
+            if (!/^#/) { chr[$3]=$1; pos[$3]=$2; ref[$3]=$4; alt[$3]=$5 }
+            next
+        }
+        FNR == 1 { for(i=1;i<=NF;i++) column[$i]=i; print; next }
+        {
+            if ($(column["decision"]) ~ /^RETAINED_/) {
+                id=$(column["final_id"])
+                if (!(id in chr) || chr[id] != $(column["final_chr"]) || pos[id] != $(column["final_pos"])) {
+                    printf "Cohort %s marker %s disagrees with its resolved coordinate.\n", cohort, id > "/dev/stderr"
+                    failed=1
+                }
+                $(column["final_chr"])=chr[id]; $(column["final_pos"])=pos[id]
+                $(column["final_ref"])=ref[id]; $(column["final_alt"])=alt[id]
+            }
+            print
+        }
+        END { exit failed }
+    ' "$cohort/$cohort.pvar" "$decision_input" > "$cohort.marker_decisions.new.tsv"
     awk -F '\t' -v cohort="$cohort" '
         NR == FNR {
             if (FNR == 1) { for (i=1; i<=NF; i++) column[$i]=i; next }
@@ -180,8 +220,11 @@ if [[ "$input_stage" == "raw" ]]; then
             }
             exit failed
         }
-    ' "$cohort.marker_decisions.tsv" "$cohort/$cohort.pvar"
+    ' "$cohort.marker_decisions.new.tsv" "$cohort/$cohort.pvar"
+else
+    cp "$decision_input" "$cohort.marker_decisions.new.tsv"
 fi
+mv "$cohort.marker_decisions.new.tsv" "$cohort.marker_decisions.tsv"
 
 prefixes=()
 mapfile -t chromosomes < <(awk '!/^#/ {print $1}' "$cohort/${cohort}.pvar" | sed 's/^chr//' | awk '$1 >= 1 && $1 <= 22' | sort -n -u)

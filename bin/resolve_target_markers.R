@@ -10,6 +10,15 @@ writeTSV <- function(value, path, header = TRUE) fwrite(value, path, sep = "\t",
 complement <- function(value) chartr("ACGT", "TGCA", value)
 pairKEY <- function(ref, alt) paste(pmin(ref, alt), pmax(ref, alt), sep = "/")
 validPAIR <- function(ref, alt) !is.na(ref) & !is.na(alt) & grepl("^[ACGT]$", ref) & grepl("^[ACGT]$", alt) & ref != alt
+alleleMASK <- function(ref, alt) {
+  alleles <- paste(ref, alt, sep = ",")
+  bases <- c("A", "C", "G", "T")
+  mask <- integer(length(alleles))
+  for (index in seq_along(bases)) {
+    mask <- mask + as.integer(grepl(bases[[index]], alleles, fixed = TRUE)) * bitwShiftL(1L, index - 1L)
+  }
+  mask
+}
 readCALLS <- function(path, ids) {
   calls <- readTSV(path)
   metadata <- c("#CHROM", "CHROM", "CHR", "SNP", "(C)M", "CM", "POS", "COUNTED", "ALT")
@@ -61,8 +70,6 @@ if (option[["action"]] == "match") {
   pvar[, source_row := .I]
   pvar[, c("CHROM", "REF", "ALT") := .(sub("^chr", "", CHROM, ignore.case = TRUE), toupper(REF), toupper(ALT))]
   pvar[, POS := as.integer(POS)]
-  pvar[, direct_pair := pairKEY(REF, ALT)]
-  pvar[, allele_key := pmin(direct_pair, pairKEY(complement(REF), complement(ALT)))]
   callCOUNT <- missing$OBS_CT - missing$MISSING_CT
   yROW <- which(pvar$CHROM %in% c("Y", "24"))
   if (length(yROW)) {
@@ -82,30 +89,40 @@ if (option[["action"]] == "match") {
     dbsnp <- readTSV(option[["dbsnp-records"]], header = FALSE,
       col.names = c("accession", "position", "candidate", "reference", "alternate"), colClasses = "character")
     dbsnp[, chromosome := chromosomeMAP$chromosome[match(accession, chromosomeMAP$accession)]]
-    dbsnp <- dbsnp[!is.na(chromosome) & grepl("^rs[0-9]+$", candidate)]
-    if (nrow(dbsnp)) {
-      alt <- strsplit(toupper(dbsnp$alternate), ",", fixed = TRUE)
-      candidate <- dbsnp[rep(seq_len(.N), lengths(alt)), .(chromosome, position = as.integer(position), candidate, candidate_ref = toupper(reference))]
-      candidate[, candidate_alt := unlist(alt, use.names = FALSE)]
-      candidate <- unique(candidate[validPAIR(candidate_ref, candidate_alt)])
-    }
+    dbsnp[, `:=`(position = suppressWarnings(as.integer(position)), reference = toupper(reference), alternate = toupper(alternate))]
+    # Reject unsupported complete records instead of salvaging individual SNP ALTs.
+    candidate <- unique(dbsnp[!is.na(chromosome) & position > 0L & grepl("^rs[0-9]+$", candidate) &
+      grepl("^[ACGT]$", reference) & grepl("^[ACGT](,[ACGT])*$", alternate),
+      .(chromosome, position, candidate, candidate_ref = reference, candidate_alt = alternate)])
   }
-  candidate[, direct_pair := pairKEY(candidate_ref, candidate_alt)]
-  candidate[, allele_key := pmin(direct_pair, pairKEY(complement(candidate_ref), complement(candidate_alt)))]
+  candidate[, allele_mask := alleleMASK(candidate_ref, candidate_alt)]
   coordinateCOUNT <- candidate[, .(coordinate_candidates = uniqueN(candidate)), by = .(chromosome, position)]
-  target <- pvar[validPAIR(REF, ALT) & assayELIGIBLE]
-  compatible <- merge(target[, .(source_row, chromosome = CHROM, position = POS, allele_key, source_pair = direct_pair)],
-    candidate, by = c("chromosome", "position", "allele_key"), allow.cartesian = TRUE, sort = FALSE)
+  target <- pvar[, .(source_row, chromosome = CHROM, position = POS,
+    has_manifest = initial$assay_status != "NOT_SUPPLIED",
+    query_a = ifelse(initial$assay_status == "NOT_SUPPLIED", REF, initial$top_a),
+    query_b = ifelse(initial$assay_status == "NOT_SUPPLIED", ALT, initial$top_b))]
+  target <- target[position > 0L & validPAIR(query_a, query_b)]
+  target[, `:=`(query_mask = alleleMASK(query_a, query_b), complement_mask = alleleMASK(complement(query_a), complement(query_b)))]
+  compatible <- merge(target, candidate, by = c("chromosome", "position"), allow.cartesian = TRUE, sort = FALSE)
+  compatible[, `:=`(direct = bitwAnd(allele_mask, query_mask) == query_mask,
+    reverse = bitwAnd(allele_mask, complement_mask) == complement_mask)]
+  compatible <- compatible[direct | reverse]
+  # For non-array inputs, retain the existing REF-supported orientation when a
+  # complete record contains both strand pairs. Matching itself remains set-based.
+  compatible[!has_manifest & reverse & candidate_ref != query_a & candidate_ref != query_b &
+    (candidate_ref == complement(query_a) | candidate_ref == complement(query_b)), direct := FALSE]
   compatible[, allele_compatible_candidates := uniqueN(candidate), by = source_row]
-  compatible[, direct := source_pair == direct_pair]
-  setorderv(compatible, c("source_row", "direct", "candidate_ref", "candidate_alt"), c(1L, -1L, 1L, 1L))
+  compatible[, `:=`(oriented_a = ifelse(direct, query_a, complement(query_a)), oriented_b = ifelse(direct, query_b, complement(query_b)))]
+  compatible[, ref_present := candidate_ref == oriented_a | candidate_ref == oriented_b]
+  setorderv(compatible, c("source_row", "ref_present", "direct", "candidate_ref", "candidate_alt"), c(1L, -1L, -1L, 1L, 1L))
   selected <- compatible[allele_compatible_candidates == 1L][!duplicated(source_row)]
 
   result <- data.table(
     source_id = initial$source_id, final_id = "", source_chr = initial$source_chr,
     source_pos = initial$source_pos, final_chr = pvar$CHROM, final_pos = pvar$POS,
     source_ref = initial$source_ref, source_alt = initial$source_alt,
-    final_ref = pvar$REF, final_alt = pvar$ALT,
+    final_ref = "", final_alt = "",
+    matched_rsid = "", candidate_ref = "", candidate_alt = "",
     coordinate_candidates = 0L, allele_compatible_candidates = 0L,
     call_count = callCOUNT,
     call_rate = callCOUNT / sampleCOUNT,
@@ -116,21 +133,26 @@ if (option[["action"]] == "match") {
   for (column in c("manifest_a", "manifest_b", "top_a", "top_b", "ilmn_strand", "ref_strand", "assay_ref_a", "assay_ref_b", "assay_status")) {
     result[, (column) := initial[[column]]]
   }
-  counts <- merge(target[, .(source_row, chromosome = CHROM, position = POS)],
+  counts <- merge(target[, .(source_row, chromosome, position)],
     coordinateCOUNT, by = c("chromosome", "position"), sort = FALSE)
   result[counts$source_row, coordinate_candidates := counts$coordinate_candidates]
   counts <- unique(compatible[, .(source_row, allele_compatible_candidates)])
   result[counts$source_row, allele_compatible_candidates := counts$allele_compatible_candidates]
   result[coordinate_candidates > 0L, reason := "No allele-compatible dbSNP match"]
   result[allele_compatible_candidates > 1L, reason := "Multiple allele-compatible dbSNP matches"]
-  result[!validPAIR(pvar$REF, pvar$ALT), reason := "Incompatible assay alleles"]
-  result[!assayELIGIBLE, reason := "Source alleles are incompatible with or absent from the assay manifest"]
-  result[pvar$REF %in% c("0", ".") & pvar$ALT %in% c("0", "."), reason := "All genotypes or assay alleles missing"]
-  result[selected$source_row, c("final_id", "final_chr", "final_pos", "final_ref", "final_alt", "match_type", "reason") :=
-    .(selected$candidate, selected$chromosome, selected$position, selected$candidate_ref, selected$candidate_alt,
+  result[selected$source_row, c("final_id", "matched_rsid", "final_chr", "final_pos", "candidate_ref", "candidate_alt", "match_type", "reason") :=
+    .(selected$candidate, selected$candidate, selected$chromosome, selected$position, selected$candidate_ref, selected$candidate_alt,
       ifelse(selected$direct, "DIRECT", "COMPLEMENT"), "Unique allele-compatible dbSNP match")]
+  # Mapping does not make an incompatible observed genotype eligible.
+  result[!validPAIR(pvar$REF, pvar$ALT), c("final_id", "reason") := .("", "Incompatible assay alleles")]
+  result[!assayELIGIBLE, c("final_id", "reason") := .("", "Source alleles are incompatible with or absent from the assay manifest")]
+  result[pvar$REF %in% c("0", ".") & pvar$ALT %in% c("0", "."), reason := "All genotypes or assay alleles missing"]
   result[nzchar(final_id) & call_count == 0L, c("final_id", "reason") := .("", "All genotypes missing")]
-  result[assay_status == "NOT_SUPPLIED", c("assay_ref_a", "assay_ref_b") := .(final_ref, final_alt)]
+  supplied <- selected[result$assay_status[selected$source_row] == "NOT_SUPPLIED"]
+  # Order only observed alleles. A matching third dbSNP base is never inserted.
+  result[supplied$source_row, c("assay_ref_a", "assay_ref_b") := .(
+    ifelse(supplied$candidate_ref == supplied$oriented_b, supplied$oriented_b, supplied$oriented_a),
+    ifelse(supplied$candidate_ref == supplied$oriented_b, supplied$oriented_a, supplied$oriented_b))]
   result[, assay_pair := pairKEY(assay_ref_a, assay_ref_b)]
   result[, assay_complement := ifelse(assay_status == "NOT_SUPPLIED", match_type == "COMPLEMENT", ref_strand == "-")]
   result[nzchar(final_id), c("probe_count", "assay_count") := .(.N, uniqueN(assay_pair)), by = final_id]
@@ -188,8 +210,8 @@ if (option[["action"]] == "match") {
   retained <- result[startsWith(decision, "RETAINED_")]
   if (nrow(retained) && (anyNA(retained$final_id) || any(!nzchar(retained$final_id)) ||
       anyDuplicated(retained$final_id) || anyDuplicated(retained$import_id) ||
-      any(!validPAIR(retained$final_ref, retained$final_alt)))) {
-    stop("Retained markers require unique source and final IDs and distinct A/C/G/T REF and ALT alleles.", call. = FALSE)
+      any(!validPAIR(retained$assay_ref_a, retained$assay_ref_b)))) {
+    stop("Retained markers require unique source and final IDs and distinct A/C/G/T assay alleles.", call. = FALSE)
   }
   writeTSV(result[, !c("source_row", "import_id", "match_type"), with = FALSE], option[["output-decisions"]])
   if (!nrow(retained)) stop("Raw marker resolution retained no variants; inspect the marker decision reasons.", call. = FALSE)

@@ -39,6 +39,8 @@ nextflow_workflow {
                 { assert pvar[3..4] == ['G', 'A'] },
                 { assert decisionRows.find { it.source_id == '1:53072432' }.decision.startsWith('RETAINED_') },
                 { assert decisionRows.find { it.source_id == '1:53072432' }.call_count == '2' },
+                { assert decisionRows.find { it.source_id == '1:53072432' }.final_ref == pvar[3] },
+                { assert decisionRows.find { it.source_id == '1:53072432' }.final_alt == pvar[4] },
                 { assert decisionRows.find { it.source_id == 'rs116820347' }.decision.startsWith('EXCLUDED_') },
                 { assert decisionRows.find { it.source_id == 'rs116820347' }.call_count == '0' },
                 { assert decisionRows.count { it.decision.startsWith('RETAINED_') } == 1 }
