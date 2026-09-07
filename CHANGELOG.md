@@ -4,6 +4,8 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Kept synthetic BREF3 test records readable by the CI runner after Docker execution,
+  allowing nf-test discovery and artifact upload. Added a runner-side access check.
 - Kept Java runtime diagnostics out of BREF3 conversion output and avoided shared
   performance-file locks. Added early VCF-header validation and reference-specific errors.
 - Added real BREF3 tests for genotype preservation, Java warnings, concurrent conversion,

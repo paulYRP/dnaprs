@@ -5,6 +5,8 @@ repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 prepare_script="${1:-$repo_dir/bin/prepare_plink_reference.sh}"
 fixture_dir="$repo_dir/tests/data/reference"
 test_dir=$(mktemp -d)
+# Synthetic test records must remain readable outside a root-run container.
+chmod a+rx "$test_dir"
 export UNBREF3_JAR="${UNBREF3_JAR:-/opt/beagle/unbref3.jar}"
 export DNAPRS_TEST_REAL_JAVA
 DNAPRS_TEST_REAL_JAVA=$(command -v java)

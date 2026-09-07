@@ -135,6 +135,8 @@ jobs:
             --workdir /work/dnaprs \
             ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
             bash tests/scripts/test_reference_conversion.sh
+          # Check record access as the runner before nf-test discovery and upload.
+          tar --create --file "$RUNNER_TEMP/reference-conversion.tar" --directory nf-test-results reference-conversion
 
       - name: Test target preparation and grouped references
         if: ${{ matrix.NXF_VER == '25.10.4' }}
