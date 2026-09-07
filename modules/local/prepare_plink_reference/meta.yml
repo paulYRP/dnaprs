@@ -67,7 +67,7 @@ output:
           description: "Chromosome preparation counts and source SHA-256 checksums."
       - "${panel.reference_id}.group${group_id}.prepare.log":
           type: file
-          description: "Software execution log."
+          description: "Reference conversion and preparation diagnostics, including Java runtime warnings and errors."
   versions_bcftools:
     - - "${task.process}":
           type: string

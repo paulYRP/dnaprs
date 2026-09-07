@@ -1,0 +1,39 @@
+nextflow_workflow {
+    name "Real BREF3 reference chromosome preparation"
+    script "../../../../tests/workflows/reference_groups.nf"
+    workflow "TEST_BREF3_REFERENCE_GROUPS"
+    tag "reference_groups"
+
+    for (count in [1, 2]) {
+        test("convert and gather ${count} BREF3 reference chromosomes") {
+            when {
+                workflow {
+                    """
+                    input[0] = ${count}
+                    input[1] = file("${projectDir}/tests/data/reference/bref3_panel")
+                    input[2] = [[path: 'population.tsv'], file("${projectDir}/tests/data/reference/population.tsv")]
+                    input[3] = [[path: 'related.txt'], file("${projectDir}/tests/data/reference/related.txt")]
+                    input[4] = file("${projectDir}/bin/prepare_plink_reference.sh")
+                    input[5] = file("${projectDir}/bin/assemble_plink_reference.sh")
+                    """
+                }
+            }
+            then {
+                assert workflow.success
+                def reference = workflow.out.reference[0]
+                def qc = file(workflow.out.source_qc[0][1]).text.readLines().tail()
+                assert reference[0].group_count == count
+                assert reference[0].chromosomes == (1..count).toList()
+                assert qc.collect { it.split('\t')[0] as Integer }.sort() == (1..count).toList()
+                assert qc.every { it.split('\t')[1].endsWith('.bref3') && it.split('\t')[2..4] == ['24', '2', 'PASS'] }
+                assert qc.every { it.split('\t')[5] ==~ /[a-f0-9]{64}/ }
+                for (population in ['eur', 'all']) {
+                    def pvar = file("${reference[1]}/${population}_reference.pvar").text.readLines().findAll { !it.startsWith('#') }
+                    assert pvar.size() == 2 * count
+                    assert pvar.collect { it.split('\t')[0] as Integer }.unique() == (1..count).toList()
+                    assert file("${reference[1]}/${population}_reference.psam").text.readLines().findAll { !it.startsWith('#') }.size() == 24
+                }
+            }
+        }
+    }
+}

@@ -18,6 +18,12 @@ log_file="${output_dir}.prepare.log"
 mkdir -p "$output_dir/chromosomes"
 : > "$log_file"
 
+reference_error() {
+    printf "Reference group '%s', chromosome %s: %s Source: %s. Check diagnostics in %s before retrying.\n" \
+        "$output_dir" "$chromosome" "$1" "$source_file" "$log_file" >&2
+    exit 4
+}
+
 [[ "$genome_build" == "GRCh37" ]] || {
     echo "The downloaded 1000 Genomes source bundle is declared for GRCh37, not ${genome_build}." >&2
     exit 2
@@ -65,25 +71,40 @@ for source_file in "${panel_files[@]}"; do
     [[ "$chromosome" =~ ^([1-9]|1[0-9]|2[0-2])$ ]] || continue
 
     source_vcf="chr${chromosome}.source.vcf.gz"
+    [[ -r "$source_file" ]] || reference_error 'Reference source is unreadable.'
     if [[ "$source_file" == *.bref3 ]]; then
-        [[ -s "$unbref3_jar" ]] || { echo "unbref3 JAR was not found: $unbref3_jar" >&2; exit 2; }
-        java -jar "$unbref3_jar" "$source_file" 2>> "$log_file" | bgzip -c > "$source_vcf"
+        [[ -s "$unbref3_jar" ]] || reference_error "unbref3 JAR was not found: $unbref3_jar."
+        # Reserve stdout for VCF data and avoid shared JVM performance-file locks.
+        if ! java -XX:+PerfDisableSharedMem -Xlog:disable -Xlog:all=warning:stderr \
+            -jar "$unbref3_jar" "$source_file" 2>> "$log_file" |
+            bgzip -c > "$source_vcf" 2>> "$log_file"; then
+            reference_error 'BREF3-to-VCF conversion failed.'
+        fi
     else
-        bcftools view -Oz -o "$source_vcf" "$source_file" 2>> "$log_file"
+        if ! bcftools view -Oz -o "$source_vcf" "$source_file" 2>> "$log_file"; then
+            reference_error 'VCF conversion failed.'
+        fi
     fi
-    tabix -f -p vcf "$source_vcf"
+    if ! bcftools view --header-only "$source_vcf" > /dev/null 2>> "$log_file"; then
+        reference_error "Converted file '$source_vcf' has no readable VCF header."
+    fi
+    tabix -f -p vcf "$source_vcf" 2>> "$log_file" || reference_error 'Converted VCF indexing failed.'
 
     filtered_vcf="chr${chromosome}.eur.vcf.gz"
-    bcftools view --force-samples --samples-file eur.samples.txt \
+    if ! bcftools view --force-samples --samples-file eur.samples.txt \
         --min-alleles 2 --max-alleles 2 --types snps -Ou "$source_vcf" 2>> "$log_file" |
-        bcftools annotate --set-id '%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$filtered_vcf" 2>> "$log_file"
-    tabix -f -p vcf "$filtered_vcf"
+        bcftools annotate --set-id '%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$filtered_vcf" 2>> "$log_file"; then
+        reference_error 'European reference filtering failed.'
+    fi
+    tabix -f -p vcf "$filtered_vcf" 2>> "$log_file" || reference_error 'European reference indexing failed.'
 
     all_vcf="chr${chromosome}.unrelated.vcf.gz"
-    bcftools view --force-samples --samples-file unrelated.samples.txt \
+    if ! bcftools view --force-samples --samples-file unrelated.samples.txt \
         --min-alleles 2 --max-alleles 2 --types snps -Ou "$source_vcf" 2>> "$log_file" |
-        bcftools annotate --set-id '%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$all_vcf" 2>> "$log_file"
-    tabix -f -p vcf "$all_vcf"
+        bcftools annotate --set-id '%CHROM:%POS:%REF:%FIRST_ALT' -Oz -o "$all_vcf" 2>> "$log_file"; then
+        reference_error 'Unrelated reference filtering failed.'
+    fi
+    tabix -f -p vcf "$all_vcf" 2>> "$log_file" || reference_error 'Unrelated reference indexing failed.'
 
     chromosome_prefix="${output_dir}/chromosomes/eur_chr${chromosome}"
     # PLINK expands these allele placeholders.

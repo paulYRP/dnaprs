@@ -124,12 +124,29 @@ jobs:
             ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
             bash tests/scripts/test_imputation_dosages.sh
 
+      - name: Test BREF3 conversion and Java diagnostic separation
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          mkdir -p nf-test-results/reference-conversion
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --volume "$PWD/nf-test-results/reference-conversion:/test-records" \
+            --env TMPDIR=/test-records \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
+            bash tests/scripts/test_reference_conversion.sh
+
       - name: Test target preparation and grouped references
         if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
-          nf-test test subworkflows/local/prepare_target/tests/real.nf.test subworkflows/local/prepare_plink_reference/tests/real.nf.test \
+          mkdir -p nf-test-results
+          nf-test test subworkflows/local/prepare_target/tests/real.nf.test \
+            subworkflows/local/prepare_plink_reference/tests/real.nf.test \
+            subworkflows/local/prepare_plink_reference/tests/bref3.nf.test \
             --profile test,docker \
-            --ci
+            --ci \
+            --log nf-test-results/reference-groups.log \
+            --junitxml nf-test-results/reference-groups.junit.xml
 
       - name: Test participant QC and existing phenotype scores
         if: ${{ matrix.NXF_VER == '25.10.4' }}

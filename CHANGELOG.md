@@ -4,6 +4,10 @@ All notable changes to dnaprs are recorded here.
 
 ## 1.0.0dev - 2026-09-01
 
+- Kept Java runtime diagnostics out of BREF3 conversion output and avoided shared
+  performance-file locks. Added early VCF-header validation and reference-specific errors.
+- Added real BREF3 tests for genotype preservation, Java warnings, concurrent conversion,
+  invalid output and grouped reference assembly.
 - Matched assay pairs against complete dbSNP allele sets using coordinate joins and
   compact masks. Kept candidate matching separate from genomic allele validation.
 - Published final marker alleles from the reference-checked PVAR without changing

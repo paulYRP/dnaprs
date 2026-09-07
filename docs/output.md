@@ -84,6 +84,8 @@ generated from a published table and, when enabled, is available as vector SVG a
 ## `logs/`
 
 Logs are grouped by target, reference, imputation, GWAS, PRS method, and report stage.
+Reference-group `*.prepare.log` files include Java runtime warnings and errors;
+BREF3 conversion keeps these diagnostics separate from the VCF data stream.
 The report Logs page displays supported text/HTML artifacts inline in expandable,
 collapsible, scrollable panels. Execution trace, timeline, report, and DAG files are
 also copied into report provenance when enabled.
