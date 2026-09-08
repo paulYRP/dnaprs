@@ -10,7 +10,7 @@ process PREPARE_SBAYESRC_GENOTYPES {
 
     output:
     tuple val(group_key), val(chromosome), path('*.chr*.sbayesrc_genotypes'), path('*.chr*.sbayesrc.genotype_qc.tsv'), emit: chromosomes
-    tuple val(group_key.getGroupTarget()), path('*.chr*.sbayesrc_genotypes/*.log'), emit: logs
+    tuple val(group_key), path('*.chr*.sbayesrc_genotypes/*.log'), emit: logs
     tuple val("${task.process}"), val('plink2'), eval("command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub"), emit: versions_plink2, topic: versions
     tuple val("${task.process}"), val('R'), eval("Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub"), emit: versions_r, topic: versions
 

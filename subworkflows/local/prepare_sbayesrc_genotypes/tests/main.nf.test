@@ -21,6 +21,15 @@ nextflow_workflow {
             assert workflow.success
             assert workflow.out.prepared.size() == 2
             assert workflow.out.qc.size() == 2
+            assert workflow.out.logs.size() == 2
+            assert workflow.out.logs.collect { it[0] }.sort { it.cohort } == [
+                [cohort: 'FIRST', scoring_stage: 'imputed'],
+                [cohort: 'SECOND', scoring_stage: 'imputed']
+            ]
+            for (record in workflow.out.logs) {
+                assert file(record[1]).name == "${record[0].cohort}_chr1.log"
+                assert file(record[1]).size() > 0
+            }
             assert workflow.out.traits.size() == 4
             assert workflow.out.traits.collect { "${it[0].cohort}:${it[5]}" }.sort() == ['FIRST:TRAIT1', 'FIRST:TRAIT2', 'SECOND:TRAIT1', 'SECOND:TRAIT2']
             for (record in workflow.out.prepared) {

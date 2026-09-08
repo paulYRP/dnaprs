@@ -36,5 +36,6 @@ workflow TEST_SBAYESRC_REUSE {
     emit:
     prepared = PREPARE_SBAYESRC_TARGETS.out.prepared
     qc = PREPARE_SBAYESRC_TARGETS.out.qc
+    logs = PREPARE_SBAYESRC_TARGETS.out.logs
     traits = scoring_inputs
 }

@@ -44,9 +44,9 @@ output:
           type: file
           description: Variant ID and participant preparation checks.
   logs:
-    - - meta:
+    - - group_key:
           type: map
-          description: Cohort metadata.
+          description: Cohort grouping metadata.
       - "*.chr*.sbayesrc_genotypes/*.log":
           type: file
           description: Chromosome conversion log.

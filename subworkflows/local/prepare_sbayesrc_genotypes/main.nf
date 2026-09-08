@@ -37,4 +37,5 @@ workflow PREPARE_SBAYESRC_TARGETS {
     prepared = ASSEMBLE_SBAYESRC_GENOTYPES.out.prepared.mix(routes.other)
     qc = ASSEMBLE_SBAYESRC_GENOTYPES.out.qc
     logs = PREPARE_SBAYESRC_GENOTYPES.out.logs
+        .map { group_key, log -> tuple(group_key.getGroupTarget(), log) }
 }

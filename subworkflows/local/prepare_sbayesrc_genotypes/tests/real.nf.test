@@ -19,9 +19,17 @@ nextflow_workflow {
         then {
             assert workflow.success
             assert workflow.out.prepared.size() == 2
+            assert workflow.out.logs.size() == 44
+            assert workflow.out.logs.collect { it[0] }.unique().sort { it.cohort } == [
+                [cohort: 'FIRST', scoring_stage: 'imputed'],
+                [cohort: 'SECOND', scoring_stage: 'imputed']
+            ]
             assert workflow.out.traits.size() == 4
             for (record in workflow.out.prepared) {
                 def cohort = record[0].cohort
+                def logs = workflow.out.logs.findAll { it[0].cohort == cohort }
+                assert logs.collect { file(it[1]).name }.sort() == (1..22).collect { "${cohort}_chr${it}.log".toString() }.sort()
+                assert logs.every { file(it[1]).size() > 0 }
                 def summary = workflow.out.qc.find { it[0].cohort == cohort }
                 def rows = file(summary[1]).text.readLines().tail().collect { it.split('\t') }
                 assert rows.collect { it[1] as Integer } == (1..22).toList()
