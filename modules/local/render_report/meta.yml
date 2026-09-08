@@ -29,10 +29,10 @@ tools:
 input:
   - report_files:
       type: file
-      description: Pipeline result, QC, log, and provenance files used by the report.
+      description: Readable result, QC, log, and provenance files; genotype directories are published separately.
   - output_manifest:
       type: file
-      description: Stable manifest of published pipeline outputs.
+      description: Manifest matching the staged report files, excluding separately published genotype directories.
   - report_source:
       type: directory
       description: Quarto report source directory.

@@ -172,6 +172,16 @@ jobs:
             docker.io/zhiliz/sbayesrc:0.2.6 \
             tests/scripts/test_sbayesrc_genotypes.R
 
+      - name: Test report input files and symbolic links
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+            Rscript tests/scripts/test_report_inputs.R
+
       - name: Run minimal real-tool workflow test
         if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |

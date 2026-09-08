@@ -40,7 +40,7 @@ process RENDER_REPORT {
     """
     mkdir -p reports/site_libs reports/assets reports/downloads reports/figures/tiff reports/figures/png reports/figures/jpeg reports/provenance
     printf '<html><body><h1>dnaprs stub report</h1></body></html>\n' > reports/index.html
-    printf 'publish_path\tfile_name\n' > reports/provenance/output_files.tsv
+    cp '${output_manifest}' reports/provenance/output_files.tsv
     printf 'result_file\tcolumn\tdata_type\tmeaning\tmissing_value\n' > reports/provenance/data_dictionary.tsv
     printf 'figure_id\tpage\tsection\ttitle\tdescription\tinspection\twidth_in\theight_in\tdpi\ttiff\tpng\tjpeg\n' > reports/provenance/figure_manifest.tsv
     """

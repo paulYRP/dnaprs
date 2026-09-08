@@ -658,8 +658,6 @@ workflow DNAPRS {
             .mix(SBAYESRC_MODEL.out.model.map { _meta, _weight, _parameter, model_qc, _impute_qc, _tidy_qc, _harmonisation_qc -> model_qc })
 
         result_files = result_files
-            .mix(PREPARE_SBAYESRC_TARGETS.out.prepared.filter { target, _dir, _qc, _decisions, _keep -> target.scoring_stage == 'imputed' }
-                .map { target, directory, _qc, _decisions, _keep -> tuple("sbayesrc/genotypes/${target.cohort}", directory) })
             .mix(PREPARE_SBAYESRC_TARGETS.out.qc.map { target, qc -> tuple("qc/sbayesrc/genotypes/${target.cohort}", qc) })
             .mix(PREPARE_SBAYESRC_TARGETS.out.logs.map { target, log -> tuple("logs/sbayesrc/genotypes/${target.cohort}", log) })
             .mix(SBAYESRC_SCORE.out.matches.map { target, gwas, qc -> tuple("qc/sbayesrc/${gwas.trait_id}/${target.cohort}", qc) })
@@ -678,6 +676,8 @@ workflow DNAPRS {
             .mix(SBAYESRC_SCORE.out.scores.map { target, gwas, _score, score_qc -> tuple("qc/scores/${target.cohort}/${gwas.trait_id}", score_qc) })
             .mix(SBAYESRC_SCORE.out.logs.map { target, gwas, stage_log -> tuple("logs/sbayesrc/${gwas.trait_id}/${target.cohort}", stage_log) })
         checkpoint_files = checkpoint_files
+            .mix(PREPARE_SBAYESRC_TARGETS.out.prepared.filter { target, _dir, _qc, _decisions, _keep -> target.scoring_stage == 'imputed' }
+                .map { target, directory, _qc, _decisions, _keep -> tuple("sbayesrc/genotypes/${target.cohort}", directory) })
             .mix(PREPARE_SBAYESRC_REFERENCE.out.ld.map { _meta, ld_dir -> tuple('reference/sbayesrc/prepared', ld_dir) })
             .mix(PREPARE_SBAYESRC_REFERENCE.out.annotation.map { _meta, annotation_file -> tuple('reference/sbayesrc/prepared', annotation_file) })
     }

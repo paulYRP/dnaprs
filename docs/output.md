@@ -42,6 +42,8 @@ VCF IDs and eligible participants. These scoring files are separate from the sha
 coordinate-based genotypes. Each PSAM retains the original family and individual IDs
 (FID/IID) in VCF sample order. A temporary import keep file handles VCF sample names
 internally; the original eligible-participant keep file is unchanged.
+Genotype directories remain available with reporting enabled or disabled. They are listed
+in `data/inputs/published_files.json`, but are not duplicated in HTML report downloads.
 `qc/sbayesrc/genotypes/<cohort>/` records participant and
 variant counts, preserved and assigned IDs, and duplicate-ID checks for each chromosome.
 Conversion logs are under `data/logs/sbayesrc/genotypes/<cohort>/`.
@@ -89,7 +91,9 @@ contains the records selected for each model after timepoint and technical-recor
 `phenotype_associations.tsv` includes Student-t confidence intervals for fixed Gaussian
 models, parametric and permutation P values, Holm-adjusted permutation P values, base and
 full R-squared, delta R-squared, and partial R-squared. `phenoPRS.csv` remains as a legacy
-CSV copy of the row-level integration table.
+CSV copy of the row-level integration table. The final phenotype-plus-PRS CSV is
+`data/phenotype/phenoPRS.csv`. It includes standardised and raw scores without overwriting
+the input phenotype file; its report download preserves the same contents.
 
 ## `figures/`
 
@@ -129,6 +133,11 @@ Important portable subfolders are:
 
 All links are relative. Treat participant-level score and phenotype files as sensitive
 research data.
+
+The report output index describes its staged files and downloads, not separately
+published genotype directories. Report inputs must be readable files; valid symbolic
+links to files are supported. Invalid inputs stop report preparation with the affected
+path before downloads and checksums are created.
 
 ## Score interpretation
 

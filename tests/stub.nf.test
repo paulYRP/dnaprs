@@ -39,7 +39,36 @@ nextflow_pipeline {
                 { assert path("$runDir/figures").exists() },
                 { assert snapshot(path("$runDir/data/pipeline_info/software_versions.yml")).match() },
                 { assert path("$runDir/data/inputs/published_files.json").exists() },
+                { assert path("$runDir/data/inputs/published_files.json").text.contains('TEST.sbayesrc_genotypes') },
+                { assert !path("$runDir/reports/provenance/output_files.tsv").text.contains('TEST.sbayesrc_genotypes') },
+                { assert path("$runDir/reports/provenance/output_files.tsv").text.contains('phenoPRS.csv') },
+                { assert !path("$runDir/reports/downloads/sbayesrc/genotypes").exists() },
                 { assert path(runDir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] }
+            )
+        }
+    }
+
+    test("prepared SBayesRC genotypes are published when reporting is disabled") {
+
+        when {
+            params {
+                outdir = "$outputDir"
+                run_name = "without_report"
+                methods = "plink_ct,sbayesrc"
+                target_imputation = true
+                report_enabled = false
+            }
+        }
+
+        then {
+            def runDir = "$outputDir/without_report"
+            assert workflow.success
+            assertAll(
+                { assert path("$runDir/data/sbayesrc/genotypes/TEST/TEST.sbayesrc_genotypes/TEST_chr1.pvar").text.contains('rs1') },
+                { assert path("$runDir/data/phenotype/phenoPRS.csv").exists() },
+                { assert path("$runDir/data/inputs/published_files.json").text.contains('TEST.sbayesrc_genotypes') },
+                { assert !path("$runDir/reports/index.html").exists() },
+                { assert workflow.trace.tasks().every { !it.name.contains('RENDER_REPORT') } }
             )
         }
     }

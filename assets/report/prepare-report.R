@@ -236,11 +236,12 @@ writeCONFIG <- function(pageVALUE) {
 inputROOT <- Sys.getenv("DNAPRS_REPORT_INPUTS")
 manifest <- fread(Sys.getenv("DNAPRS_OUTPUT_MANIFEST"))
 stopifnot(
-  dir.exists(inputROOT),
   all(c("publish_path", "file_name") %in% names(manifest)),
   !anyDuplicated(manifest$file_name),
   !anyDuplicated(file.path(manifest$publish_path, manifest$file_name))
 )
+source("report-inputs.R")
+reportINPUTPATH <- validateREPORTINPUTS(inputROOT, manifest)
 
 dir.create("downloads", recursive = TRUE, showWarnings = FALSE)
 dir.create("data", recursive = TRUE, showWarnings = FALSE)
@@ -268,10 +269,12 @@ manifest[, relative_path := gsub(
   file.path("downloads", publish_path, file_name)
 )]
 for (row in seq_len(nrow(manifest))) {
-  sourceP <- file.path(inputROOT, manifest$file_name[row])
+  sourceP <- reportINPUTPATH[row]
   destinationP <- manifest$relative_path[row]
   dir.create(dirname(destinationP), recursive = TRUE, showWarnings = FALSE)
-  stopifnot(file.exists(sourceP), file.copy(sourceP, destinationP, overwrite = TRUE))
+  if (!file.copy(sourceP, destinationP, overwrite = TRUE)) {
+    stop(sprintf("Could not copy report input '%s' to '%s'. Check destination permissions and available storage.", sourceP, destinationP), call. = FALSE)
+  }
 }
 
 targetMANIFEST <- readRESULT("targets.tsv")
@@ -1576,9 +1579,9 @@ manifest[, `:=`(
     "Research workflow output"
   )
 )]
-manifest[, bytes := file.info(file.path(inputROOT, file_name))$size]
+manifest[, bytes := file.info(reportINPUTPATH)$size]
 manifest[, sha256 := vapply(
-  file.path(inputROOT, file_name),
+  reportINPUTPATH,
   function(path) {
     connection <- file(path, "rb")
     on.exit(close(connection), add = TRUE)

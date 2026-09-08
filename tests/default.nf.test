@@ -39,6 +39,14 @@ nextflow_pipeline {
             def associationFields = associationLines[1].replace('"', '').split('\t', -1)
             def associationRecord = [associationHeader, associationFields].transpose().collectEntries()
             def coverageFields = coverage.text.readLines()[1].split('\t', -1)
+            def reportManifestLines = path("$runDir/reports/provenance/output_files.tsv").text.readLines()
+            def reportManifestHeader = reportManifestLines[0].replace('"', '').split('\t', -1)
+            def reportManifestRows = reportManifestLines.tail().collect { line ->
+                [reportManifestHeader, line.replace('"', '').split('\t', -1)].transpose().collectEntries()
+            }
+            def phenotypeCsv = path("$runDir/data/phenotype/phenoPRS.csv").toFile().bytes
+            def phenotypeDownload = path("$runDir/reports/downloads/phenotype/phenoPRS.csv").toFile().bytes
+            def phenotypeSha256 = java.security.MessageDigest.getInstance('SHA-256').digest(phenotypeCsv).encodeHex().toString()
 
             assert workflow.success
             assertAll(
@@ -69,6 +77,11 @@ nextflow_pipeline {
                 { assert Math.abs((associationRecord.beta as Double) - (-3.06747624096187d)) < 1e-10 },
                 { assert associationRecord.status == 'ESTIMATED' },
                 { assert report.exists() },
+                { assert java.util.Arrays.equals(phenotypeCsv, phenotypeDownload) },
+                { assert reportManifestRows.find { it.file_name == 'phenoPRS.csv' }.sha256 == phenotypeSha256 },
+                { assert path("$runDir/reports/phenotype.html").text.contains('downloads/phenotype/phenoPRS.csv') },
+                { assert path("$runDir/reports/provenance/output_files.tsv").text.contains('phenoPRS.csv') },
+                { assert path("$runDir/reports/provenance/data_dictionary.tsv").text.contains('MDD_PRS_RAW') },
                 { assert report.text.contains('aria-label="Open the dnaprs GitHub repository"') },
                 { assert !report.text.contains('target="_blank"') },
                 { assert !report.text.contains("figure-tabs") },
