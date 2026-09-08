@@ -162,6 +162,9 @@ p-values per trait. Manhattan plots retain all valid `P <= 1e-5` points and up t
 scoring inputs and full harmonised GWAS downloads are unchanged. QQ axes remain
 `-log10(P)`.
 
+SVG downloads retain vector points and editable text. Image exports reuse the same
+prepared plot across SVG, TIFF, PNG and JPEG formats.
+
 `reports/provenance/gwas_plot_selection.tsv` records eligible and displayed counts
 and selection rules. Figure-source tables contain the displayed coordinates or
 exact full-data histogram counts. The figure manifest records their dimensions;

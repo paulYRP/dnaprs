@@ -13,8 +13,8 @@ process REPORT_SOFTWARE {
     tuple val("${task.process}"), val('openxlsx'), eval("Rscript -e 'cat(as.character(packageVersion(\"openxlsx\")))' 2>/dev/null || printf stub"), emit: versions_openxlsx, topic: versions
     tuple val("${task.process}"), val('rmarkdown'), eval("Rscript -e 'cat(as.character(packageVersion(\"rmarkdown\")))' 2>/dev/null || printf stub"), emit: versions_rmarkdown, topic: versions
     tuple val("${task.process}"), val('scales'), eval("Rscript -e 'cat(as.character(packageVersion(\"scales\")))' 2>/dev/null || printf stub"), emit: versions_scales, topic: versions
-
     tuple val("${task.process}"), val('bit64'), eval("Rscript -e 'cat(as.character(packageVersion(\"bit64\")))' 2>/dev/null || printf stub"), emit: versions_bit64, topic: versions
+    tuple val("${task.process}"), val('svglite'), eval("Rscript -e 'cat(as.character(packageVersion(\"svglite\")))' 2>/dev/null || printf stub"), emit: versions_svglite, topic: versions
 
     script:
     """

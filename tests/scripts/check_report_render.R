@@ -5,6 +5,18 @@ stopifnot(all(file.info(unlist(manifest[, .(svg, tiff, png, jpeg)]))$size > 0))
 for (row in seq_len(nrow(manifest))) {
   value <- fread(manifest$source_table[row])
   stopifnot(nrow(value) == manifest$source_rows[row], ncol(value) == manifest$source_columns[row])
+  if (manifest$figure_id[row] %in% c("gwas_qq", "gwas_manhattan")) {
+    # Count vector points in bounded chunks, including overlapping strong signals.
+    connection <- file(manifest$svg[row], "r")
+    points <- 0
+    repeat {
+      lines <- readLines(connection, n = 10000L, warn = FALSE)
+      if (!length(lines)) break
+      points <- points + sum(grepl("<circle ", lines, fixed = TRUE))
+    }
+    close(connection)
+    stopifnot(points == nrow(value))
+  }
 }
 selection <- fread("provenance/gwas_plot_selection.tsv")
 stopifnot(all(selection[figure_id == "gwas_qq", displayed_records] <= 51000L))

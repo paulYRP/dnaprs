@@ -112,12 +112,24 @@ savePLOT <- function(id, plot, width, height, page, section, title,
   pathTIFF <- file.path("figures", "tiff", paste0(id, ".tiff"))
   pathPNG <- file.path("figures", "png", paste0(id, ".png"))
   pathJPEG <- file.path("figures", "jpeg", paste0(id, ".jpeg"))
-  grDevices::svg(pathSVG, width = width, height = height, bg = "white", onefile = TRUE)
-  tryCatch(print(plot), finally = grDevices::dev.off())
+  # Build once and release temporary layer data before writing each format.
+  # svglite writes vector elements directly instead of retaining a Cairo SVG scene.
+  invisible(gc())
+  svglite::svglite(pathSVG, width = width, height = height, bg = "white")
+  tryCatch({
+    message(sprintf("Report render: %s [build]", id))
+    plot <- ggplotGrob(plot)
+    invisible(gc())
+    message(sprintf("Report render: %s [SVG]", id))
+    grid::grid.draw(plot)
+  }, finally = grDevices::dev.off())
+  message(sprintf("Report render: %s [TIFF]", id))
   ggsave(pathTIFF, plot, width = width, height = height, dpi = 360,
          compression = "lzw", bg = "white")
+  message(sprintf("Report render: %s [PNG]", id))
   ggsave(pathPNG, plot, width = width, height = height, dpi = 360,
          bg = "white")
+  message(sprintf("Report render: %s [JPEG]", id))
   ggsave(pathJPEG, plot, width = width, height = height, dpi = 360,
          quality = 95, bg = "white")
   dimensions <- if (nzchar(source_table)) figureDIMENSIONS[[source_table]] else c(rows = 0L, columns = 0L)
@@ -1599,7 +1611,7 @@ manifest[, sha256 := vapply(
 fwrite(manifest, file.path("provenance", "output_files.tsv"), sep = "\t")
 
 reportVERSION <- data.table(
-  software = c("R", "Quarto", "data.table", "ggplot2", "knitr", "openssl", "bit64"),
+  software = c("R", "Quarto", "data.table", "ggplot2", "knitr", "openssl", "bit64", "svglite"),
   version = c(
     paste(R.version$major, R.version$minor, sep = "."),
     Sys.getenv("QUARTO_VERSION", unset = "Recorded by the execution environment"),
@@ -1607,7 +1619,8 @@ reportVERSION <- data.table(
     as.character(packageVersion("ggplot2")),
     as.character(packageVersion("knitr")),
     as.character(packageVersion("openssl")),
-    as.character(packageVersion("bit64"))
+    as.character(packageVersion("bit64")),
+    as.character(packageVersion("svglite"))
   )
 )
 fwrite(

@@ -6,6 +6,7 @@ All notable changes to dnaprs are recorded here.
 
 - Reduced report memory use with deterministic GWAS display selection, per-trait reads and exact histogram counts, without changing PRS calculations or CSV outputs.
 - Added full-data and displayed-point counts to report provenance and integer64 support to report container 1.0.2.
+- Reduced image-export memory use by reusing prepared plots and writing vector SVG files with svglite.
 
 - Fixed HTML report preparation by publishing SBayesRC genotype directories separately from report downloads, while preserving `phenoPRS.csv` and existing output paths.
 - Added report-input checks for directories, missing files, broken links and unreadable files before copying or calculating checksums.
