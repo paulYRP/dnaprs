@@ -39,7 +39,10 @@ validated receipt rather than publishing a second source copy.
 
 `sbayesrc/genotypes/<cohort>/` contains the chromosome PGEN files prepared with existing
 VCF IDs and eligible participants. These scoring files are separate from the shared
-coordinate-based genotypes. `qc/sbayesrc/genotypes/<cohort>/` records participant and
+coordinate-based genotypes. Each PSAM retains the original family and individual IDs
+(FID/IID) in VCF sample order. A temporary import keep file handles VCF sample names
+internally; the original eligible-participant keep file is unchanged.
+`qc/sbayesrc/genotypes/<cohort>/` records participant and
 variant counts, preserved and assigned IDs, and duplicate-ID checks for each chromosome.
 Conversion logs are under `data/logs/sbayesrc/genotypes/<cohort>/`.
 

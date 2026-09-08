@@ -1,5 +1,5 @@
 name: prepare_sbayesrc_genotypes
-description: Import chromosome dosages while preserving existing variant IDs.
+description: Import chromosome dosages while preserving variant IDs and restoring original family IDs.
 keywords:
   - sbayesrc
   - genotypes
@@ -25,7 +25,7 @@ input:
         description: Completed imputed chromosome VCF compressed with gzip.
     - participant_keep:
         type: file
-        description: Eligible FID/IID pairs.
+        description: Original eligible FID/IID pairs with one family ID per individual ID.
   - preparation_script:
       type: file
       description: R script for scoring genotype preparation and collection.
@@ -39,7 +39,7 @@ output:
           description: Prepared chromosome.
       - "*.chr*.sbayesrc_genotypes":
           type: directory
-          description: PGEN companions and the PLINK log.
+          description: PGEN companions with original FID/IID pairs in VCF sample order, and the PLINK log.
       - "*.chr*.sbayesrc.genotype_qc.tsv":
           type: file
           description: Variant ID and participant preparation checks.

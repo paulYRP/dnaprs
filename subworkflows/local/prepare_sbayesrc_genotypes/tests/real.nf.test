@@ -6,7 +6,7 @@ nextflow_workflow {
     autoSort false
     tag "sbayesrc"
 
-    test("preserve rsIDs and selected participants across two complete cohorts") {
+    test("preserve rsIDs and original family IDs across two complete cohorts") {
         when {
             workflow {
                 """
@@ -38,9 +38,12 @@ nextflow_workflow {
                     def prefix = "${record[1]}/${cohort}_chr${chromosome}"
                     def variants = file("${prefix}.pvar").text.readLines().findAll { !it.startsWith('#') }
                     assert variants.collect { it.split('\t')[2] } == ["rs${chromosome}_A".toString(), "rs${chromosome}_B".toString(), "${chromosome}:300:G:A".toString()]
-                    assert file("${prefix}.psam").text.readLines().tail().collect { it.split('\t')[1] } == ['TEST01', 'TEST02']
+                    def samples = file("${prefix}.psam").text.readLines().tail().collect { it.split('\t') }
+                    assert samples.collect { it[0] } == ["${cohort}_1".toString(), "${cohort}_2".toString()]
+                    assert samples.collect { it[1] } == ['TEST01', 'TEST02']
                     assert file("${prefix}.pgen").size() > 0
                 }
+                assert file(record[4]).text.readLines() == ["${cohort}_2\tTEST02".toString(), "${cohort}_1\tTEST01".toString()]
                 assert workflow.out.traits.findAll { it[0].cohort == cohort }.collect { it[1] }.unique() == [record[1]]
             }
         }

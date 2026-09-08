@@ -36,6 +36,9 @@ nextflow_workflow {
                 def cohort = record[0].cohort
                 def rows = file("${record[1]}/${cohort}_chr1.pvar").text.readLines().findAll { !it.startsWith('#') }
                 assert rows[0].split('\t')[2] == 'rs1'
+                def samples = file("${record[1]}/${cohort}_chr1.psam").text.readLines().tail()
+                assert samples.sort() == ["${cohort}_1\tTEST01".toString(), "${cohort}_2\tTEST02".toString()]
+                assert file(record[4]).text.readLines() == ["${cohort}_2\tTEST02".toString(), "${cohort}_1\tTEST01".toString()]
                 assert workflow.out.traits.findAll { it[0].cohort == cohort }.collect { it[1].toString() }.unique() == [record[1].toString()]
             }
         }

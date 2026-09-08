@@ -17,7 +17,7 @@ input:
 output:
   - prepared:
       type: channel
-      description: Target tuples with the SBayesRC genotype directory substituted for imputed cohorts.
+      description: Target tuples with prepared SBayesRC genotypes and original FID/IID pairs for imputed cohorts; the keep file is unchanged.
   - qc:
       type: channel
       description: Cohort metadata and chromosome preparation QC.

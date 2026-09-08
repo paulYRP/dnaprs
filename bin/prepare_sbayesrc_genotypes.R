@@ -9,10 +9,28 @@ fail <- function(message) stop(sprintf("SBayesRC genotype preparation for cohort
 readTABLE <- function(path, ...) data.table::fread(path, colClasses = "character", showProgress = FALSE, ...)
 sampleKEY <- function(sample) paste(sample[["FID"]], sample[["IID"]], sep = "\t")
 readSAMPLES <- function(prefix) {
-  sample <- readTABLE(paste0(prefix, ".psam"))
+  sample <- readTABLE(paste0(prefix, ".psam"), na.strings = NULL)
   data.table::setnames(sample, sub("^#", "", names(sample)))
   if (!all(c("FID", "IID") %in% names(sample))) fail(paste("Missing FID/IID columns in", paste0(prefix, ".psam")))
-  sample[, c("FID", "IID"), with = FALSE]
+  sample
+}
+readVCFSAMPLES <- function(path, chromosome) {
+  stream <- gzfile(path, "rt")
+  on.exit(close(stream))
+  repeat {
+    line <- readLines(stream, n = 1L, warn = FALSE)
+    if (!length(line) || !startsWith(line, "#")) break
+    if (!startsWith(line, "#CHROM\t")) next
+    fields <- strsplit(line, "\t", fixed = TRUE)[[1L]]
+    if (length(fields) <= 9L || endsWith(line, "\t")) break
+    samples <- fields[-seq_len(9L)]
+    if (any(!nzchar(samples)) || any(grepl("[[:space:]]", samples))) break
+    if (anyDuplicated(samples)) {
+      fail(sprintf("Chromosome %s VCF '%s' has duplicate sample IDs. Supply unique sample names.", chromosome, path))
+    }
+    return(samples)
+  }
+  fail(sprintf("Chromosome %s VCF '%s' must have a #CHROM header with non-empty sample IDs without whitespace.", chromosome, path))
 }
 checkSAMPLES <- function(sample, keep, chromosome) {
   if (nrow(sample) != nrow(keep) || anyDuplicated(sampleKEY(sample)) || !setequal(sampleKEY(sample), sampleKEY(keep))) {
@@ -21,14 +39,23 @@ checkSAMPLES <- function(sample, keep, chromosome) {
 }
 writeTABLE <- function(table, path) data.table::fwrite(table, path, sep = "\t", quote = FALSE)
 keep <- readTABLE(option[["keep"]], header = FALSE)
-if (ncol(keep) != 2L || nrow(keep) == 0L || anyNA(keep)) fail("The participant keep file must contain non-empty FID/IID pairs.")
+keepCONTEXT <- sprintf("Keep file '%s'%s", option[["keep"]],
+  if (option[["action"]] == "prepare") paste(" for chromosome", option[["chromosome"]]) else "")
+if (ncol(keep) != 2L || nrow(keep) == 0L || anyNA(keep) || any(!nzchar(unlist(keep))) ||
+    any(grepl("[[:space:]]", unlist(keep)))) fail(paste(keepCONTEXT, "must contain non-empty FID/IID pairs without whitespace."))
 data.table::setnames(keep, c("FID", "IID"))
-if (anyDuplicated(sampleKEY(keep))) fail("The participant keep file contains duplicate FID/IID pairs.")
+if (anyDuplicated(sampleKEY(keep))) fail(paste(keepCONTEXT, "contains duplicate FID/IID pairs."))
 
 if (option[["action"]] == "prepare") {
   chromosome <- as.integer(option[["chromosome"]])
   if (length(chromosome) != 1L || is.na(chromosome) || !chromosome %in% 1:22) fail("Chromosome must be an integer from 1 to 22.")
   vcf <- option[["vcf"]]
+  if (anyDuplicated(keep$IID)) fail(paste(keepCONTEXT, "has ambiguous IID-to-FID mappings. Each eligible IID must identify one participant."))
+  vcfSAMPLES <- readVCFSAMPLES(vcf, chromosome)
+  if (any(!keep$IID %in% vcfSAMPLES)) {
+    fail(sprintf("Chromosome %s VCF '%s' is missing eligible IIDs from '%s': %s.",
+      chromosome, vcf, option[["keep"]], paste(head(keep$IID[!keep$IID %in% vcfSAMPLES], 5L), collapse = ", ")))
+  }
   outputDIR <- paste0(cohort, ".chr", chromosome, ".sbayesrc_genotypes")
   if (dir.exists(outputDIR)) fail(paste("Output directory already exists:", outputDIR))
   dir.create(outputDIR)
@@ -50,13 +77,24 @@ if (option[["action"]] == "prepare") {
   if (length(duplicatedID)) {
     fail(sprintf("Chromosome %s has duplicate variant IDs: %s. Review the VCF; no records were removed.", chromosome, paste(head(duplicatedID, 5L), collapse = ", ")))
   }
+  # VCF sample names become both FID and IID during import; retain the original mapping.
+  importKEEP <- paste0(cohort, ".chr", chromosome, ".sbayesrc.import.keep")
+  data.table::fwrite(keep[, .(FID = IID, IID)], importKEEP, sep = "\t", quote = FALSE, col.names = FALSE)
   status <- system2("plink2", c(
-    "--vcf", shQuote(vcf), "dosage=DS", "--double-id", "--keep", shQuote(option[["keep"]]),
+    "--vcf", shQuote(vcf), "dosage=DS", "--double-id", "--keep", shQuote(importKEEP),
     "--set-missing-var-ids", shQuote("@:#:$r:$a"), "--make-pgen",
     "--threads", option[["threads"]], "--memory", option[["memory"]], "--out", shQuote(prefix)
   ))
   if (status != 0L) fail(sprintf("PLINK conversion failed for chromosome %s. Review %s.log.", chromosome, prefix))
   pvar <- readTABLE(paste0(prefix, ".pvar"), skip = "#CHROM", select = c("#CHROM", "POS", "ID", "REF", "ALT"))
+  sample <- readSAMPLES(prefix)
+  if (!identical(sample$IID, vcfSAMPLES[vcfSAMPLES %in% keep$IID]) || any(sample$FID != sample$IID)) {
+    fail(sprintf("Chromosome %s import changed eligible sample IDs or order. Review '%s.psam' and keep file '%s'.", chromosome, prefix, option[["keep"]]))
+  }
+  # Restore only family IDs in the new PSAM; its rows must stay aligned with the PGEN.
+  sample[, FID := keep$FID[match(IID, keep$IID)]]
+  data.table::setnames(sample, "FID", "#FID")
+  writeTABLE(sample, paste0(prefix, ".psam"))
   sample <- readSAMPLES(prefix)
   checkSAMPLES(sample, keep, chromosome)
   if (nrow(pvar) != nrow(source) || !identical(pvar$ID, expectedID) ||
