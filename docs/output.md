@@ -37,6 +37,20 @@ model1/
 Large public source references remain in `--reference_dir`; the run records their
 validated receipt rather than publishing a second source copy.
 
+`sbayesrc/genotypes/<cohort>/` contains the chromosome PGEN files prepared with existing
+VCF IDs and eligible participants. These scoring files are separate from the shared
+coordinate-based genotypes. `qc/sbayesrc/genotypes/<cohort>/` records participant and
+variant counts, preserved and assigned IDs, and duplicate-ID checks for each chromosome.
+Conversion logs are under `data/logs/sbayesrc/genotypes/<cohort>/`.
+
+`qc/sbayesrc/<trait>/<cohort>/*.sbayesrc.match_qc.tsv` records target variants, matched
+IDs, incompatible effect alleles and usable variants per chromosome. `requested_weights`
+and `unmatched_weights` are whole-model counts repeated on each row; do not sum them
+across chromosomes. A chromosome is `FAIL` when no variants are usable, `REVIEW` when
+some matched IDs have incompatible alleles, and otherwise `PASS`. Model coverage is
+reported separately by the scoring QC; a chromosome match `PASS` does not mean that
+every model variant was present.
+
 `reference/plink_ct/compatibility/<cohort>/` contains the shared allele index. It records
 canonical chromosome-position-allele keys, target and reference identifiers and alleles,
 key counts and `unique_compatible`. Ambiguous keys remain in the index for trait-specific

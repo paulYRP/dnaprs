@@ -1,0 +1,85 @@
+name: assemble_sbayesrc_genotypes
+description: Collect a complete autosomal scoring genotype set without reconversion.
+keywords:
+  - sbayesrc
+  - genotypes
+  - scoring
+tools:
+  - R:
+      description: Statistical computing and genotype validation
+      identifier: ""
+      homepage: https://www.r-project.org/
+input:
+  - - meta:
+        type: map
+        description: Target cohort metadata.
+    - chromosomes:
+        type: list
+        description: Prepared chromosome numbers.
+    - chromosome_dirs:
+        type: list
+        description: Prepared chromosome genotype directories.
+    - chromosome_qc:
+        type: list
+        description: Chromosome preparation QC files.
+    - target_qc:
+        type: file
+        description: Original target QC summary.
+    - participant_decisions:
+        type: file
+        description: Original participant eligibility decisions.
+    - participant_keep:
+        type: file
+        description: Eligible FID/IID pairs.
+  - preparation_script:
+      type: file
+      description: R script for scoring genotype preparation and collection.
+output:
+  prepared:
+    - - meta:
+          type: map
+          description: Target cohort metadata.
+      - "${meta.cohort}.sbayesrc_genotypes":
+          type: directory
+          description: Complete chromosome PGEN companions with preserved IDs.
+      - target_qc:
+          type: file
+          description: Original target QC summary.
+      - participant_decisions:
+          type: file
+          description: Original participant eligibility decisions.
+      - participant_keep:
+          type: file
+          description: Eligible FID/IID pairs.
+  qc:
+    - - meta:
+          type: map
+          description: Cohort metadata.
+      - "${meta.cohort}.sbayesrc.genotype_qc.tsv":
+          type: file
+          description: Ordered chromosome preparation checks.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The process name.
+      - R:
+          type: string
+          description: The tool name.
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The tool version expression.
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The process name.
+      - R:
+          type: string
+          description: The tool name.
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The tool version expression.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

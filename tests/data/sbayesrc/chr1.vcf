@@ -1,0 +1,8 @@
+##fileformat=VCFv4.2
+##contig=<ID=1>
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=DS,Number=1,Type=Float,Description="Alternate allele dosage">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TEST01	TEST02	TEST03
+1	100	rs1_A	A	G	.	PASS	.	GT:DS	0/0:0.25	0/1:0.75	0/1:1.25
+1	200	rs1_B	C	T	.	PASS	.	GT:DS	0/1:1.5	0/1:0.5	0/1:1
+1	300	.	G	A	.	PASS	.	GT:DS	0/1:0.5	0/0:0.25	1/1:1.75

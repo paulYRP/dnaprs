@@ -76,6 +76,8 @@ workflow NFCORE_DNAPRS {
         audit_scoring: file("${projectDir}/bin/audit_scoring_variants.R"),
         compare_direct_score: file("${projectDir}/bin/compare_direct_score.R"),
         sbayesrc: file("${projectDir}/bin/run_sbayesrc.R"),
+        prepare_sbayesrc_genotypes: file("${projectDir}/bin/prepare_sbayesrc_genotypes.R"),
+        check_sbayesrc_scoring: file("${projectDir}/bin/check_sbayesrc_scoring.R"),
         combine: file("${projectDir}/bin/combine_scores.R"),
         combine_phenotype: file("${projectDir}/bin/combine_phenotype.R"),
         collect_versions: file("${projectDir}/bin/collect_versions.R"),

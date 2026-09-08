@@ -1,0 +1,96 @@
+name: prepare_sbayesrc_genotypes
+description: Import chromosome dosages while preserving existing variant IDs.
+keywords:
+  - sbayesrc
+  - genotypes
+  - scoring
+tools:
+  - plink2:
+      description: Genotype dosage conversion
+      identifier: ""
+      homepage: https://www.cog-genomics.org/plink/2.0/
+  - R:
+      description: Statistical computing and genotype validation
+      identifier: ""
+      homepage: https://www.r-project.org/
+input:
+  - - group_key:
+        type: map
+        description: Cohort metadata and expected chromosome group size.
+    - chromosome:
+        type: integer
+        description: Autosomal chromosome number.
+    - vcf:
+        type: file
+        description: Completed imputed chromosome VCF compressed with gzip.
+    - participant_keep:
+        type: file
+        description: Eligible FID/IID pairs.
+  - preparation_script:
+      type: file
+      description: R script for scoring genotype preparation and collection.
+output:
+  chromosomes:
+    - - group_key:
+          type: map
+          description: Cohort grouping metadata.
+      - chromosome:
+          type: integer
+          description: Prepared chromosome.
+      - "*.chr*.sbayesrc_genotypes":
+          type: directory
+          description: PGEN companions and the PLINK log.
+      - "*.chr*.sbayesrc.genotype_qc.tsv":
+          type: file
+          description: Variant ID and participant preparation checks.
+  logs:
+    - - meta:
+          type: map
+          description: Cohort metadata.
+      - "*.chr*.sbayesrc_genotypes/*.log":
+          type: file
+          description: Chromosome conversion log.
+  versions_plink2:
+    - - ${task.process}:
+          type: string
+          description: The process name.
+      - plink2:
+          type: string
+          description: The tool name.
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The tool version expression.
+  versions_r:
+    - - ${task.process}:
+          type: string
+          description: The process name.
+      - R:
+          type: string
+          description: The tool name.
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The tool version expression.
+topics:
+  versions:
+    - - ${task.process}:
+          type: string
+          description: The process name.
+      - plink2:
+          type: string
+          description: The tool name.
+      - command -v plink2 >/dev/null && plink2 --version 2>&1 | head -n 1 | cut -d ' ' -f 2 | sed 's/^v//' || printf stub:
+          type: eval
+          description: The tool version expression.
+    - - ${task.process}:
+          type: string
+          description: The process name.
+      - R:
+          type: string
+          description: The tool name.
+      - Rscript -e 'cat(as.character(getRversion()))' 2>/dev/null || printf stub:
+          type: eval
+          description: The tool version expression.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

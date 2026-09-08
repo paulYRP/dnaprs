@@ -145,6 +145,7 @@ jobs:
           nf-test test subworkflows/local/prepare_target/tests/real.nf.test \
             subworkflows/local/prepare_plink_reference/tests/real.nf.test \
             subworkflows/local/prepare_plink_reference/tests/bref3.nf.test \
+            subworkflows/local/prepare_sbayesrc_genotypes/tests/real.nf.test \
             --profile test,docker \
             --ci \
             --log nf-test-results/reference-groups.log \
@@ -158,6 +159,18 @@ jobs:
             --workdir /work/dnaprs \
             ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
             Rscript tests/scripts/test_participant_inputs.R
+
+      - name: Test SBayesRC genotype preparation and dosage scoring
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
+        run: |
+          mkdir -p nf-test-results/sbayesrc
+          docker run --rm --entrypoint Rscript \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --volume "$PWD/nf-test-results/sbayesrc:/test-records" \
+            --env DNAPRS_TEST_RECORDS=/test-records \
+            --workdir /work/dnaprs \
+            docker.io/zhiliz/sbayesrc:0.2.6 \
+            tests/scripts/test_sbayesrc_genotypes.R
 
       - name: Run minimal real-tool workflow test
         if: ${{ matrix.NXF_VER == '25.10.4' }}
@@ -173,7 +186,7 @@ jobs:
       - name: Run complete stub graph test
         run: |
           mkdir -p nf-test-results
-          nf-test test tests/stub.nf.test \
+          nf-test test tests/stub.nf.test subworkflows/local/prepare_sbayesrc_genotypes/tests/main.nf.test \
             --profile test_full \
             --ci \
             --verbose \

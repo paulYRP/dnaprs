@@ -24,6 +24,7 @@ include { SBAYESRC_TIDY } from '../modules/local/sbayesrc_tidy/main'
 include { SBAYESRC_IMPUTE } from '../modules/local/sbayesrc_impute/main'
 include { SBAYESRC_MODEL } from '../modules/local/sbayesrc_model/main'
 include { SBAYESRC_SCORE } from '../modules/local/sbayesrc_score/main'
+include { PREPARE_SBAYESRC_TARGETS } from '../subworkflows/local/prepare_sbayesrc_genotypes/main'
 include { COMBINE_SCORES } from '../modules/local/combine_scores/main'
 include { SUMMARISE_GENERATION_QC } from '../modules/local/summarise_generation_qc/main'
 include { PHENOTYPE_ASSOCIATION } from '../modules/local/phenotype_association/main'
@@ -644,8 +645,9 @@ workflow DNAPRS {
             .combine(sbayesrc_ld)
             .combine(annotation)
         SBAYESRC_MODEL(model_input, script_files.sbayesrc, seed)
-        sbayesrc_score_input = score_targets.combine(SBAYESRC_MODEL.out.model)
-        SBAYESRC_SCORE(sbayesrc_score_input, script_files.sbayesrc)
+        PREPARE_SBAYESRC_TARGETS(score_targets, script_files.prepare_sbayesrc_genotypes)
+        sbayesrc_score_input = PREPARE_SBAYESRC_TARGETS.out.prepared.combine(SBAYESRC_MODEL.out.model)
+        SBAYESRC_SCORE(sbayesrc_score_input, script_files.sbayesrc, script_files.check_sbayesrc_scoring)
         score_files = score_files.mix(SBAYESRC_SCORE.out.scores.map { _target, _gwas, score, _score_qc -> score })
         score_job_records = score_job_records.mix(SBAYESRC_SCORE.out.scores.map { target, gwas, _score, _score_qc ->
             [cohort: target.cohort, trait_id: gwas.trait_id, prs_name: gwas.prs_name, method: 'sbayesrc']
@@ -656,6 +658,11 @@ workflow DNAPRS {
             .mix(SBAYESRC_MODEL.out.model.map { _meta, _weight, _parameter, model_qc, _impute_qc, _tidy_qc, _harmonisation_qc -> model_qc })
 
         result_files = result_files
+            .mix(PREPARE_SBAYESRC_TARGETS.out.prepared.filter { target, _dir, _qc, _decisions, _keep -> target.scoring_stage == 'imputed' }
+                .map { target, directory, _qc, _decisions, _keep -> tuple("sbayesrc/genotypes/${target.cohort}", directory) })
+            .mix(PREPARE_SBAYESRC_TARGETS.out.qc.map { target, qc -> tuple("qc/sbayesrc/genotypes/${target.cohort}", qc) })
+            .mix(PREPARE_SBAYESRC_TARGETS.out.logs.map { target, log -> tuple("logs/sbayesrc/genotypes/${target.cohort}", log) })
+            .mix(SBAYESRC_SCORE.out.matches.map { target, gwas, qc -> tuple("qc/sbayesrc/${gwas.trait_id}/${target.cohort}", qc) })
             .mix(PREPARE_SBAYESRC_REFERENCE.out.summary.map { summary -> tuple('reference/sbayesrc', summary) })
             .mix(SBAYESRC_TIDY.out.tidy.map { meta, tidy, _tidy_qc, _harmonisation_qc -> tuple("sbayesrc/${meta.trait_id}/summary", tidy) })
             .mix(SBAYESRC_TIDY.out.tidy.map { meta, _tidy, tidy_qc, _harmonisation_qc -> tuple("qc/sbayesrc/${meta.trait_id}", tidy_qc) })

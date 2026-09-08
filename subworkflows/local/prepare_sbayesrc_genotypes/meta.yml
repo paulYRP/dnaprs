@@ -1,0 +1,30 @@
+name: prepare_sbayesrc_targets
+description: Prepare chromosome dosages once per imputed cohort for reuse across SBayesRC traits.
+keywords:
+  - sbayesrc
+  - genotypes
+  - dosages
+components:
+  - prepare/sbayesrc/genotypes
+  - assemble/sbayesrc/genotypes
+input:
+  - targets:
+      type: channel
+      description: Tuples containing target metadata, genotype directory, QC, participant decisions and keep file.
+  - preparation_script:
+      type: file
+      description: R script for genotype preparation and collection.
+output:
+  - prepared:
+      type: channel
+      description: Target tuples with the SBayesRC genotype directory substituted for imputed cohorts.
+  - qc:
+      type: channel
+      description: Cohort metadata and chromosome preparation QC.
+  - logs:
+      type: channel
+      description: Cohort metadata and chromosome conversion logs.
+authors:
+  - "@paulYRP"
+maintainers:
+  - "@paulYRP"

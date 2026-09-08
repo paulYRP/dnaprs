@@ -1,0 +1,34 @@
+nextflow_workflow {
+    name "Prepare SBayesRC genotypes once per cohort"
+    script "../../../../tests/workflows/sbayesrc_genotypes.nf"
+    workflow "TEST_SBAYESRC_REUSE"
+    options "-stub-run"
+    // Directory outputs are checked by cohort, without file-content sorting.
+    autoSort false
+    tag "sbayesrc"
+
+    test("two cohorts reuse their own prepared genotypes across two traits") {
+        when {
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/data/sbayesrc/chr1.vcf")
+                input[1] = file("${projectDir}/bin/prepare_sbayesrc_genotypes.R")
+                input[2] = 1
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.prepared.size() == 2
+            assert workflow.out.qc.size() == 2
+            assert workflow.out.traits.size() == 4
+            assert workflow.out.traits.collect { "${it[0].cohort}:${it[5]}" }.sort() == ['FIRST:TRAIT1', 'FIRST:TRAIT2', 'SECOND:TRAIT1', 'SECOND:TRAIT2']
+            for (record in workflow.out.prepared) {
+                def cohort = record[0].cohort
+                def rows = file("${record[1]}/${cohort}_chr1.pvar").text.readLines().findAll { !it.startsWith('#') }
+                assert rows[0].split('\t')[2] == 'rs1'
+                assert workflow.out.traits.findAll { it[0].cohort == cohort }.collect { it[1].toString() }.unique() == [record[1].toString()]
+            }
+        }
+    }
+}

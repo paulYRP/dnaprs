@@ -24,12 +24,12 @@ input:
         description: Target cohort and scoring-stage metadata.
     - target_dir:
         type: directory
-        description: Target PGEN dataset used for SBayesRC scoring.
+        description: Chromosome PGEN files with variant IDs compatible with the weights.
     - target_qc:
         type: file
         description: QC summary for the selected target checkpoint.
     - participant_decisions:
-        type: list
+        type: file
         description: Integrated participant eligibility decisions.
     - participant_keep:
         type: file
@@ -58,7 +58,20 @@ input:
   - sbayesrc_script:
       type: file
       description: R script that applies SBayesRC weights to the target and validates scores.
+  - scoring_check:
+      type: file
+      description: R script that checks chromosome files, participants and weight matching before scoring.
 output:
+  matches:
+    - - target:
+          type: map
+          description: Target cohort metadata.
+      - gwas:
+          type: map
+          description: GWAS trait metadata.
+      - ${target.cohort}.${gwas.trait_id}.sbayesrc.match_qc.tsv:
+          type: file
+          description: Per-chromosome ID overlap, allele compatibility and unmatched weight counts.
   scores:
     - - target:
           type: map

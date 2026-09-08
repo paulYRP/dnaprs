@@ -1,0 +1,40 @@
+nextflow_workflow {
+    name "Real autosomal SBayesRC genotype preparation"
+    script "../../../../tests/workflows/sbayesrc_genotypes.nf"
+    workflow "TEST_SBAYESRC_REUSE"
+    // Directory outputs are checked by cohort, without file-content sorting.
+    autoSort false
+    tag "sbayesrc"
+
+    test("preserve rsIDs and selected participants across two complete cohorts") {
+        when {
+            workflow {
+                """
+                input[0] = file("${projectDir}/tests/data/sbayesrc/chr1.vcf")
+                input[1] = file("${projectDir}/bin/prepare_sbayesrc_genotypes.R")
+                input[2] = 22
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.prepared.size() == 2
+            assert workflow.out.traits.size() == 4
+            for (record in workflow.out.prepared) {
+                def cohort = record[0].cohort
+                def summary = workflow.out.qc.find { it[0].cohort == cohort }
+                def rows = file(summary[1]).text.readLines().tail().collect { it.split('\t') }
+                assert rows.collect { it[1] as Integer } == (1..22).toList()
+                assert rows.every { it[2..8] == ['2', '3', '2', '1', '0', 'TRUE', 'PASS'] }
+                for (chromosome in 1..22) {
+                    def prefix = "${record[1]}/${cohort}_chr${chromosome}"
+                    def variants = file("${prefix}.pvar").text.readLines().findAll { !it.startsWith('#') }
+                    assert variants.collect { it.split('\t')[2] } == ["rs${chromosome}_A".toString(), "rs${chromosome}_B".toString(), "${chromosome}:300:G:A".toString()]
+                    assert file("${prefix}.psam").text.readLines().tail().collect { it.split('\t')[1] } == ['TEST01', 'TEST02']
+                    assert file("${prefix}.pgen").size() > 0
+                }
+                assert workflow.out.traits.findAll { it[0].cohort == cohort }.collect { it[1] }.unique() == [record[1]]
+            }
+        }
+    }
+}

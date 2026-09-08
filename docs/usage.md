@@ -32,6 +32,24 @@ the final target ALT allele. A target-aligned candidate with `P=0` stops clumpin
 review the source P-value rather than dropping or replacing it automatically.
 SBayesRC receives the common clean GWAS without this PLINK-specific filter.
 
+### SBayesRC scoring genotypes
+
+For imputed targets, the pipeline prepares chromosome-specific SBayesRC PGEN files
+from the completed VCFs. It imports `DS` dosages, keeps eligible participants and
+preserves existing variant IDs, including rsIDs. Only missing IDs receive the
+`chromosome:position:REF:ALT` form. The shared coordinate-based genotypes used by
+PLINK C+T remain unchanged.
+
+Preparation runs once per cohort and chromosome and is reused across traits. It
+requires unique variant IDs and a complete chromosome 1-22 set for SBayesRC scoring.
+The original posterior weights are applied with `1 2 3 header no-mean-imputation`.
+Model variants absent from the target are reported; a chromosome with no usable
+weight matches stops with an ID and allele-matching error.
+
+No manual conversion or extra parameter is required. This preparation uses completed
+imputed VCFs and does not repeat Beagle imputation. Keep the Nextflow cache and work
+files when resuming a failed scoring run.
+
 ## Minimal commands
 
 With the conventional folders and automatic references:
