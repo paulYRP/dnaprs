@@ -12,7 +12,8 @@ ARG BUILD_DATE=unknown
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential ca-certificates curl gfortran libcurl4-openssl-dev \
-        libfontconfig1-dev libnlopt-dev libssl-dev libtiff-dev libuv1-dev \
+        libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
+        libnlopt-dev libpng-dev libssl-dev libtiff-dev libuv1-dev \
         libxml2-dev pkg-config time zlib1g-dev \
     && curl --fail --location --retry 5 \
         "https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-amd64.deb" \
