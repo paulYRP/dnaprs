@@ -2,12 +2,15 @@
 
 suppressWarnings(suppressPackageStartupMessages({
   library(data.table)
+  library(bit64)
   library(ggplot2)
   library(openxlsx)
   library(scales)
 }))
 
 options(stringsAsFactors = FALSE, scipen = 999)
+source("report-data.R")
+figureDIMENSIONS <- new.env(parent = emptyenv())
 
 DNAPRS_COLOURS <- c(
   teal = "#0A8F78", blue = "#3B6FB6", orange = "#D97706",
@@ -45,6 +48,7 @@ readRESULT <- function(fileNAME) {
   if (!file.exists(path) || file.info(path)$size == 0) {
     return(data.table())
   }
+  message(sprintf("Report read: %s", fileNAME))
   fread(path, showProgress = FALSE)
 }
 
@@ -65,6 +69,7 @@ readRESULTS <- function(pattern) {
 saveFIGUREDATA <- function(id, value) {
   path <- file.path("data", paste0(id, ".tsv"))
   fwrite(value, path, sep = "\t", na = "NA")
+  figureDIMENSIONS[[gsub("\\\\", "/", path)]] <- c(rows = nrow(value), columns = ncol(value))
   gsub("\\\\", "/", path)
 }
 
@@ -101,6 +106,8 @@ addMETHODLABEL <- function(value) {
 #   The four figure files and one row added to figureMANIFEST.
 savePLOT <- function(id, plot, width, height, page, section, title,
                      description, inspection, source_table = "") {
+  message(sprintf("Report figure: %s", id))
+  force(source_table)
   pathSVG <- file.path("figures", "svg", paste0(id, ".svg"))
   pathTIFF <- file.path("figures", "tiff", paste0(id, ".tiff"))
   pathPNG <- file.path("figures", "png", paste0(id, ".png"))
@@ -113,6 +120,7 @@ savePLOT <- function(id, plot, width, height, page, section, title,
          bg = "white")
   ggsave(pathJPEG, plot, width = width, height = height, dpi = 360,
          quality = 95, bg = "white")
+  dimensions <- if (nzchar(source_table)) figureDIMENSIONS[[source_table]] else c(rows = 0L, columns = 0L)
   figureMANIFEST <<- rbind(
     figureMANIFEST,
     data.table(
@@ -129,7 +137,9 @@ savePLOT <- function(id, plot, width, height, page, section, title,
       tiff = gsub("\\\\", "/", pathTIFF),
       png = gsub("\\\\", "/", pathPNG),
       jpeg = gsub("\\\\", "/", pathJPEG),
-      source_table = source_table
+      source_table = source_table,
+      source_rows = unname(dimensions["rows"]),
+      source_columns = unname(dimensions["columns"])
     )
   )
 }
@@ -299,9 +309,16 @@ markerDENSITY <- readRESULTS("\\.marker_density\\.tsv$")
 identifierCLASS <- readRESULTS("\\.identifier_classes\\.tsv$")
 alleleSTATE <- readRESULTS("\\.allele_states\\.tsv$")
 sampleMISSING <- readRESULTS("\\.sample_missingness\\.tsv$")
-variantMISSING <- readRESULTS("\\.variant_missingness\\.tsv$")
+variantMISSING <- prepareREPORTBINS(
+  file.path(inputROOT, manifest[grepl("\\.variant_missingness\\.tsv$", file_name), file_name]),
+  "F_MISS", function(x) x$F_MISS, "cohort", binwidth = .01, boundary = 0
+)
 variantMISSINGBIN <- readRESULTS("\\.variant_missingness_bins\\.tsv$")
-alleleFREQUENCY <- readRESULTS("\\.allele_frequency\\.tsv$")
+alleleFREQUENCY <- prepareREPORTBINS(
+  file.path(inputROOT, manifest[grepl("\\.allele_frequency\\.tsv$", file_name), file_name]),
+  "ALT_FREQS", function(x) pmin(as.numeric(x$ALT_FREQS), 1 - as.numeric(x$ALT_FREQS)),
+  "cohort", binwidth = .01, boundary = 0
+)
 alleleFREQUENCYBIN <- readRESULTS("\\.allele_frequency_bins\\.tsv$")
 heterozygosity <- readRESULTS("\\.heterozygosity\\.tsv$")
 sexCHECK <- readRESULTS("\\.sex_check\\.tsv$")
@@ -324,8 +341,8 @@ imputationDR2 <- readRESULTS("\\.imputation_dr2\\.tsv$")
 plinkSENSITIVITY <- readRESULTS("\\.plink_ct\\.sensitivity\\.tsv$")
 plinkSENSITIVITYQC <- readRESULTS("\\.plink_ct\\.sensitivity_qc\\.tsv$")
 gwasSUMMARY <- readRESULTS("\\.harmonisation_qc\\.tsv$")
-gwasDATA <- readRESULTS("\\.cojo\\.ma$")
-sbayesrcWEIGHT <- readRESULTS("\\.sbayesrc\\.txt$")
+gwasFILES <- file.path(inputROOT, manifest[grepl("\\.cojo\\.ma$", file_name), file_name])
+sbayesrcFILES <- file.path(inputROOT, manifest[grepl("\\.sbayesrc\\.txt$", file_name), file_name])
 
 methodLABEL <- c(plink_ct = "PLINK C+T", sbayesrc = "SBayesRC")
 methodCOLOUR <- c("PLINK C+T" = DNAPRS_COLOURS[["blue"]], "SBayesRC" = DNAPRS_COLOURS[["teal"]])
@@ -364,7 +381,9 @@ figureMANIFEST <- data.table(
   tiff = character(),
   png = character(),
   jpeg = character(),
-  source_table = character()
+  source_table = character(),
+  source_rows = integer(),
+  source_columns = integer()
 )
 
 if (nrow(chromosomeCOUNT)) {
@@ -479,9 +498,9 @@ if (nrow(sampleMISSING) && "F_MISS" %in% names(sampleMISSING)) {
   )
 }
 
-if (nrow(variantMISSING) && "F_MISS" %in% names(variantMISSING)) {
-  variantMissingPLOT <- ggplot(variantMISSING, aes(x = F_MISS)) +
-    geom_histogram(binwidth = .01, boundary = 0, fill = "#111111", colour = "white") +
+if (nrow(variantMISSING)) {
+  variantMissingPLOT <- ggplot(variantMISSING, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
+    geom_rect(fill = "#111111", colour = "white") +
     geom_vline(xintercept = .01, linetype = 1, colour = "#777777") +
     geom_vline(xintercept = .10, linetype = 2, colour = "#777777") +
     facet_wrap(~cohort, scales = "free_y") +
@@ -497,10 +516,9 @@ if (nrow(variantMISSING) && "F_MISS" %in% names(variantMISSING)) {
   )
 }
 
-if (nrow(alleleFREQUENCY) && "ALT_FREQS" %in% names(alleleFREQUENCY)) {
-  alleleFREQUENCY[, minor_allele_frequency := pmin(as.numeric(ALT_FREQS), 1 - as.numeric(ALT_FREQS))]
-  frequencyPLOT <- ggplot(alleleFREQUENCY[is.finite(minor_allele_frequency)], aes(x = minor_allele_frequency)) +
-    geom_histogram(binwidth = .01, boundary = 0, fill = "#111111", colour = "white") +
+if (nrow(alleleFREQUENCY)) {
+  frequencyPLOT <- ggplot(alleleFREQUENCY, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
+    geom_rect(fill = "#111111", colour = "white") +
     facet_wrap(~cohort, scales = "free_y") +
     scale_x_continuous(labels = percent) +
     labs(x = "Minor allele frequency", y = "Variants") +
@@ -933,45 +951,46 @@ if (nrow(gwasSUMMARY)) {
   )
 }
 
-if (nrow(gwasDATA)) {
-  gwasDATA[, trait_id := sub("\\.cojo\\.ma$", "", source_file)]
-  gwasQQ <- gwasDATA[is.finite(p) & p > 0 & p <= 1, {
-    observed <- -log10(sort(p))
-    .(expected = -log10(stats::ppoints(.N)), observed)
-  }, by = trait_id]
-  qqPLOT <- ggplot(gwasQQ, aes(x = expected, y = observed)) +
-    geom_abline(slope = 1, intercept = 0, colour = "#777777", linetype = 2) +
-    geom_point(colour = "#111111", alpha = .55, size = 1.2) +
-    facet_wrap(~trait_id, scales = "free") +
-    labs(x = "Expected -log10(P)", y = "Observed -log10(P)") +
-    theme_minimal(base_size = 11)
-  savePLOT(
-    "gwas_qq", qqPLOT, 10, 6,
-    "GWAS QC", "Source GWAS diagnostics", "GWAS QQ plots",
-    "Expected and observed GWAS association probabilities.",
-    "Inspect broad departures from the diagonal while retaining the discovery-study context.",
-    saveFIGUREDATA("gwas_qq", gwasQQ)
-  )
+if (length(gwasFILES)) local({
+  gwas <- prepareGWASPLOTS(gwasFILES)
+  fwrite(gwas$selection, file.path("provenance", "gwas_plot_selection.tsv"), sep = "\t")
+  gwasQQ <- gwas$qq
+  if (nrow(gwasQQ)) {
+    qqPLOT <- ggplot(gwasQQ, aes(x = expected, y = observed)) +
+      geom_abline(slope = 1, intercept = 0, colour = "#777777", linetype = 2) +
+      geom_point(colour = "#111111", alpha = .55, size = 1.2) +
+      facet_wrap(~trait_id, scales = "free") +
+      labs(x = "Expected -log10(P)", y = "Observed -log10(P)") +
+      theme_minimal(base_size = 11)
+    savePLOT(
+      "gwas_qq", qqPLOT, 10, 6,
+      "GWAS QC", "Source GWAS diagnostics", "GWAS QQ plots",
+      "Full-data QQ ranks; up to 50000 evenly spaced ranks plus the 1000 smallest P values are displayed. Display selection does not change scoring.",
+      "Inspect broad departures from the diagonal while retaining the discovery-study context.",
+      saveFIGUREDATA("gwas_qq", gwasQQ)
+    )
+  }
 
-  gwasEFFECTPLOT <- ggplot(gwasDATA[is.finite(b)], aes(x = b)) +
-    geom_histogram(bins = 50, fill = "#111111", colour = "white") +
-    geom_vline(xintercept = 0, colour = "#777777", linetype = 2) +
-    facet_wrap(~trait_id, scales = "free_y") +
-    labs(x = "GWAS effect estimate", y = "Variants") +
-    theme_minimal(base_size = 11)
-  savePLOT(
-    "gwas_effect_distribution", gwasEFFECTPLOT, 10, 6,
-    "GWAS QC", "Source GWAS diagnostics", "GWAS effect distributions",
-    "Signed analysis-ready GWAS effect estimates.",
-    "Inspect centring around zero, extreme effects, and marked trait differences.",
-    saveFIGUREDATA("gwas_effect_distribution", gwasDATA[, .(trait_id, SNP, CHR, BP, b, se, p, freq, N)])
-  )
+  if (nrow(gwas$effect)) {
+    gwasEFFECTPLOT <- ggplot(gwas$effect, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
+      geom_rect(fill = "#111111", colour = "white") +
+      geom_vline(xintercept = 0, colour = "#777777", linetype = 2) +
+      facet_wrap(~trait_id, scales = "free_y") +
+      labs(x = "GWAS effect estimate", y = "Variants") +
+      theme_minimal(base_size = 11)
+    savePLOT(
+      "gwas_effect_distribution", gwasEFFECTPLOT, 10, 6,
+      "GWAS QC", "Source GWAS diagnostics", "GWAS effect distributions",
+      "Signed analysis-ready GWAS effect estimates.",
+      "Inspect centring around zero, extreme effects, and marked trait differences.",
+      saveFIGUREDATA("gwas_effect_distribution", gwas$effect)
+    )
+  }
 
-  gwasMAF <- gwasDATA[is.finite(freq) & freq > 0 & freq < 1]
-  gwasMAF[, minor_allele_frequency := pmin(freq, 1 - freq)]
+  gwasMAF <- gwas$maf
   if (nrow(gwasMAF)) {
-    gwasMAFPLOT <- ggplot(gwasMAF, aes(x = minor_allele_frequency)) +
-      geom_histogram(bins = 50, fill = DNAPRS_COLOURS[["teal"]], colour = "white") +
+    gwasMAFPLOT <- ggplot(gwasMAF, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
+      geom_rect(fill = DNAPRS_COLOURS[["teal"]], colour = "white") +
       facet_wrap(~trait_id, scales = "free_y") +
       scale_x_continuous(labels = label_number(accuracy = .01)) +
       coord_cartesian(xlim = c(0, .5)) +
@@ -982,24 +1001,13 @@ if (nrow(gwasDATA)) {
       "GWAS QC", "Source GWAS diagnostics", "GWAS minor allele frequencies",
       "Minor allele frequencies derived from the analysis-ready effect-allele frequencies.",
       "Inspect the spectrum, rare-variant concentration, and marked differences among GWAS inputs.",
-      saveFIGUREDATA("gwas_minor_allele_frequency", gwasMAF[, .(trait_id, SNP, CHR, BP, freq, minor_allele_frequency)])
+      saveFIGUREDATA("gwas_minor_allele_frequency", gwasMAF)
     )
   }
 
-  gwasMANHATTAN <- gwasDATA[
-    is.finite(suppressWarnings(as.numeric(CHR))) & is.finite(BP) & is.finite(p) & p > 0 & p <= 1
-  ]
+  gwasMANHATTAN <- gwas$manhattan
+  chromosomeLAYOUT <- gwas$layout
   if (nrow(gwasMANHATTAN)) {
-    gwasMANHATTAN[, chromosome := as.integer(CHR)]
-    chromosomeLAYOUT <- gwasMANHATTAN[, .(chromosome_length = max(BP)), by = chromosome][order(chromosome)]
-    chromosomeLAYOUT[, chromosome_offset := shift(cumsum(chromosome_length), fill = 0)]
-    chromosomeLAYOUT[, chromosome_midpoint := chromosome_offset + chromosome_length / 2]
-    gwasMANHATTAN <- merge(gwasMANHATTAN, chromosomeLAYOUT, by = "chromosome", all.x = TRUE)
-    gwasMANHATTAN[, `:=`(
-      genomic_position = chromosome_offset + BP,
-      log10_p = -log10(p),
-      chromosome_group = factor(chromosome %% 2L)
-    )]
     manhattanPLOT <- ggplot(
       gwasMANHATTAN,
       aes(x = genomic_position, y = log10_p, colour = chromosome_group)
@@ -1019,12 +1027,12 @@ if (nrow(gwasDATA)) {
     savePLOT(
       "gwas_manhattan", manhattanPLOT, 14, max(6, uniqueN(gwasMANHATTAN$trait_id) * 2.8),
       "GWAS QC", "Source GWAS diagnostics", "GWAS Manhattan plots",
-      "Genome-wide association probabilities across autosomes; the dashed line marks P = 5e-8.",
+      "All P <= 1e-5 and up to 250000 genomically spaced background points per trait; the dashed line marks P = 5e-8. Display selection does not change scoring.",
       "Inspect the genomic distribution of association signals and isolated extreme values in each source GWAS.",
       saveFIGUREDATA("gwas_manhattan", gwasMANHATTAN[, .(trait_id, SNP, chromosome, BP, genomic_position, p, log10_p)])
     )
   }
-}
+})
 
 stageLEVEL <- c(
   "Source GWAS", "Harmonised", "LD-aligned", "LD-clumped", "Summary imputed",
@@ -1144,12 +1152,11 @@ for (methodVALUE in intersect(c("plink_ct", "sbayesrc"), unique(score$method))) 
   )
 }
 
-if (nrow(sbayesrcWEIGHT) && all(c("BETA", "PIP") %in% names(sbayesrcWEIGHT))) {
-  sbayesrcWEIGHT[, trait_id := sub("\\.sbayesrc\\.txt$", "", source_file)]
-  posteriorEFFECT <- sbayesrcWEIGHT[is.finite(BETA)]
+if (length(sbayesrcFILES)) local({
+  posteriorEFFECT <- prepareREPORTBINS(sbayesrcFILES, "BETA", function(x) x$BETA, "trait_id", bins = 60L)
   if (nrow(posteriorEFFECT)) {
-    posteriorEffectPLOT <- ggplot(posteriorEFFECT, aes(x = BETA)) +
-      geom_histogram(bins = 60, fill = DNAPRS_COLOURS[["teal"]], colour = "white") +
+    posteriorEffectPLOT <- ggplot(posteriorEFFECT, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
+      geom_rect(fill = DNAPRS_COLOURS[["teal"]], colour = "white") +
       geom_vline(xintercept = 0, colour = DNAPRS_COLOURS[["grey"]], linetype = 2) +
       facet_wrap(~trait_id, scales = "free_y") +
       labs(x = "Posterior joint effect", y = "Variants") +
@@ -1162,10 +1169,10 @@ if (nrow(sbayesrcWEIGHT) && all(c("BETA", "PIP") %in% names(sbayesrcWEIGHT))) {
       saveFIGUREDATA("sbayesrc_posterior_effect_distribution", posteriorEFFECT)
     )
   }
-  posteriorPIP <- sbayesrcWEIGHT[is.finite(PIP) & PIP >= 0 & PIP <= 1]
+  posteriorPIP <- prepareREPORTBINS(sbayesrcFILES, "PIP", function(x) x$PIP[is.finite(x$PIP) & x$PIP >= 0 & x$PIP <= 1], "trait_id")
   if (nrow(posteriorPIP)) {
-    posteriorPIPPLOT <- ggplot(posteriorPIP, aes(x = PIP)) +
-      geom_histogram(bins = 50, fill = DNAPRS_COLOURS[["purple"]], colour = "white") +
+    posteriorPIPPLOT <- ggplot(posteriorPIP, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
+      geom_rect(fill = DNAPRS_COLOURS[["purple"]], colour = "white") +
       facet_wrap(~trait_id, scales = "free_y") +
       scale_x_continuous(labels = percent) +
       coord_cartesian(xlim = c(0, 1)) +
@@ -1179,7 +1186,7 @@ if (nrow(sbayesrcWEIGHT) && all(c("BETA", "PIP") %in% names(sbayesrcWEIGHT))) {
       saveFIGUREDATA("sbayesrc_pip_distribution", posteriorPIP)
     )
   }
-}
+})
 
 if (hasPLINK && hasSBAYESRC && nrow(concordance) > 0L) {
   agreementLIST <- lapply(seq_len(nrow(concordance)), function(row) {
@@ -1592,14 +1599,15 @@ manifest[, sha256 := vapply(
 fwrite(manifest, file.path("provenance", "output_files.tsv"), sep = "\t")
 
 reportVERSION <- data.table(
-  software = c("R", "Quarto", "data.table", "ggplot2", "knitr", "openssl"),
+  software = c("R", "Quarto", "data.table", "ggplot2", "knitr", "openssl", "bit64"),
   version = c(
     paste(R.version$major, R.version$minor, sep = "."),
     Sys.getenv("QUARTO_VERSION", unset = "Recorded by the execution environment"),
     as.character(packageVersion("data.table")),
     as.character(packageVersion("ggplot2")),
     as.character(packageVersion("knitr")),
-    as.character(packageVersion("openssl"))
+    as.character(packageVersion("openssl")),
+    as.character(packageVersion("bit64"))
   )
 )
 fwrite(
@@ -1718,7 +1726,7 @@ safeSHEET <- function(value) {
 
 addWORKBOOKTABLE <- function(sheet, value, page, title, description, source, sensitivity) {
   if (is.null(value) || !ncol(value) || !nrow(value)) return(invisible(NULL))
-  if (nrow(value) > 1048575L || ncol(value) > 16384L) {
+  if (!reportWORKBOOKFITS(nrow(value), ncol(value))) {
     workbookCONTENT <<- rbind(
       workbookCONTENT,
       data.table(
@@ -1732,7 +1740,7 @@ addWORKBOOKTABLE <- function(sheet, value, page, title, description, source, sen
   }
   sheet <- safeSHEET(sheet)
   addWorksheet(workbook, sheet)
-  writeDataTable(workbook, sheet, as.data.frame(value), withFilter = TRUE, tableStyle = "TableStyleLight9")
+  writeDataTable(workbook, sheet, reportEXCELDATA(value), withFilter = TRUE, tableStyle = "TableStyleLight9")
   freezePane(workbook, sheet, firstRow = TRUE)
   setColWidths(workbook, sheet, cols = seq_len(ncol(value)), widths = 18)
   narrativeCOLUMN <- which(names(value) %in% c(
@@ -1797,16 +1805,27 @@ addWORKBOOKTABLE("Fitted_models", fittedMODEL, "Phenotype", "Fitted model specif
 addWORKBOOKTABLE("Permutations", phenotypePERMUTATION, "Phenotype", "Residual permutations", "Freedman-Lane coefficient null distributions and explicit unsupported-model records.", "Phenotype", "Restricted research result")
 addWORKBOOKTABLE("Influence", phenotypeINFLUENCE, "Phenotype", "Case-deletion diagnostics", "Participant-level Gaussian-model case-deletion coefficients and explicit unsupported-model records.", "Phenotype", "Restricted research result")
 
-figureSOURCE <- unique(figureMANIFEST[nzchar(source_table), .(figure_id, page, title, description, source_table)])
+figureSOURCE <- unique(figureMANIFEST[nzchar(source_table), .(figure_id, page, title, description, source_table, source_rows, source_columns)])
 if (nrow(figureSOURCE)) {
   for (row in seq_len(nrow(figureSOURCE))) {
     sourcePATH <- figureSOURCE$source_table[row]
+    if (!reportWORKBOOKFITS(figureSOURCE$source_rows[row], figureSOURCE$source_columns[row])) {
+      workbookCONTENT <- rbind(workbookCONTENT, data.table(
+        worksheet = "Native download only", report_page = figureSOURCE$page[row],
+        table_title = paste("Figure source:", figureSOURCE$title[row]),
+        description = paste("The table exceeds an Excel worksheet limit. Download:", sourcePATH),
+        source_process = "Report assembly", rows = figureSOURCE$source_rows[row],
+        columns = figureSOURCE$source_columns[row], sensitivity = "Matches the source pipeline result"
+      ))
+      next
+    }
     sourceVALUE <- if (file.exists(sourcePATH)) fread(sourcePATH, showProgress = FALSE) else data.table()
     addWORKBOOKTABLE(
       sprintf("Fig_%03d", row), sourceVALUE, figureSOURCE$page[row],
       paste("Figure source:", figureSOURCE$title[row]), figureSOURCE$description[row],
       "Report assembly", "Matches the source pipeline result"
     )
+    rm(sourceVALUE)
   }
 }
 

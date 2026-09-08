@@ -1,0 +1,43 @@
+name: Report scale test
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - "assets/report/**"
+      - "containers/report/**"
+      - "tests/scripts/*report*"
+      - ".github/workflows/report-scale.yml"
+  pull_request:
+    paths:
+      - "assets/report/**"
+      - "containers/report/**"
+      - "tests/scripts/*report*"
+      - ".github/workflows/report-scale.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  report-scale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Build report container
+        run: docker build --file containers/report/Dockerfile --tag dnaprs-report-scale .
+      - name: Test report at GWAS scale
+        run: |
+          mkdir -p report-scale-results
+          docker run --rm --cpus=2 --memory=6g --memory-swap=6g \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --volume "$PWD/report-scale-results:/records" \
+            --workdir /work/dnaprs \
+            dnaprs-report-scale bash tests/scripts/run_report_scale.sh /records
+      - name: Upload scale-test records
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: report-scale-records
+          path: report-scale-results/

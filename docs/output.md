@@ -153,3 +153,16 @@ typed-only score is not included in the combined primary scores or phenotype mod
 Within-cohort standardisation expresses effects per cohort standard deviation; it does
 not make absolute genetic risk comparable between cohorts. Phenotype coefficients are
 research association estimates, not clinical predictions.
+
+### Large GWAS figures
+
+QQ plots show up to 50,000 evenly spaced full-data ranks plus the 1,000 smallest
+p-values per trait. Manhattan plots retain all valid `P <= 1e-5` points and up to
+250,000 genomically spaced background points per trait. This affects display only;
+scoring inputs and full harmonised GWAS downloads are unchanged. QQ axes remain
+`-log10(P)`.
+
+`reports/provenance/gwas_plot_selection.tsv` records eligible and displayed counts
+and selection rules. Figure-source tables contain the displayed coordinates or
+exact full-data histogram counts. The figure manifest records their dimensions;
+tables exceeding Excel worksheet limits remain native downloads without truncation.

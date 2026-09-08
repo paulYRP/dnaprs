@@ -13,9 +13,10 @@ nextflow_process {
 
         then {
             assert process.success
-            assert process.out.findAll { key, value -> key.startsWith("versions_") }.size() == 8
+            assert process.out.findAll { key, value -> key.startsWith("versions_") }.size() == 9
             assert process.out.versions_quarto[0][2].toString()
             assert process.out.versions_r[0][2].toString()
+            assert process.out.versions_bit64[0][2].toString()
         }
     }
 }

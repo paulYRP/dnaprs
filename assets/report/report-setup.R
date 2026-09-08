@@ -1,3 +1,5 @@
+suppressPackageStartupMessages(library(bit64))
+
 # Purpose:
 #   Read a completed report input without loading unavailable or empty files.
 #

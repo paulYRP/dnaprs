@@ -75,7 +75,7 @@ jobs:
             .
           docker build --pull \
             --file containers/report/Dockerfile \
-            --tag ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+            --tag ghcr.io/paulyrp/dnaprs-report:1.0.2 \
             .
           docker build --pull \
             --file containers/imputation/Dockerfile \
@@ -93,7 +93,7 @@ jobs:
           docker run --rm \
             --volume "$PWD:/work/dnaprs:ro" \
             --workdir /work/dnaprs \
-            ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+            ghcr.io/paulyrp/dnaprs-report:1.0.2 \
             Rscript tests/scripts/check_r_dependencies.R report
 
       - name: Test local reference layouts
@@ -179,8 +179,16 @@ jobs:
             --user "$(id -u):$(id -g)" \
             --volume "$PWD:/work/dnaprs:ro" \
             --workdir /work/dnaprs \
-            ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+            ghcr.io/paulyrp/dnaprs-report:1.0.2 \
             Rscript tests/scripts/test_report_inputs.R
+
+      - name: Test report data preparation
+        run: |
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-report:1.0.2 \
+            Rscript tests/scripts/test_report_data.R
 
       - name: Run minimal real-tool workflow test
         if: ${{ matrix.NXF_VER == '25.10.4' }}

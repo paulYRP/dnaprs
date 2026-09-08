@@ -10,7 +10,7 @@ target data, and phenotype data are not stored in these images.
 | `dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21`           | Raw genotype EDA and identity by descent                                         | PLINK 1.90b6.21 and PLINK 2.0 alpha 6.12                                                                  |
 | `dnaprs-imputation:1.1.0`                             | Target marker resolution, reference preparation, QC, and imputation              | Beagle/unbref3 27Feb25.75f, bcftools/tabix, Java 17, PLINK 2.0 alpha 6.12, R 4.4.1, and data.table 1.18.0 |
 | `zhiliz/sbayesrc:0.2.6`                               | SBayesRC preparation, modelling, and scoring                                     | The authors' SBayesRC 0.2.6 environment                                                                   |
-| `dnaprs-report:1.0.1`                                 | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv`                      |
+| `dnaprs-report:1.0.2`                                 | Portable report generation                                                       | The analysis environment, Quarto 1.7.32, and the packages in `report/R-packages.tsv`                      |
 
 The PLINK 2-only processes use the matching versioned BioContainer and native
 Singularity image. `GENOTYPE_EDA` keeps the combined dnaprs image because it runs
@@ -49,7 +49,7 @@ docker build \
 
 docker build \
   --file containers/report/Dockerfile \
-  --tag ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+  --tag ghcr.io/paulyrp/dnaprs-report:1.0.2 \
   .
 
 docker build \
@@ -75,9 +75,9 @@ docker run --rm --entrypoint Rscript docker.io/zhiliz/sbayesrc:0.2.6 \
 docker run --rm \
   --volume "$PWD:/work/dnaprs:ro" \
   --workdir /work/dnaprs \
-  ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+  ghcr.io/paulyrp/dnaprs-report:1.0.2 \
   Rscript tests/scripts/check_r_dependencies.R report
-docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.1 \
+docker run --rm ghcr.io/paulyrp/dnaprs-report:1.0.2 \
   quarto --version
 docker run --rm ghcr.io/paulyrp/dnaprs-imputation:1.1.0 \
   bash -c "bcftools --version | head -n 1; java -jar /opt/beagle/beagle.jar 2>&1 | head -n 2; java -jar /opt/beagle/unbref3.jar help 2>&1 | head -n 2; Rscript -e \"stopifnot(as.character(packageVersion('data.table')) == '1.18.0')\""

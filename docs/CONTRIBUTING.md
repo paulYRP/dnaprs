@@ -51,7 +51,7 @@ docker build --file containers/analysis/Dockerfile \
 docker build --file containers/plink2/Dockerfile \
   --tag ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 .
 docker build --file containers/report/Dockerfile \
-  --tag ghcr.io/paulyrp/dnaprs-report:1.0.1 .
+  --tag ghcr.io/paulyrp/dnaprs-report:1.0.2 .
 nf-test test modules/local/harmonise_gwas/tests/real.nf.test \
   --profile +docker --ci
 ```

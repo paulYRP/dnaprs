@@ -2,7 +2,7 @@ process RENDER_REPORT {
     tag 'dnaprs HTML report'
     label 'process_low'
 
-    container 'ghcr.io/paulyrp/dnaprs-report:1.0.1'
+    container 'ghcr.io/paulyrp/dnaprs-report:1.0.2'
 
     input:
     path report_files, stageAs: 'report_inputs/*'
