@@ -40,6 +40,10 @@ testREPORTDATA <- function() {
     }
   }
   stopifnot(nrow(reportHISTOGRAM(numeric(), c(Inf, -Inf))) == 0L)
+  x <- rep(.3, 20)
+  expected <- ggplot_build(ggplot(data.table(x), aes(x)) + geom_histogram(bins = 50) + geom_vline(xintercept = 0))$data[[1]]
+  observed <- reportHISTOGRAM(x, range(c(0, x)))
+  stopifnot(identical(as.numeric(observed$count), as.numeric(expected$count)))
   stopifnot(reportWORKBOOKFITS(1048575L, 16384L), !reportWORKBOOKFITS(1048576L, 2L), !reportWORKBOOKFITS(1L, 16385L))
 
   directory <- tempfile("report-data-")
@@ -62,6 +66,10 @@ testREPORTDATA <- function() {
   stopifnot(nrow(prepared$qq) == 200L, prepared$layout$chromosome_length == 200L)
   stopifnot(all(prepared$selection$eligible_records == prepared$selection$displayed_records))
   stopifnot(sum(prepared$effect$count) == 200L, sum(prepared$maf$count) == 200L)
+  weightPATH <- file.path(directory, "trait.with.dots.sbayesrc.txt")
+  fwrite(data.table(BETA = c(-.1, .1)), weightPATH)
+  weightBINS <- prepareREPORTBINS(weightPATH, "BETA", function(x) x$BETA, "trait_id", include = 0)
+  stopifnot(identical(unique(weightBINS$trait_id), "trait.with.dots"))
   message("Report data tests passed: ranks, signal retention, bins, workbook limits and integers.")
 }
 testREPORTDATA()

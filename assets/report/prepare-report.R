@@ -311,7 +311,7 @@ alleleSTATE <- readRESULTS("\\.allele_states\\.tsv$")
 sampleMISSING <- readRESULTS("\\.sample_missingness\\.tsv$")
 variantMISSING <- prepareREPORTBINS(
   file.path(inputROOT, manifest[grepl("\\.variant_missingness\\.tsv$", file_name), file_name]),
-  "F_MISS", function(x) x$F_MISS, "cohort", binwidth = .01, boundary = 0
+  "F_MISS", function(x) x$F_MISS, "cohort", binwidth = .01, boundary = 0, include = c(.01, .10)
 )
 variantMISSINGBIN <- readRESULTS("\\.variant_missingness_bins\\.tsv$")
 alleleFREQUENCY <- prepareREPORTBINS(
@@ -1153,7 +1153,7 @@ for (methodVALUE in intersect(c("plink_ct", "sbayesrc"), unique(score$method))) 
 }
 
 if (length(sbayesrcFILES)) local({
-  posteriorEFFECT <- prepareREPORTBINS(sbayesrcFILES, "BETA", function(x) x$BETA, "trait_id", bins = 60L)
+  posteriorEFFECT <- prepareREPORTBINS(sbayesrcFILES, "BETA", function(x) x$BETA, "trait_id", bins = 60L, include = 0)
   if (nrow(posteriorEFFECT)) {
     posteriorEffectPLOT <- ggplot(posteriorEFFECT, aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = count)) +
       geom_rect(fill = DNAPRS_COLOURS[["teal"]], colour = "white") +

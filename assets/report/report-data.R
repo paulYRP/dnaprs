@@ -79,7 +79,7 @@ prepareGWASPLOTS <- function(paths) {
   } else {
     layout <- data.table::data.table(chromosome = integer(), chromosome_offset = numeric(), chromosome_midpoint = numeric())
   }
-  effectRange <- reportRANGE(unlist(lapply(ranges, `[[`, "effect")))
+  effectRange <- reportRANGE(c(0, unlist(lapply(ranges, `[[`, "effect"))))
   mafRange <- reportRANGE(unlist(lapply(ranges, `[[`, "maf")))
   records <- lapply(paths, function(path) {
     trait <- sub("\\.cojo\\.ma$", "", basename(path))
@@ -111,15 +111,16 @@ prepareGWASPLOTS <- function(paths) {
 }
 
 prepareREPORTBINS <- function(paths, columns, transform, group, bins = 50L,
-                              binwidth = NULL, boundary = NULL) {
+                              binwidth = NULL, boundary = NULL, include = numeric()) {
   ranges <- lapply(paths, function(path) {
     reportRANGE(transform(readREPORTCOLUMNS(path, columns)))
   })
-  limits <- reportRANGE(unlist(ranges))
+  limits <- reportRANGE(c(include, unlist(ranges)))
   data.table::rbindlist(lapply(paths, function(path) {
     value <- transform(readREPORTCOLUMNS(path, columns))
     result <- reportHISTOGRAM(value, limits, bins, binwidth, boundary)
-    result[, (group) := rep(sub("\\..*$", "", basename(path)), .N)]
+    label <- if (group == "trait_id") sub("\\.sbayesrc\\.txt$", "", basename(path)) else sub("\\..*$", "", basename(path))
+    result[, (group) := rep(label, .N)]
     result
   }), fill = TRUE)
 }
