@@ -183,6 +183,7 @@ jobs:
             Rscript tests/scripts/test_report_inputs.R
 
       - name: Test report data preparation
+        if: ${{ matrix.NXF_VER == '25.10.4' }}
         run: |
           docker run --rm \
             --volume "$PWD:/work/dnaprs:ro" \
