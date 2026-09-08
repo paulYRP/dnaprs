@@ -94,6 +94,8 @@ nextflow_pipeline {
                 { assert path("$runDir/reports/provenance/execution_timeline.html").exists() },
                 { assert path("$runDir/reports/provenance/pipeline_dag.html").exists() },
                 { assert software.text.contains('REPORT_SOFTWARE') },
+                { assert software.text.contains('  bit64: 4.6.0.1') },
+                { assert software.text.contains('  svglite: 2.2.2') },
                 { assert snapshot(software).match() },
                 { assert path("$runDir/data/inputs/published_files.json").exists() },
                 { assert path(runDir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] }
