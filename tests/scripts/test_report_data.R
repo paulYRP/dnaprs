@@ -7,6 +7,22 @@ suppressPackageStartupMessages({
 source("assets/report/report-data.R")
 
 testREPORTDATA <- function() {
+  decisions <- data.table(cohort = "TEST", primary_analysis = c(TRUE, FALSE, FALSE, FALSE, NA, TRUE),
+                          score_eligible = c(TRUE, TRUE, TRUE, FALSE, TRUE, FALSE),
+                          reason = c("Pass", "Related", "Ancestry", "QC", "Missing", "Conflicting"))
+  originalDECISIONS <- copy(decisions)
+  eligibility <- reportELIGIBILITY(decisions)
+  stopifnot(identical(decisions, originalDECISIONS), sum(eligibility$totals$N) == 6L,
+            eligibility$totals[analysis_set == "Primary analysis", N] == 1L,
+            eligibility$totals[analysis_set == "Sensitivity only", N] == 2L,
+            eligibility$totals[analysis_set == "Not eligible for scoring", N] == 1L,
+            eligibility$totals[analysis_set == "Unknown eligibility", N] == 2L,
+            sum(eligibility$reasons[analysis_set == "Sensitivity only", N]) == 2L)
+  stopifnot(reportELIGIBILITY(data.table(cohort = "TEST"))$totals$analysis_set == "Unknown eligibility")
+  traits <- c("MDD", "mdd", "A/B", "A_B", "A B", "trait.with.dots", "é")
+  ids <- vapply(traits, reportTRAITID, character(1))
+  stopifnot(!anyDuplicated(ids), all(grepl("^[0-9a-f]+$", ids)),
+            identical(ids, vapply(traits, reportTRAITID, character(1))))
   for (n in c(0L, 1L, 9L, 10L, 11L, 100L, 60000L, 1000000L)) {
     p <- if (n) seq(1e-12, 1, length.out = n) else numeric()
     result <- reportQQ(c(p, NA, Inf, -1, 0, 2))

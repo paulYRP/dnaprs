@@ -212,6 +212,8 @@
     var description = gallery.querySelector("[data-figure-description]");
     var inspection = gallery.querySelector("[data-figure-inspection]");
     var image = gallery.querySelector("[data-figure-image]");
+    var status = gallery.querySelector("[data-figure-status]");
+    var loadSequence = 0;
     var canvas = gallery.querySelector(".dnaprs-figure-canvas");
     var stage = gallery.querySelector("[data-figure-stage]");
     var svg = gallery.querySelector("[data-figure-svg]");
@@ -281,7 +283,26 @@
       title.textContent = figure.title;
       description.textContent = figure.description;
       inspection.textContent = figure.inspection;
-      image.src = figure.svg || figure.png;
+      var sequence = ++loadSequence;
+      var candidate = image.cloneNode(false);
+      candidate.removeAttribute("src");
+      candidate.loading = "eager";
+      candidate.alt = figure.title + ". " + figure.description;
+      candidate.hidden = true;
+      candidate.addEventListener("load", function () {
+        if (sequence !== loadSequence) return;
+        candidate.hidden = false;
+        status.textContent = figure.preview ? "Web preview. Use the SVG download for detail at high zoom." : "";
+        scheduleGeometry();
+      });
+      candidate.addEventListener("error", function () {
+        if (sequence !== loadSequence) return;
+        status.textContent = "Preview could not be loaded. Figure and source downloads remain available.";
+      });
+      image.replaceWith(candidate);
+      image = candidate;
+      status.textContent = "Loading figure…";
+      image.src = figure.preview || figure.svg || figure.png;
       image.alt = figure.title + ". " + figure.description;
       svg.href = figure.svg;
       tiff.href = figure.tiff;
@@ -320,7 +341,6 @@
       change(1);
     });
     select.addEventListener("change", render);
-    image.addEventListener("load", scheduleGeometry);
     zoomOut.addEventListener("click", function () {
       changeZoom(zoom / zoomStep, canvas.clientWidth / 2, canvas.clientHeight / 2);
     });

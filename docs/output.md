@@ -117,6 +117,15 @@ Use submission-to-start time to assess queue delays and `realtime` to assess com
 
 ## `reports/`
 
+Detailed tables use on-demand paging. Select **Browse complete table** to load rows,
+then choose 25, 50 or 100 rows per page. **Find identifier** returns all exact matches
+for the table's identifier column, including repeated IDs. Filters scan the complete
+table in chunks and can be cancelled. A filter can take time on a large table.
+
+Complete-file downloads are independent of the displayed page and filter. Keep the
+whole report folder, including `assets/tables/`, when copying the website. Chunked
+tables change presentation only; scientific result files and `phenoPRS.csv` are unchanged.
+
 Open `reports/index.html`. The site may include Overview, Genotype EDA, Target PREP,
 Target QC, Target Imputation, GWAS QC, PLINK PRS, SBayesRC PRS, Phenotype, and Logs,
 depending on completed stages. Only Overview has introductory text. Figure viewers use
@@ -156,6 +165,11 @@ research association estimates, not clinical predictions.
 
 ### Large GWAS figures
 
+Each trait has its own QQ and Manhattan figure. The website loads a 1,600-pixel-wide
+PNG preview for the selected figure; high-resolution PNG, TIFF, JPEG and SVG remain
+separate downloads. Use SVG for detail at high zoom. Axes use each trait's own data
+range, with shared chromosome coordinates for Manhattan plots.
+
 QQ plots show up to 50,000 evenly spaced full-data ranks plus the 1,000 smallest
 p-values per trait. Manhattan plots retain all valid `P <= 1e-5` points and up to
 250,000 genomically spaced background points per trait. This affects display only;
@@ -169,3 +183,7 @@ prepared plot across SVG, TIFF, PNG and JPEG formats.
 and selection rules. Figure-source tables contain the displayed coordinates or
 exact full-data histogram counts. The figure manifest records their dimensions;
 tables exceeding Excel worksheet limits remain native downloads without truncation.
+
+Participant eligibility figures show one total per category and cohort. The reason
+table gives the breakdown without stacking indistinguishable bars. Missing or
+conflicting flags are reported as unknown eligibility; source decisions are unchanged.

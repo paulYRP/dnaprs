@@ -1,4 +1,4 @@
-name: Report scale test
+name: Report rendering tests
 
 on:
   push:
@@ -15,6 +15,11 @@ on:
       - "tests/scripts/*report*"
       - ".github/workflows/report-scale.yml"
   workflow_dispatch:
+    inputs:
+      full_scale:
+        description: "Run the large GWAS rendering test"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -27,14 +32,33 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Build report container
         run: docker build --file containers/report/Dockerfile --tag dnaprs-report-scale .
-      - name: Test report at GWAS scale
+      - name: Test report data and gallery
+        run: |
+          docker run --rm --volume "$PWD:/work/dnaprs:ro" --workdir /work/dnaprs \
+            dnaprs-report-scale Rscript tests/scripts/test_report_data.R
+          node tests/scripts/test_report_gallery.cjs
+      - name: Test paged report tables
         run: |
           mkdir -p report-scale-results
           docker run --rm --cpus=2 --memory=6g --memory-swap=6g \
             --volume "$PWD:/work/dnaprs:ro" \
             --volume "$PWD/report-scale-results:/records" \
             --workdir /work/dnaprs \
-            dnaprs-report-scale bash tests/scripts/run_report_scale.sh /records
+            dnaprs-report-scale Rscript tests/scripts/test_report_tables.R /records/tables
+          node tests/scripts/test_report_viewer.cjs report-scale-results/tables
+          docker run --rm --cpus=2 --memory=6g --memory-swap=6g \
+            --volume "$PWD/report-scale-results:/records" \
+            dnaprs-report-scale quarto render /records/tables
+      - name: Test complete report rendering
+        env:
+          REPORT_ROWS: ${{ inputs.full_scale && '6500000,7000000,7500000' || '1000,1200,1500' }}
+        run: |
+          mkdir -p report-scale-results
+          docker run --rm --cpus=2 --memory=6g --memory-swap=6g \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --volume "$PWD/report-scale-results:/records" \
+            --workdir /work/dnaprs \
+            dnaprs-report-scale bash tests/scripts/run_report_scale.sh /records "$REPORT_ROWS"
       - name: Upload scale-test records
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

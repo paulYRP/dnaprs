@@ -1,4 +1,5 @@
 suppressPackageStartupMessages(library(bit64))
+source("report-tables.R")
 
 # Purpose:
 #   Read a completed report input without loading unavailable or empty files.
@@ -118,10 +119,10 @@ addMETHODLABEL <- function(value) {
 }
 
 # Purpose:
-#   Display a searchable and paginated table without loading large source datasets.
+#   Display small tables inline and detailed tables through external chunks.
 #
 # Args:
-#   value: Small result or QC table to display.
+#   value: Result table or deferred report_table_source descriptor.
 #   caption: Plain-language table caption.
 #   escape: Whether cell HTML must be escaped.
 #   page: Initial number of rows shown.
@@ -129,6 +130,10 @@ addMETHODLABEL <- function(value) {
 # Returns:
 #   An interactive HTML table with client-side search and pagination.
 tableVIEW <- function(value, caption, escape = TRUE, page = 25L) {
+  if (inherits(value, "report_table_source") ||
+      (escape && (nrow(value) > 200L || nrow(value) * ncol(value) > 10000L))) {
+    return(reportPAGEDTABLE(value, caption, page))
+  }
   if (!nrow(value)) {
     return(knitr::asis_output('<p class="dnaprs-note">No records were produced for this section.</p>'))
   }
@@ -198,7 +203,7 @@ figureGALLERY <- function(page) {
   }
   galleryN <<- galleryN + 1L
   galleryID <- paste0("dnaprs-gallery-", galleryN)
-  records <- jsonlite::toJSON(value, dataframe = "rows", auto_unbox = TRUE, na = "null")
+  records <- gsub("<", "\\u003c", jsonlite::toJSON(value, dataframe = "rows", auto_unbox = TRUE, na = "null"), fixed = TRUE)
   options <- paste(sprintf(
     '<option value="%s">%s</option>',
     seq_len(nrow(value)),
@@ -231,6 +236,7 @@ figureGALLERY <- function(page) {
       '<button type="button" class="dnaprs-zoom-control" data-figure-zoom-in aria-label="Zoom in" title="Zoom in">+</button>',
       '<button type="button" class="dnaprs-expand" data-figure-expand aria-label="Expand selected figure" title="Expand selected figure">&#x26F6;</button>',
       '</div></div>',
+      '<p data-figure-status role="status" aria-live="polite"></p>',
       '<div class="dnaprs-figure-canvas" tabindex="0" role="region" aria-label="Interactive figure">',
       '<div class="dnaprs-figure-stage" data-figure-stage><img data-figure-image alt="" loading="lazy" draggable="false"></div>',
       '</div>',
@@ -275,7 +281,7 @@ targetPREP <- readRESULTS("\\.target_prep_summary\\.tsv$")
 targetQC <- readRESULTS("\\.target_qc\\.tsv$")
 targetSAMPLEDECISION <- readRESULTS("\\.sample_decisions\\.tsv$")
 sexCHECK <- readRESULTS("\\.sex_check\\.tsv$")
-targetVARIANTDECISION <- readRESULTS("\\.variant_decisions\\.tsv$")
+targetVARIANTDECISION <- reportTABLESOURCE("\\.variant_decisions\\.tsv$")
 participantDECISION <- readRESULTS("\\.participant_decisions\\.tsv$")
 targetANCESTRY <- readRESULTS("\\.target_ancestry\\.tsv$")
 referencePROJECTION <- readRESULTS("\\.reference_projection\\.tsv$")

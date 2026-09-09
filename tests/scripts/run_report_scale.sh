@@ -18,4 +18,4 @@ QUARTO_VERSION=$(quarto --version)
     quarto render . > "$record_dir/render.log" 2>&1
 Rscript "$repo_root/tests/scripts/check_report_render.R"
 cp provenance/gwas_plot_selection.tsv provenance/figure_manifest.tsv "$record_dir/"
-cp figures/png/gwas_qq.png figures/png/gwas_manhattan.png "$record_dir/"
+cp figures/preview/gwas_qq_*.png figures/preview/gwas_manhattan_*.png "$record_dir/"

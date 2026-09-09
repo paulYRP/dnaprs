@@ -105,7 +105,7 @@ addMETHODLABEL <- function(value) {
 # Returns:
 #   The four figure files and one row added to figureMANIFEST.
 savePLOT <- function(id, plot, width, height, page, section, title,
-                     description, inspection, source_table = "") {
+                     description, inspection, source_table = "", preview = FALSE) {
   message(sprintf("Report figure: %s", id))
   force(source_table)
   pathSVG <- file.path("figures", "svg", paste0(id, ".svg"))
@@ -132,6 +132,12 @@ savePLOT <- function(id, plot, width, height, page, section, title,
   message(sprintf("Report render: %s [JPEG]", id))
   ggsave(pathJPEG, plot, width = width, height = height, dpi = 360,
          quality = 95, bg = "white")
+  pathPREVIEW <- ""
+  if (preview) {
+    pathPREVIEW <- file.path("figures", "preview", paste0(id, ".png"))
+    ggsave(pathPREVIEW, plot, width = width, height = height,
+           dpi = 1600 / width, bg = "white")
+  }
   dimensions <- if (nzchar(source_table)) figureDIMENSIONS[[source_table]] else c(rows = 0L, columns = 0L)
   figureMANIFEST <<- rbind(
     figureMANIFEST,
@@ -149,6 +155,7 @@ savePLOT <- function(id, plot, width, height, page, section, title,
       tiff = gsub("\\\\", "/", pathTIFF),
       png = gsub("\\\\", "/", pathPNG),
       jpeg = gsub("\\\\", "/", pathJPEG),
+      preview = gsub("\\\\", "/", pathPREVIEW),
       source_table = source_table,
       source_rows = unname(dimensions["rows"]),
       source_columns = unname(dimensions["columns"])
@@ -271,13 +278,15 @@ dir.create(file.path("figures", "svg"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path("figures", "tiff"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path("figures", "png"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path("figures", "jpeg"), recursive = TRUE, showWarnings = FALSE)
+dir.create(file.path("figures", "preview"), recursive = TRUE, showWarnings = FALSE)
 dir.create("provenance", recursive = TRUE, showWarnings = FALSE)
 dir.create("assets", recursive = TRUE, showWarnings = FALSE)
 reportASSET <- c(
   "nf-core-dnaprs_logo_light.svg",
   "nf-core-dnaprs_logo_dark.svg",
   "dnaprs-report.css",
-  "dnaprs-report.js"
+  "dnaprs-report.js",
+  "dnaprs-tables.js"
 )
 stopifnot(all(file.exists(reportASSET)))
 stopifnot(all(file.copy(
@@ -393,6 +402,7 @@ figureMANIFEST <- data.table(
   tiff = character(),
   png = character(),
   jpeg = character(),
+  preview = character(),
   source_table = character(),
   source_rows = integer(),
   source_columns = integer()
@@ -744,13 +754,12 @@ if (nrow(targetVARIANTDECISION)) {
   )
 }
 
-if (nrow(participantDECISION) && "primary_analysis" %in% names(participantDECISION)) {
-  participantDECISION[, primary_analysis := toupper(as.character(primary_analysis)) == "TRUE"]
-  participantDECISIONCOUNT <- participantDECISION[, .N, by = .(
-    cohort,
-    analysis_set = ifelse(primary_analysis, "Primary analysis", "Sensitivity only"),
-    reason
-  )]
+participantREASONS <- data.table()
+if (nrow(participantDECISION)) {
+  eligibility <- reportELIGIBILITY(participantDECISION)
+  participantDECISIONCOUNT <- eligibility$totals
+  participantREASONS <- eligibility$reasons
+  saveFIGUREDATA("participant_eligibility_reasons", participantREASONS)
   participantDecisionPLOT <- ggplot(
     participantDECISIONCOUNT,
     aes(x = analysis_set, y = N, fill = analysis_set)
@@ -759,14 +768,15 @@ if (nrow(participantDECISION) && "primary_analysis" %in% names(participantDECISI
     geom_text(aes(label = comma(N)), vjust = -.4, size = 3) +
     facet_wrap(~cohort, scales = "free_y") +
     scale_y_continuous(labels = comma, expand = expansion(mult = c(0, .18))) +
-    scale_fill_manual(values = c("Primary analysis" = DNAPRS_COLOURS[["teal"]], "Sensitivity only" = DNAPRS_COLOURS[["orange"]])) +
+    scale_fill_manual(values = c("Primary analysis" = DNAPRS_COLOURS[["teal"]], "Sensitivity only" = DNAPRS_COLOURS[["orange"]],
+                               "Not eligible for scoring" = DNAPRS_COLOURS[["red"]], "Unknown eligibility" = DNAPRS_COLOURS[["grey"]])) +
     labs(x = NULL, y = "Participants", fill = "Analysis set") +
     theme_minimal(base_size = 11) +
     theme(panel.grid.major.x = element_blank(), legend.position = "none")
   savePLOT(
     "participant_analysis_eligibility", participantDecisionPLOT, 9, 5.5,
     "Target QC", "Integrated participant decisions", "Primary-analysis eligibility",
-    "Participant eligibility after technical QC, relatedness review, and reference-ancestry classification.",
+    "One total per analysis category after technical QC, relatedness review, and reference-ancestry classification. Missing or conflicting flags are shown as unknown eligibility.",
     "Review every sensitivity-only participant and its recorded reason before accepting the primary analysis set.",
     saveFIGUREDATA("participant_analysis_eligibility", participantDECISIONCOUNT)
   )
@@ -967,19 +977,20 @@ if (length(gwasFILES)) local({
   gwas <- prepareGWASPLOTS(gwasFILES)
   fwrite(gwas$selection, file.path("provenance", "gwas_plot_selection.tsv"), sep = "\t")
   gwasQQ <- gwas$qq
-  if (nrow(gwasQQ)) {
-    qqPLOT <- ggplot(gwasQQ, aes(x = expected, y = observed)) +
+  for (trait in unique(gwasQQ$trait_id)) {
+    figureID <- paste0("gwas_qq_", reportTRAITID(trait))
+    traitQQ <- gwasQQ[trait_id == trait]
+    qqPLOT <- ggplot(traitQQ, aes(x = expected, y = observed)) +
       geom_abline(slope = 1, intercept = 0, colour = "#777777", linetype = 2) +
       geom_point(colour = "#111111", alpha = .55, size = 1.2) +
-      facet_wrap(~trait_id, scales = "free") +
-      labs(x = "Expected -log10(P)", y = "Observed -log10(P)") +
+      labs(title = paste(trait, "- QQ plot"), x = "Expected -log10(P)", y = "Observed -log10(P)") +
       theme_minimal(base_size = 11)
     savePLOT(
-      "gwas_qq", qqPLOT, 10, 6,
-      "GWAS QC", "Source GWAS diagnostics", "GWAS QQ plots",
+      figureID, qqPLOT, 10, 6,
+      "GWAS QC", "Source GWAS diagnostics", paste(trait, "- QQ plot"),
       "Full-data QQ ranks; up to 50000 evenly spaced ranks plus the 1000 smallest P values are displayed. Display selection does not change scoring.",
       "Inspect broad departures from the diagonal while retaining the discovery-study context.",
-      saveFIGUREDATA("gwas_qq", gwasQQ)
+      saveFIGUREDATA(figureID, traitQQ), preview = TRUE
     )
   }
 
@@ -1019,29 +1030,30 @@ if (length(gwasFILES)) local({
 
   gwasMANHATTAN <- gwas$manhattan
   chromosomeLAYOUT <- gwas$layout
-  if (nrow(gwasMANHATTAN)) {
+  for (trait in unique(gwasMANHATTAN$trait_id)) {
+    figureID <- paste0("gwas_manhattan_", reportTRAITID(trait))
+    traitMANHATTAN <- gwasMANHATTAN[trait_id == trait]
     manhattanPLOT <- ggplot(
-      gwasMANHATTAN,
+      traitMANHATTAN,
       aes(x = genomic_position, y = log10_p, colour = chromosome_group)
     ) +
       geom_hline(yintercept = -log10(5e-8), colour = DNAPRS_COLOURS[["red"]], linetype = 2, linewidth = .55) +
       geom_point(alpha = .72, size = 1.15) +
-      facet_wrap(~trait_id, scales = "free_y") +
       scale_colour_manual(values = c(DNAPRS_COLOURS[["blue"]], DNAPRS_COLOURS[["teal"]]), guide = "none") +
       scale_x_continuous(
         breaks = chromosomeLAYOUT$chromosome_midpoint,
         labels = chromosomeLAYOUT$chromosome,
         expand = expansion(mult = c(.01, .01))
       ) +
-      labs(x = "Chromosome", y = "-log10(P)") +
+      labs(title = paste(trait, "- Manhattan plot"), x = "Chromosome", y = "-log10(P)") +
       theme_minimal(base_size = 11) +
       theme(panel.grid.major.x = element_blank())
     savePLOT(
-      "gwas_manhattan", manhattanPLOT, 14, max(6, uniqueN(gwasMANHATTAN$trait_id) * 2.8),
-      "GWAS QC", "Source GWAS diagnostics", "GWAS Manhattan plots",
+      figureID, manhattanPLOT, 14, 6,
+      "GWAS QC", "Source GWAS diagnostics", paste(trait, "- Manhattan plot"),
       "All P <= 1e-5 and up to 250000 genomically spaced background points per trait; the dashed line marks P = 5e-8. Display selection does not change scoring.",
       "Inspect the genomic distribution of association signals and isolated extreme values in each source GWAS.",
-      saveFIGUREDATA("gwas_manhattan", gwasMANHATTAN[, .(trait_id, SNP, chromosome, BP, genomic_position, p, log10_p)])
+      saveFIGUREDATA(figureID, traitMANHATTAN[, .(trait_id, SNP, chromosome, BP, genomic_position, p, log10_p)]), preview = TRUE
     )
   }
 })
@@ -1802,6 +1814,7 @@ addWORKBOOKTABLE("Target_QC", targetQC, "Target QC", "QC summary", "Target scori
 addWORKBOOKTABLE("Target_sample_decisions", targetSAMPLEDECISION, "Target QC", "Participant decisions", "Participant-level technical QC decisions.", "Target QC", "Restricted participant result")
 addWORKBOOKTABLE("Target_variant_decisions", targetVARIANTDECISION, "Target QC", "Variant decisions", "Variant-level technical QC decisions.", "Target QC", "Restricted cohort summary")
 addWORKBOOKTABLE("Participant_decisions", participantDECISION, "Target QC", "Integrated participant decisions", "Technical-QC, relatedness, reference-ancestry, score-eligibility, and primary-analysis decisions.", "Target QC", "Restricted participant result")
+addWORKBOOKTABLE("Eligibility_reasons", participantREASONS, "Target QC", "Eligibility reasons", "Counts by analysis category and recorded reason.", "Target QC", "Restricted cohort summary")
 addWORKBOOKTABLE("Target_ancestry", targetANCESTRY, "Target QC", "Target ancestry classification", "Reference-projected target PCs, distance, threshold, and classification.", "Target QC", "Restricted participant result")
 addWORKBOOKTABLE("Reference_projection", referencePROJECTION, "Target QC", "Reference ancestry projection", "Population-reference projection used to classify target participants.", "Target QC", "Restricted reference result")
 addWORKBOOKTABLE("Ancestry_summary", ancestrySUMMARY, "Target QC", "Ancestry summary", "Variant, participant, and classification counts for reference-anchored ancestry QC.", "Target QC", "Restricted cohort summary")

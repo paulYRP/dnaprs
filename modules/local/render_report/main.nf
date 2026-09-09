@@ -18,6 +18,7 @@ process RENDER_REPORT {
     path 'reports/provenance/*', emit: provenance
 
     script:
+    def heapMb = Math.max(512, (task.memory.toMega() * 0.5).intValue())
     """
     report_root=\$(pwd)
     mkdir -p report_project reports
@@ -26,6 +27,7 @@ process RENDER_REPORT {
     export DNAPRS_REPORT_INPUTS="\$report_root/report_inputs"
     export DNAPRS_OUTPUT_MANIFEST="\$report_root/${output_manifest}"
     export QUARTO_VERSION=\$(quarto --version)
+    export QUARTO_DENO_V8_OPTIONS="--max-old-space-size=${heapMb},--max-heap-size=${heapMb}"
     export HOME="\$report_root"
     export XDG_CACHE_HOME="\$report_root/.cache"
     export QUARTO_CACHE_DIR="\$report_root/.cache/quarto"

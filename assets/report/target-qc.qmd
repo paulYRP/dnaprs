@@ -19,6 +19,11 @@ figureGALLERY("Target QC")
 ```
 
 ```{r}
+reasonPATH <- file.path("data", "participant_eligibility_reasons.tsv")
+if (file.exists(reasonPATH)) tableVIEW(fread(reasonPATH), "Participant counts by analysis category and recorded reason.")
+```
+
+```{r}
 tableVIEW(targetQC, "Final target dimensions and scoring-readiness status.")
 ```
 

@@ -1,4 +1,27 @@
 # Report-only reductions. Original result files and scoring inputs are unchanged.
+reportTRAITID <- function(trait) {
+  # Encoding every UTF-8 byte avoids punctuation, case and sanitisation collisions.
+  paste(sprintf("%02x", as.integer(charToRaw(enc2utf8(trait)))), collapse = "")
+}
+
+reportELIGIBILITY <- function(value) {
+  value <- data.table::copy(value)
+  for (column in c("primary_analysis", "score_eligible")) {
+    if (!column %in% names(value)) value[, (column) := NA]
+    flag <- toupper(trimws(as.character(value[[column]])))
+    value[, (column) := match(flag, c("FALSE", "TRUE")) == 2L]
+  }
+  value[, analysis_set := data.table::fcase(
+    primary_analysis == TRUE & score_eligible == TRUE, "Primary analysis",
+    primary_analysis == FALSE & score_eligible == TRUE, "Sensitivity only",
+    (is.na(primary_analysis) | primary_analysis == FALSE) & score_eligible == FALSE, "Not eligible for scoring",
+    default = "Unknown eligibility"
+  )]
+  if (!"reason" %in% names(value)) value[, reason := "Not recorded"]
+  list(totals = value[, .N, by = .(cohort, analysis_set)],
+       reasons = value[, .N, by = .(cohort, analysis_set, reason)])
+}
+
 reportRANGE <- function(x) {
   x <- x[is.finite(x)]
   if (length(x)) range(x) else c(Inf, -Inf)

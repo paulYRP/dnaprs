@@ -277,3 +277,13 @@ After a pipeline update, resume from the existing launch and work directories. N
 reruns tasks whose inputs, scripts, parameters or containers changed. Keep the cache
 and work files until the resumed run completes; deleting published results is not
 required. Reuse of prepared references and compatibility indexes uses this task cache.
+
+## Report resources
+
+`RENDER_REPORT` requests 100 GB initially, then 250 GB and 500 GB for resource-related
+retries. Quarto's JavaScript heap allowance is half the allocated task memory, leaving
+headroom for other allocations. Test and stub profiles retain small requests.
+
+The selected scheduler queue must support these allocations. Larger requests may wait
+longer in the queue. Preserve the work directory and `.nextflow/cache`, and resume the
+specific failed session after a report error to reuse unchanged successful analysis tasks.

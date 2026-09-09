@@ -39,6 +39,12 @@ writeINPUT("score_qc.tsv", data.table(cohort = character(), prs_name = character
 writeINPUT("input_checks.tsv", data.table(check = "synthetic_report", status = "PASS"), "run")
 writeINPUT("gwas.tsv", data.table(trait_id = paste0("TRAIT", seq_along(sizes)), prs_name = paste0("PRS", seq_along(sizes))), "run")
 writeINPUT("targets.tsv", data.table(cohort = "SYNTHETIC", role = "target"), "run")
+writeINPUT("SYNTHETIC.participant_decisions.tsv", data.table(
+  cohort = "SYNTHETIC", IID = paste0("S", 1:6),
+  primary_analysis = c(TRUE, FALSE, FALSE, FALSE, NA, TRUE),
+  score_eligible = c(TRUE, TRUE, TRUE, FALSE, TRUE, FALSE),
+  reason = c("Pass", "Related", "Ancestry", "QC", "Missing", "Conflicting")
+), "target_qc")
 csv <- file.path(inputs, "phenoPRS.csv")
 stopifnot(file.copy("tests/data/phenotype_combine/one.phenoPRS.csv", csv))
 manifest <- rbind(manifest, data.table(publish_path = "phenotype", file_name = "phenoPRS.csv"))
