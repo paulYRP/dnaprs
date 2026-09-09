@@ -6,6 +6,7 @@ All notable changes to dnaprs are recorded here.
 
 - Corrected participant eligibility totals and added a separate reason breakdown.
 - Split QQ and Manhattan figures by GWAS with lightweight previews and independent high-resolution downloads.
+- Included table chunks created during rendering in the published report.
 - Replaced large inline report tables with on-demand chunks, bounded browser caching, cancellable filters and complete-file downloads.
 - Set report memory requests to 100, 250 and 500 GB across three attempts, with a separate Quarto heap allowance and small test-profile requests.
 - Added small report-table regression tests and made large GWAS rendering tests opt-in.

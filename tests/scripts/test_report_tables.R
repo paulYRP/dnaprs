@@ -1,11 +1,14 @@
 suppressPackageStartupMessages(library(data.table))
 source("assets/report/report-tables.R")
 viewerPath <- normalizePath("assets/report/dnaprs-tables.js", winslash = "/")
+tablePath <- normalizePath("assets/report/report-tables.R", winslash = "/")
+postPath <- normalizePath("assets/report/report-post-render.R", winslash = "/")
 arguments <- commandArgs(trailingOnly = TRUE)
 destination <- if (length(arguments)) arguments[1L] else tempfile("dnaprs-report-tables-")
 stopifnot(!dir.exists(destination))
 dir.create(destination, recursive = TRUE)
 setwd(destination)
+stopifnot(file.copy(tablePath, "report-tables.R"), file.copy(postPath, "report-post-render.R"))
 options(dnaprs.report.chunk_rows = 17L)
 htmlESCAPE <- function(x) {
   x <- gsub("&", "&amp;", as.character(x), fixed = TRUE)
@@ -45,8 +48,12 @@ singleHTML <- as.character(reportPAGEDTABLE(single, "Single-column table"))
 stopifnot(file.exists("assets/tables/-2/complete.tsv"))
 singleChunk <- readLines("assets/tables/-2/chunk-00001.js", warn = FALSE)
 stopifnot(grepl('[["0001"],["0002"]]', singleChunk, fixed = TRUE))
+dump(c("htmlESCAPE", "downloadBUTTON"), file = "table-helpers.R")
 writeLines(c("---", 'title: "Report table test"', "format: html", "---", "", html,
-             '<script src="viewer.js"></script>'), "index.qmd")
-writeLines(c("project:", "  type: website", "  resources:", "    - assets/", "    - inputs/", "    - viewer.js",
+             "```{r, echo=FALSE, results='asis'}", "library(data.table)",
+             'source("report-tables.R")', 'source("table-helpers.R")', "tableN <- 0L",
+             'reportPAGEDTABLE(data.frame(ID = sprintf("%04d", 1:220)), "Created during rendering")',
+             "```", '<script src="viewer.js"></script>'), "index.qmd")
+writeLines(c("project:", "  type: website", "  post-render: report-post-render.R", "  resources:", "    - assets/", "    - inputs/", "    - viewer.js",
              "website:", "  search: false"), "_quarto.yml")
 message("Small table test passed: six chunks, repeated IDs, quoted/multiline text, wide rows and unchanged download.")

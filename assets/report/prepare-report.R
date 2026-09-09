@@ -225,6 +225,7 @@ writeCONFIG <- function(pageVALUE) {
       "project:",
       "  type: website",
       "  output-dir: _site",
+      "  post-render: report-post-render.R",
       "  render:",
       renderLINE,
       "  resources:",

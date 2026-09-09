@@ -49,6 +49,9 @@ jobs:
           docker run --rm --cpus=2 --memory=6g --memory-swap=6g \
             --volume "$PWD/report-scale-results:/records" \
             dnaprs-report-scale quarto render /records/tables
+          docker run --rm --volume "$PWD:/work/dnaprs:ro" \
+            --volume "$PWD/report-scale-results:/records" --workdir /work/dnaprs \
+            dnaprs-report-scale Rscript tests/scripts/check_report_published.R /records/tables
       - name: Test complete report rendering
         env:
           REPORT_ROWS: ${{ inputs.full_scale && '6500000,7000000,7500000' || '1000,1200,1500' }}
