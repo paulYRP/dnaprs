@@ -19,6 +19,15 @@ input:
   - provided_references:
       type: file
       description: Declared local reference records to retain in the bundle.
+  - - provided_paths:
+        type: list
+        description: Absolute source paths in the same order as the staged local assets.
+    - provided_assets:
+        type: list
+        description: Local reference files, directories, and companions staged in separate numbered directories.
+  - reference_base:
+      type: directory
+      description: Launch directory used to resolve relative paths in the local reference records.
   - reference_bundle:
       type: string
       description: Versioned identifier assigned to the assembled reference bundle.

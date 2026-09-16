@@ -7,7 +7,7 @@
 ----------------------------------------------------------------------------------------
 */
 
-include { DNAPRS                  } from './workflows/dnaprs'
+include { DNAPRS; referenceInputFiles } from './workflows/dnaprs'
 include { RESOLVE_INPUTS          } from './modules/local/resolve_inputs/main'
 include { REFERENCE_PLAN          } from './modules/local/reference_plan/main'
 include { REFERENCE_ASSET         } from './modules/local/reference_asset/main'
@@ -242,10 +242,21 @@ workflow {
             file("${projectDir}/assets/reference/human_g1k_v37.fasta.fai"),
             file("${projectDir}/bin/reference_asset.sh"),
         )
+        provided_reference_inputs = RESOLVE_INPUTS.out.references
+            .splitCsv(header: true, sep: '\t')
+            .flatMap { row -> referenceInputFiles(row, launchDir)[1] }
+            .ifEmpty { empty_input }
+            .collect()
+            .map { files ->
+                def sources = files.unique()
+                tuple(sources.collect { source -> source.toString() }, sources)
+            }
         ASSEMBLE_REFERENCES(
             REFERENCE_ASSET.out.asset.map { row, _asset -> row }.collect(),
             REFERENCE_ASSET.out.asset.map { _row, asset -> asset }.collect(),
             RESOLVE_INPUTS.out.references,
+            provided_reference_inputs,
+            launchDir,
             params.reference_bundle,
             params.genome,
             file("${params.reference_dir}/${params.reference_bundle}", checkIfExists: false).toString(),

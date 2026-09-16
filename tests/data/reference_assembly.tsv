@@ -1,0 +1,2 @@
+bundle_id	bundle_version	reference_id	reference_type	path	companion	build	ancestry	version	checksum	source_format	reference_stage
+dnaprs_GRCh37	test	FASTA	reference_fasta	tests/data/reference/human_g1k_v37.fasta	tests/data/reference/human_g1k_v37.fasta.fai	GRCh37	All	test		fasta	source

@@ -35,6 +35,47 @@ resourceDIGEST <- function(files, base) {
 }
 
 provided <- readTSV(option[["provided"]])
+providedMAP <- jsonlite::fromJSON(rawToChar(jsonlite::base64_dec(option[["provided-map-json"]])))
+# Normalise paths without following source symlinks or requiring a host path inside the container.
+sourcePATH <- function(value) {
+  value <- gsub("\\\\", "/", value)
+  if (!grepl("^(/|[A-Za-z]:/)", value)) value <- paste0(option[["reference-base"]], "/", value)
+  prefix <- if (startsWith(value, "/")) "/" else substr(value, 1L, 3L)
+  parts <- strsplit(sub("^(/|[A-Za-z]:/)", "", value), "/", fixed = TRUE)[[1L]]
+  result <- character()
+  for (part in parts) {
+    if (part %in% c("", ".")) next
+    if (part == "..") result <- head(result, -1L) else result <- c(result, part)
+  }
+  paste0(prefix, paste(result, collapse = "/"))
+}
+stagedPATHS <- function(value, label) {
+  pattern <- gsub("\\{chromosome\\}|\\{chr\\}|\\{CHR\\}|#", "*", value)
+  matched <- if (pattern == value) which(names(providedMAP) == value) else {
+    which(grepl(glob2rx(pattern), names(providedMAP)))
+  }
+  if (length(matched) == 0L) {
+    stop(sprintf("%s has no staged input: %s", label, value), call. = FALSE)
+  }
+  paths <- unlist(providedMAP[matched], use.names = FALSE)
+  missing <- !file.exists(paths) | file.access(paths, 4L) != 0L
+  if (any(missing)) {
+    stop(sprintf("%s cannot be read: %s (staged as %s)", label, value,
+      paste(paths[missing], collapse = ", ")), call. = FALSE)
+  }
+  paths
+}
+providedCHECKS <- list()
+for (row in seq_len(nrow(provided))) {
+  for (field in c("path", "companion")) {
+    value <- provided[[field]][[row]]
+    if (is.na(value) || !nzchar(value)) next
+    value <- sourcePATH(value)
+    provided[[field]][[row]] <- value
+    paths <- stagedPATHS(value, sprintf("Reference '%s' %s", provided$reference_id[[row]], field))
+    if (field == "path") providedCHECKS[[provided$reference_type[[row]]]] <- paths
+  }
+}
 assetJSON <- rawToChar(jsonlite::base64_dec(option[["assets-json"]]))
 asset <- jsonlite::fromJSON(assetJSON, simplifyDataFrame = TRUE)
 if (!is.data.frame(asset)) asset <- as.data.frame(asset, stringsAsFactors = FALSE)
@@ -103,11 +144,21 @@ if (anyDuplicated(reference$reference_type)) stop("The assembled reference bundl
 dbsnp <- reference$path[reference$reference_type == "dbsnp"]
 if (length(dbsnp) == 1L) {
   required <- c("assembly_report.txt", "GCF_000001405.25.gz", "GCF_000001405.25.gz.tbi")
-  if (!all(file.exists(file.path(dbsnp, required)))) stop("The assembled dbSNP source is incomplete.", call. = FALSE)
+  checked <- if ("dbsnp" %in% downloadedROLE) dbsnp else providedCHECKS[["dbsnp"]]
+  missing <- required[!file.exists(file.path(checked, required))]
+  if (length(missing) > 0L) stop(sprintf("dbSNP source '%s' is missing required file(s): %s",
+    dbsnp, paste(missing, collapse = ", ")), call. = FALSE)
 }
 panel <- reference$path[reference$reference_type == "imputation_panel"]
-if (length(panel) == 1L && length(list.files(panel, pattern = "\\.bref3$")) != 22L) {
-  stop("The assembled imputation panel must contain 22 BREF3 files.", call. = FALSE)
+if (length(panel) == 1L) {
+  checked <- if ("imputation_panel" %in% downloadedROLE) panel else providedCHECKS[["imputation_panel"]]
+  panelFILES <- unlist(lapply(checked, function(path) {
+    if (dir.exists(path)) list.files(path, pattern = "\\.bref3$") else basename(path)
+  }), use.names = FALSE)
+  if (sum(grepl("\\.bref3$", panelFILES)) != 22L) {
+    stop(sprintf("Imputation panel '%s' must contain 22 BREF3 files; found %s.",
+      panel, sum(grepl("\\.bref3$", panelFILES))), call. = FALSE)
+  }
 }
 writeTSV(reference, "references.tsv")
 

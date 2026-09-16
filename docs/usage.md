@@ -159,6 +159,10 @@ may use a standard VCF extension or a RefSeq name such as `GCF_000001405.25.gz`.
 index is available, the pipeline creates an indexed copy in the task work directory and
 does not modify the source directory.
 
+Relative local reference paths are resolved from the directory where Nextflow is
+launched. Automatic reference assembly stages local references and their companion
+files alongside downloaded assets. It does not modify the original references.
+
 The persistent cache defaults to `references/dnaprs/grch37-v1/`. It includes dbSNP157,
 the GRCh37 FASTA/index, Beagle maps and chromosome panel, 1000 Genomes population and
 related-sample metadata, pinned Beagle/unbref3 JARs, and selected SBayesRC resources.
