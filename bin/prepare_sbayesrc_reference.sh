@@ -23,6 +23,6 @@ cp "$annotation_source" "$output_dir/annotation/annotation.txt"
 
 block_count=$(find "$output_dir/ld" -type f -name 'block*.eigen.bin' | wc -l | tr -d ' ')
 annotation_rows=$(awk 'END { print NR }' "$output_dir/annotation/annotation.txt")
-printf 'reference_type\tfiles_or_rows\tstatus\n' > "${output_dir}.summary.tsv"
-printf 'sbayesrc_ld\t%s\tPASS\nannotation\t%s\tPASS\n' "$block_count" "$annotation_rows" \
+printf 'reference_type\tfiles_or_rows\tstatus\tsource_archive\n' > "${output_dir}.summary.tsv"
+printf 'sbayesrc_ld\t%s\tPASS\t%s\nannotation\t%s\tPASS\t%s\n' "$block_count" "$(basename "$ld_archive")" "$annotation_rows" "$(basename "$annotation_archive")" \
     >> "${output_dir}.summary.tsv"

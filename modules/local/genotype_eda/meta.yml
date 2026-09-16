@@ -39,7 +39,7 @@ output:
             tables.
       - ${meta.cohort}.*.tsv:
           type: file
-          description: Cohort-specific exploratory summaries and exact figure-source tables.
+          description: Cohort-specific exploratory summaries, diagnostic status counts, marker-subset audit and exact figure-source tables.
   logs:
     - - meta:
           type: map

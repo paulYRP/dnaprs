@@ -15,22 +15,37 @@ suppressWarnings(suppressPackageStartupMessages({
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Target composition
+## Target
+
+These results describe the supplied input before preparation. Diagnostic marker subsets
+do not change the source genotypes or remove participants. Corrected checks and scoring
+decisions appear in [Target QC](target-qc.qmd).
 
 ```{r}
 tableVIEW(
-  genotypeEDA[, .(
-    cohort, role, input_stage, format, participants, variants, chromosomes,
-    autosomal_variants, x_variants, y_variants, mitochondrial_variants,
-    unplaced_or_nonstandard_variants, recorded_sex_participants,
-    phenotype_participants, duplicated_participant_identifiers,
-    duplicated_variant_identifier_groups, review_items, status
-  )],
+  genotypeEDA[, intersect(c(
+    "cohort", "role", "input_stage", "format", "participants", "variants", "chromosomes",
+    "autosomal_variants", "x_variants", "y_variants", "mitochondrial_variants",
+    "unplaced_or_nonstandard_variants", "recorded_sex_participants",
+    "phenotype_participants", "duplicated_participant_identifiers",
+    "duplicated_variant_identifier_groups", "pass_items", "review_items", "fail_items",
+    "not_run_items", "completion", "status", "recorded_status"
+  ), names(genotypeEDA)), with = FALSE],
   "Supplied target composition by declared cohort."
 )
 ```
 
-## Results requiring attention
+## Runs
+
+`PASS` means the check completed without flagged findings. `REVIEW` means it completed
+with findings to inspect. `FAIL` means an attempted calculation failed or produced invalid
+required values. `NOT_RUN` means it was not attempted; the reason identifies unavailable
+inputs or a failed prerequisite. Any failed check makes the overall status `FAIL`.
+Skipped checks are shown as partial coverage, not successful calculations. A raw failure
+remains visible even if the later corrected check succeeds.
+For older results, `recorded_status` preserves an original status that differs from
+the displayed status. An attempted calculation recorded as `NOT_RUN` is displayed as
+`FAIL` only when its recorded reason confirms that it failed. Source results are unchanged.
 
 ```{r}
 tableVIEW(
@@ -45,11 +60,7 @@ tableVIEW(
 figureGALLERY("Genotype EDA")
 ```
 
-Internal PCA describes major genotype differences within the target. In a small cohort,
-the leading components can be strongly influenced by relatives. It does not assign
-ancestry without an external reference.
-
-## Result tables and logs
+## Results
 
 ```{r}
 fileTABLE(

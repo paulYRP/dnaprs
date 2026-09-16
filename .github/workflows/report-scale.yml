@@ -37,6 +37,7 @@ jobs:
           docker run --rm --volume "$PWD:/work/dnaprs:ro" --workdir /work/dnaprs \
             dnaprs-report-scale Rscript tests/scripts/test_report_data.R
           node tests/scripts/test_report_gallery.cjs
+          node tests/scripts/test_report_downloads.cjs
       - name: Test paged report tables
         run: |
           mkdir -p report-scale-results

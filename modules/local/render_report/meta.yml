@@ -29,10 +29,10 @@ tools:
 input:
   - report_files:
       type: file
-      description: Readable result, QC, log, and provenance files; genotype directories are published separately.
+      description: Readable result, QC, log, provenance and individual checkpoint files, staged in separate numbered directories.
   - output_manifest:
       type: file
-      description: Manifest matching the staged report files, excluding separately published genotype directories.
+      description: Manifest with publish_path, file_name and staged_path matching each report input. Native genotype downloads link to published checkpoints.
   - report_source:
       type: directory
       description: Quarto report source directory.

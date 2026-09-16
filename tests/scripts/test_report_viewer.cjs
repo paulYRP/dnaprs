@@ -39,7 +39,6 @@ for (const name of [
     "find",
     "cancel",
     "clear",
-    "open",
     "query",
     "column",
     "operator",
@@ -97,7 +96,7 @@ const context = vm.createContext({
     Uint32Array,
     Map: ObservedMap,
 });
-vm.runInContext(fs.readFileSync("assets/report/dnaprs-tables.js", "utf8"), context);
+vm.runInContext(fs.readFileSync(path.join(project, "viewer.js"), "utf8"), context);
 const original = context.window.dnaprsTableChunk;
 context.window.dnaprsTableChunk = (key, rows) => {
     maximum = Math.max(maximum, rows.length);
@@ -113,9 +112,7 @@ async function settled() {
     throw new Error("Viewer did not settle");
 }
 (async () => {
-    assert.equal(loads, 0, "closed tables must not load chunks");
-    roles.get("open").open = true;
-    roles.get("open").ontoggle();
+    assert.equal(loads, 1, "the first visible page must begin loading automatically");
     await settled();
     assert.equal(body.children.length, 25);
     assert.equal(body.children[0].children[0].textContent, "rs10");
@@ -123,7 +120,7 @@ async function settled() {
     roles.get("last").onclick();
     await settled();
     assert.equal(body.children.length, 12);
-    assert.match(roles.get("status").textContent, /76â€“87 of 87/);
+    assert.match(roles.get("status").textContent, /76-87 of 87/);
     roles.get("first").onclick();
     await settled();
     assert.equal(body.children.length, 25);
@@ -146,18 +143,15 @@ async function settled() {
     roles.get("cancel").onclick();
     await filtering;
     assert.match(roles.get("status").textContent, /cancelled/);
-    roles.get("open").open = false;
-    roles.get("open").ontoggle();
-    assert.equal(body.children.length, 0);
+    maps[0].clear();
     failLoad = true;
-    roles.get("open").open = true;
-    roles.get("open").ontoggle();
+    roles.get("last").onclick();
     await settled();
-    assert.match(roles.get("status").textContent, /complete download/);
+    assert.match(roles.get("status").textContent, /file download/);
     assert.ok(maximum <= 17);
     assert.ok(loads < 100);
     console.log(
-        "Viewer contract tests passed: lazy loading, paging, repeated IDs, numeric filters, cancellation, text escaping and missing chunks.",
+        "Viewer contract tests passed: automatic first page, bounded loading, paging, repeated IDs, numeric filters, cancellation, text escaping and missing chunks.",
     );
 })().catch((error) => {
     console.error(error);

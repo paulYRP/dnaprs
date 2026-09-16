@@ -242,7 +242,21 @@ fi
 sample_count=$(awk 'BEGIN{n=0} !/^#/ && NF>0 {n++} END{print n}' "$cohort/${cohort}.psam")
 variant_count=$(awk 'BEGIN{n=0} !/^#/ && NF>0 {n++} END{print n}' "$cohort/${cohort}.pvar")
 
-printf 'cohort\tinput_stage\tstep\tparticipants\tvariants\tstatus\n%s\t%s\tNormalised to PGEN\t%s\t%s\tPASS\n' \
-    "$cohort" "$input_stage" "$sample_count" "$variant_count" > "$cohort.target_prep_summary.tsv"
+printf 'cohort\tinput_stage\tstep\tparticipants\tvariants\tstatus\tstage_order\tremoved_variants\treason\n' > "$cohort.target_prep_summary.tsv"
+imported_count=$(awk '!/^#/ && NF {n++} END {print n+0}' "$imported/$cohort.pvar")
+printf '%s\t%s\tImported\t%s\t%s\tPASS\t1\t0\tImported markers before resolution.\n' \
+    "$cohort" "$input_stage" "$sample_count" "$imported_count" >> "$cohort.target_prep_summary.tsv"
+if [[ "$input_stage" == raw ]]; then
+    resolved_count=$(awk -F '\t' 'NR==1 {for(i=1;i<=NF;i++) ix[$i]=i; next}
+        $(ix["decision"]) ~ /^RETAINED_/ || $(ix["decision"]) ~ /^EXCLUDED_.*DUPLICATE/ {n++} END {print n+0}' "$decision_input")
+    printf '%s\t%s\tMarker resolution\t%s\t%s\tPASS\t2\t%s\tUnresolved markers excluded; see marker decisions for reasons.\n' \
+        "$cohort" "$input_stage" "$sample_count" "$resolved_count" "$((imported_count-resolved_count))" >> "$cohort.target_prep_summary.tsv"
+    printf '%s\t%s\tDuplicate handling\t%s\t%s\tPASS\t3\t%s\tConcordant probes represented once; discordant groups excluded.\n' \
+        "$cohort" "$input_stage" "$sample_count" "$variant_count" "$((resolved_count-variant_count))" >> "$cohort.target_prep_summary.tsv"
+    printf '%s\t%s\tAllele orientation\t%s\t%s\tPASS\t4\t0\tREF and ALT checked against GRCh37; orientation changes do not remove markers.\n' \
+        "$cohort" "$input_stage" "$sample_count" "$variant_count" >> "$cohort.target_prep_summary.tsv"
+fi
+printf '%s\t%s\tPrepared checkpoint\t%s\t%s\tPASS\t5\t0\tNative PGEN, PVAR and PSAM checkpoint.\n' \
+    "$cohort" "$input_stage" "$sample_count" "$variant_count" >> "$cohort.target_prep_summary.tsv"
 printf 'cohort\tinput_stage\tparticipants\tvariants\tchromosomes\tstatus\n%s\t%s\t%s\t%s\t%s\tPASS\n' \
     "$cohort" "$input_stage" "$sample_count" "$variant_count" "${#prefixes[@]}" > "$cohort.target_qc.tsv"

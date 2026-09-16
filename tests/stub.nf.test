@@ -42,6 +42,8 @@ nextflow_pipeline {
                 { assert path("$runDir/data/inputs/published_files.json").text.contains('TEST.sbayesrc_genotypes') },
                 { assert !path("$runDir/reports/provenance/output_files.tsv").text.contains('TEST.sbayesrc_genotypes') },
                 { assert path("$runDir/reports/provenance/output_files.tsv").text.contains('phenoPRS.csv') },
+                { assert path("$runDir/reports/provenance/output_files.tsv").text.contains('staged_path') },
+                { assert path("$runDir/reports/provenance/output_files.tsv").text.contains('checkpoints/imputed/TEST.imputed\tTEST.pvar') },
                 { assert !path("$runDir/reports/downloads/sbayesrc/genotypes").exists() },
                 { assert path(runDir).toFile().list().sort() == ['data', 'figures', 'logs', 'reports'] }
             )

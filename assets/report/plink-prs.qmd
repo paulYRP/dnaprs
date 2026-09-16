@@ -12,7 +12,7 @@ suppressWarnings(suppressPackageStartupMessages({library(data.table); library(kn
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Variant retention
+## Variants
 
 ```{r}
 tableVIEW(
@@ -23,13 +23,13 @@ tableVIEW(
 )
 ```
 
-## Target coverage and participant PRS review
+## Figures
 
 ```{r, results='asis'}
 figureGALLERY("PLINK PRS")
 ```
 
-## Imputation sensitivity
+## Imputation
 
 ```{r}
 tableVIEW(plinkSENSITIVITYQC, "Typed/imputed scoring-variant coverage and participant-score agreement.")
@@ -39,7 +39,7 @@ tableVIEW(plinkSENSITIVITYQC, "Typed/imputed scoring-variant coverage and partic
 tableVIEW(plinkSENSITIVITY, "Participant-level standardised score comparison between the imputed and direct-genotype checkpoints.")
 ```
 
-## Outputs and downloads
+## Results
 
 ```{r}
 fileTABLE(

@@ -31,7 +31,7 @@ process GENOTYPE_EDA {
 
     stub:
     """
-    printf 'cohort\trole\tinput_stage\tformat\tparticipants\tvariants\tchromosomes\tautosomal_variants\tx_variants\ty_variants\tmitochondrial_variants\tunplaced_or_nonstandard_variants\trecorded_sex_participants\tphenotype_participants\tduplicated_participant_identifiers\tduplicated_variant_identifier_groups\tduplicated_variant_identifier_records\treview_items\tstatus\n${meta.cohort}\t${meta.role}\t${meta.input_stage ?: 'qc_completed'}\t${meta.format}\t2\t2\t1\t2\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tPASS\n' > ${meta.cohort}.genotype_eda_summary.tsv
+    printf 'cohort\trole\tinput_stage\tformat\tparticipants\tvariants\tchromosomes\tautosomal_variants\tx_variants\ty_variants\tmitochondrial_variants\tunplaced_or_nonstandard_variants\trecorded_sex_participants\tphenotype_participants\tduplicated_participant_identifiers\tduplicated_variant_identifier_groups\tduplicated_variant_identifier_records\treview_items\tstatus\tpass_items\tfail_items\tnot_run_items\tcompletion\n${meta.cohort}\t${meta.role}\t${meta.input_stage ?: 'qc_completed'}\t${meta.format}\t2\t2\t1\t2\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\tPASS\t3\t0\t1\tPARTIAL\n' > ${meta.cohort}.genotype_eda_summary.tsv
     printf 'cohort\tchromosome\tcategory\tvariants\n${meta.cohort}\t1\tautosome\t2\n' > ${meta.cohort}.chromosome_counts.tsv
     printf 'cohort\tchromosome\tbin_start\tbin_end\tvariants\n${meta.cohort}\t1\t1\t1000000\t2\n' > ${meta.cohort}.marker_density.tsv
     printf 'cohort\tidentifier_class\tvariants\tpercent\n${meta.cohort}\tcoordinate\t2\t100\n' > ${meta.cohort}.identifier_classes.tsv
@@ -49,6 +49,7 @@ process GENOTYPE_EDA {
     printf 'cohort\tFID\tIID\tPC1\tPC2\tPC3\tPC4\tPC5\tPC6\tPC7\tPC8\tPC9\tPC10\n' > ${meta.cohort}.internal_pca.tsv
     printf 'cohort\tcomponent\teigenvalue\tpercent_of_reported_eigenvalues\n' > ${meta.cohort}.pca_eigenvalues.tsv
     printf 'cohort\tcheck\tstatus\tvalue\treason\n${meta.cohort}\tformat_import\tPASS\t2 participants; 2 variants\tThe supplied target was imported without changing the source files.\n${meta.cohort}\treported_sex\tNOT_RUN\t0 recorded; 0 X variants\tRecorded sex or X-chromosome variants were unavailable.\n' > ${meta.cohort}.genotype_eda_checks.tsv
+    printf 'cohort\tsource_row\tID\tchromosome\tposition\tref\talt\tdiagnostic_subset\treason\n${meta.cohort}\t1\t1:100:A:G\t1\t100\tA\tG\tautosome\tValid autosomal diagnostic marker\n' > ${meta.cohort}.diagnostic_markers.tsv
     printf 'Genotype EDA stub completed.\n' > ${meta.cohort}.genotype_eda.log
     printf '${meta.cohort}\theterozygosity\tPASS\t2\tHeterozygosity calculated.\n${meta.cohort}\trelatedness\tPASS\t1\tRelatedness calculated.\n' >> ${meta.cohort}.genotype_eda_checks.tsv
     """

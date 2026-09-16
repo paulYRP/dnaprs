@@ -272,8 +272,16 @@ mitochondrial_variants=$(awk -F '\t' 'NR > 1 && $3 == "mitochondrial" {n += $4} 
 unplaced_variants=$(awk -F '\t' 'NR > 1 && $3 == "unplaced_or_nonstandard" {n += $4} END{print n+0}' "${cohort}.chromosome_counts.tsv")
 chromosome_count=$(awk -F '\t' 'NR > 1 {seen[$2]=1} END{for (value in seen) n++; print n+0}' "${cohort}.chromosome_counts.tsv")
 
-run_plink "Allele frequency and genotype missingness" \
-    --pfile "$raw_prefix" --freq --missing --threads "$threads" --out "$analysis_prefix"
+raw_statistics_status="PASS"
+raw_statistics_reason="Frequency and missingness describe all imported markers."
+if ! run_plink "Allele frequency and genotype missingness" \
+    --pfile "$raw_prefix" --freq --missing --threads "$threads" --out "$analysis_prefix"; then
+    raw_statistics_status="FAIL"
+    raw_statistics_reason="Raw frequency or missingness calculation failed; inspect the stage log."
+    printf '#CHROM\tID\tREF\tALT\tALT_FREQS\tOBS_CT\n' > "${analysis_prefix}.afreq"
+    printf '#FID\tIID\tF_MISS\n' > "${analysis_prefix}.smiss"
+    printf '#CHROM\tID\tF_MISS\n' > "${analysis_prefix}.vmiss"
+fi
 cp "${analysis_prefix}.afreq" "${cohort}.allele_frequency.tsv"
 cp "${analysis_prefix}.smiss" "${cohort}.sample_missingness.tsv"
 cp "${analysis_prefix}.vmiss" "${cohort}.variant_missingness.tsv"
@@ -327,16 +335,63 @@ awk -v cohort="$cohort" '
     }
 ' "${analysis_prefix}.afreq" > "${cohort}.allele_frequency_bins.tsv"
 
+# Temporary row identifiers select records unambiguously, even when source IDs repeat.
+# Only this task-local PVAR is rewritten; genotype calls and source files are unchanged.
+diagnostic_source="${work_prefix}/diagnostic_source"
+ln -s "$(realpath "${raw_prefix}.pgen")" "${diagnostic_source}.pgen"
+cp "${raw_prefix}.psam" "${diagnostic_source}.psam"
+printf 'cohort\tsource_row\tID\tchromosome\tposition\tref\talt\tdiagnostic_subset\treason\n' > "${cohort}.diagnostic_markers.tsv"
+: > "${work_prefix}/autosome.keep"
+: > "${work_prefix}/x.keep"
+awk -v cohort="$cohort" -v audit="${cohort}.diagnostic_markers.tsv" -v work="$work_prefix" '
+    BEGIN { FS=OFS="\t" }
+    /^#/ { print; next }
+    {
+        row++; original=$3; chr=toupper($1); sub(/^CHR/, "", chr)
+        subset="excluded"; reason="Non-autosomal or non-X marker"
+        if (chr ~ /^([1-9]|1[0-9]|2[0-2])$/) { subset="autosome"; reason="Valid autosomal diagnostic marker" }
+        else if (chr == "X" || chr == "23") { subset="x"; reason="Valid non-PAR X diagnostic marker" }
+        if ($2 !~ /^[0-9]+$/ || $2+0 <= 0) { subset="excluded"; reason="Missing or invalid position" }
+        else if ($4 !~ /^[ACGT]$/ || $5 !~ /^[ACGT]$/ || $4 == $5) {
+            subset="excluded"; reason="Alleles must be two distinct, non-missing A/C/G/T bases"
+        } else if (subset == "x" && ($2 <= 2699520 || $2 >= 154931044)) {
+            subset="excluded"; reason="Outside the GRCh37 non-PAR X interval"
+        }
+        print cohort,row,original,$1,$2,$4,$5,subset,reason >> audit
+        $3="diagnostic_" row
+        if (subset != "excluded") print $3 >> (work "/" subset ".keep")
+        print
+    }
+' "${raw_prefix}.pvar" > "${diagnostic_source}.pvar"
+autosome_prefix="${work_prefix}/diagnostic_autosome"
+x_prefix="${work_prefix}/diagnostic_x"
+pruned_prefix="${work_prefix}/diagnostic_pruned"
+autosome_status="NOT_RUN"
+x_subset_status="NOT_RUN"
+for subset in autosome x; do
+    if [[ -s "${work_prefix}/${subset}.keep" ]]; then
+        if run_plink "Materialise valid ${subset} diagnostic markers" \
+            --pfile "$diagnostic_source" --extract "${work_prefix}/${subset}.keep" \
+            --make-pgen --threads "$threads" --out "${work_prefix}/diagnostic_${subset}"; then
+            if [[ "$subset" == autosome ]]; then autosome_status="PASS"; else x_subset_status="PASS"; fi
+        else
+            if [[ "$subset" == autosome ]]; then autosome_status="FAIL"; else x_subset_status="FAIL"; fi
+        fi
+    fi
+done
 pruned_count=0
-if [[ "$sample_count" -ge 2 && "$autosomal_variants" -ge 2 ]]; then
+prune_status="NOT_RUN"
+prune_reason="At least two participants and valid autosomal markers are required. Inspect diagnostic_autosomes for prerequisite failures."
+frequency_status="NOT_RUN"
+if [[ "$sample_count" -ge 2 && "$autosome_status" == PASS ]]; then
     bad_ld=()
     if [[ "$sample_count" -lt 50 ]]; then bad_ld=(--bad-ld); fi
     if run_plink "LD pruning for heterozygosity, relatedness, and internal PCA" \
-        --pfile "$raw_prefix" --autosome --maf 0.05 --geno 0.01 --indep-pairwise 200 50 0.10 \
+        --pfile "$autosome_prefix" --autosome --maf 0.05 --geno 0.01 --indep-pairwise 200 50 0.10 \
         "${bad_ld[@]}" --threads "$threads" --out "${analysis_prefix}_prune"; then
         if [[ ! -s "${analysis_prefix}_prune.prune.in" ]]; then
             if run_plink "Retain eligible autosomal markers when no LD pairs are present" \
-                --pfile "$raw_prefix" --autosome --maf 0.05 --geno 0.01 --write-snplist \
+                --pfile "$autosome_prefix" --autosome --maf 0.05 --geno 0.01 --write-snplist \
                 --threads "$threads" --out "${analysis_prefix}_prune_unpaired"; then
                 cp "${analysis_prefix}_prune_unpaired.snplist" "${analysis_prefix}_prune.prune.in"
             fi
@@ -344,21 +399,33 @@ if [[ "$sample_count" -ge 2 && "$autosomal_variants" -ge 2 ]]; then
         if [[ -s "${analysis_prefix}_prune.prune.in" ]]; then
             pruned_count=$(awk 'NF>0 {n++} END{print n+0}' "${analysis_prefix}_prune.prune.in")
             if [[ "$pruned_count" -ge 2 ]]; then
-                run_plink "Allele frequencies for sample diagnostics" \
-                    --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" --freq \
-                    --threads "$threads" --out "${analysis_prefix}_prune_frequency"
+                if run_plink "Materialise LD-pruned diagnostic markers" \
+                    --pfile "$autosome_prefix" --extract "${analysis_prefix}_prune.prune.in" \
+                    --make-pgen --threads "$threads" --out "$pruned_prefix" &&
+                    run_plink "Allele frequencies for sample diagnostics" \
+                    --pfile "$pruned_prefix" --freq --threads "$threads" --out "${analysis_prefix}_prune_frequency"; then
+                    frequency_status="PASS"
+                else
+                    frequency_status="FAIL"
+                    pruned_count=0
+                fi
             fi
         fi
+        prune_status="PASS"
+        prune_reason="LD pruning completed; downstream diagnostics require at least two retained markers."
+    else
+        prune_status="FAIL"
+        prune_reason="LD pruning failed; inspect the stage log. Dependent diagnostics were not attempted."
     fi
 fi
 
 heterozygosity_status="NOT_RUN"
-heterozygosity_reason="Fewer than two LD-pruned autosomal variants were available."
+heterozygosity_reason="Fewer than two usable LD-pruned variants were available. Inspect diagnostic_autosomes, diagnostic_pruning and diagnostic_frequencies."
 printf 'cohort\tFID\tIID\tobserved_homozygotes\texpected_homozygotes\tobservations\tinbreeding_coefficient\theterozygosity_rate\tmissingness\theterozygosity_z\tstatus\n' \
     > "${cohort}.heterozygosity.tsv"
 if [[ "$pruned_count" -ge 2 ]]; then
     if run_plink "Autosomal heterozygosity" \
-        --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" \
+        --pfile "$pruned_prefix" \
         --read-freq "${analysis_prefix}_prune_frequency.afreq" --het \
         --threads "$threads" --out "${analysis_prefix}_heterozygosity"; then
         awk -v cohort="$cohort" '
@@ -403,6 +470,9 @@ if [[ "$pruned_count" -ge 2 ]]; then
         ' "${analysis_prefix}.smiss" "${analysis_prefix}_heterozygosity.het" > "${cohort}.heterozygosity.tsv"
         heterozygosity_status="PASS"
         heterozygosity_reason="Autosomal heterozygosity was calculated from the LD-pruned marker set."
+        if awk -F '\t' 'NR > 1 && $11 == "REVIEW" {flagged=1} END {exit !flagged}' "${cohort}.heterozygosity.tsv"; then
+            heterozygosity_status="REVIEW"
+        fi
         if awk -F '\t' 'NR > 1 && $11 == "FAIL" {failed=1} END {exit !failed}' "${cohort}.heterozygosity.tsv"; then
             heterozygosity_status="FAIL"
             heterozygosity_reason="Heterozygosity could not be calculated for every participant; inspect the stage log."
@@ -415,10 +485,19 @@ fi
 
 printf 'cohort\tFID\tIID\trecorded_sex\tgenetic_sex\tx_inbreeding_coefficient\tstatus\treason\n' > "${cohort}.sex_check.tsv"
 sex_status="NOT_RUN"
-sex_reason="Recorded sex or X-chromosome variants were unavailable."
-if [[ "$x_variants" -gt 0 && "$recorded_sex_count" -gt 0 ]]; then
+sex_reason="No valid non-PAR X markers or recorded sex. Inspect diagnostic_x for prerequisite failures."
+x_frequency_status="NOT_RUN"
+if [[ "$x_subset_status" == PASS && "$recorded_sex_count" -gt 0 ]]; then
+    if run_plink "Non-PAR X allele frequencies" --pfile "$x_prefix" --freq \
+        --threads "$threads" --out "$x_prefix"; then
+        x_frequency_status="PASS"
+    else
+        x_frequency_status="FAIL"
+    fi
+fi
+if [[ "$x_frequency_status" == PASS ]]; then
     if run_plink "Reported sex check" \
-        --pfile "$raw_prefix" --read-freq "${analysis_prefix}.afreq" \
+        --pfile "$x_prefix" --read-freq "${x_prefix}.afreq" \
         --check-sex max-female-xf=0.2 min-male-xf=0.8 \
         --threads "$threads" --out "${analysis_prefix}_sex"; then
         awk -v cohort="$cohort" '
@@ -443,6 +522,7 @@ if [[ "$x_variants" -gt 0 && "$recorded_sex_count" -gt 0 ]]; then
         sex_status=$([[ "$sex_problem_count" -gt 0 ]] && printf 'REVIEW' || printf 'PASS')
         sex_reason="X-chromosome coefficients were compared with recorded sex."
     else
+        sex_status="FAIL"
         sex_reason="PLINK could not complete the sex check; inspect the stage log."
     fi
 fi
@@ -461,7 +541,7 @@ pca_status="NOT_RUN"
 pca_reason="$relatedness_reason"
 if [[ "$pruned_count" -ge 2 ]]; then
     if run_plink "Prepare PLINK 1 relatedness input" \
-        --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" \
+        --pfile "$pruned_prefix" \
         --make-bed --threads "$threads" --out "${analysis_prefix}_relatedness_input" \
         && run_plink1 "Pairwise PLINK 1 identity by descent" \
         --bfile "${analysis_prefix}_relatedness_input" --genome full --threads "$threads" \
@@ -481,7 +561,7 @@ if [[ "$pruned_count" -ge 2 ]]; then
                 else if (pi_hat >= .1875) category="second_degree"
                 else if (pi_hat >= .0884) category="third_degree"
                 else category="unrelated"
-                status=(pi_hat >= .1875 || category == "unresolved" ? "REVIEW" : "PASS")
+                status=(category == "unresolved" ? "FAIL" : (pi_hat >= .1875 ? "REVIEW" : "PASS"))
                 print cohort, $(column_index["FID1"]), $(column_index["IID1"]), $(column_index["FID2"]), $(column_index["IID2"]), variants, pi_hat, $(column_index["Z0"]), $(column_index["Z1"]), $(column_index["Z2"]), category, status
             }
         ' "${analysis_prefix}_relatedness.genome" > "${cohort}.relatedness.tsv"
@@ -506,6 +586,7 @@ if [[ "$pruned_count" -ge 2 ]]; then
         ' "${cohort}.relatedness.tsv" > "${cohort}.relatedness_bins.tsv"
         related_problem_count=$(awk -F '\t' 'NR > 1 && $12 != "PASS" {n++} END{print n+0}' "${cohort}.relatedness.tsv")
         relatedness_status=$([[ "$related_problem_count" -gt 0 ]] && printf 'REVIEW' || printf 'PASS')
+        if awk -F '\t' 'NR > 1 && $12 == "FAIL" {failed=1} END {exit !failed}' "${cohort}.relatedness.tsv"; then relatedness_status="FAIL"; fi
         relatedness_reason="PLINK 1 identity by descent was calculated from the LD-pruned exploratory marker set; PI_HAT >= 0.1875 was flagged."
     else
         relatedness_status="FAIL"
@@ -516,7 +597,7 @@ if [[ "$pruned_count" -ge 2 ]]; then
     if [[ "$pc_count" -gt $((sample_count - 1)) ]]; then pc_count=$((sample_count - 1)); fi
     if [[ "$pc_count" -gt "$pruned_count" ]]; then pc_count="$pruned_count"; fi
     if [[ "$pc_count" -ge 2 ]] && run_plink "Internal target PCA" \
-        --pfile "$raw_prefix" --extract "${analysis_prefix}_prune.prune.in" \
+        --pfile "$pruned_prefix" \
         --read-freq "${analysis_prefix}_prune_frequency.afreq" \
         --pca "$pc_count" --threads "$threads" --out "${analysis_prefix}_pca"; then
         awk -v cohort="$cohort" '
@@ -545,6 +626,7 @@ if [[ "$pruned_count" -ge 2 ]]; then
         pca_status="PASS"
         pca_reason="Internal PCs were calculated from the LD-pruned target marker set."
     else
+        if [[ "$pc_count" -ge 2 ]]; then pca_status="FAIL"; fi
         pca_reason="PLINK could not calculate at least two internal PCs; inspect marker count and the stage log."
     fi
 else
@@ -559,6 +641,12 @@ identifier_reason=$([[ "$duplicate_identifier_groups" -gt 0 ]] && printf '%s dup
     printf 'cohort\tcheck\tstatus\tvalue\treason\n'
     printf '%s\tformat_import\tPASS\t%s participants; %s variants\tThe supplied target was imported without changing the source files.\n' "$cohort" "$sample_count" "$variant_count"
     printf '%s\tvariant_identifiers\t%s\t%s duplicate groups\t%s\n' "$cohort" "$identifier_status" "$duplicate_identifier_groups" "$identifier_reason"
+    printf '%s\traw_statistics\t%s\tall imported markers\t%s\n' "$cohort" "$raw_statistics_status" "$raw_statistics_reason"
+    printf '%s\tdiagnostic_autosomes\t%s\ttemporary subset\tValid autosomal subset; see diagnostic_markers.tsv for retained and excluded records, and the stage log for failures.\n' "$cohort" "$autosome_status"
+    printf '%s\tdiagnostic_x\t%s\ttemporary subset\tValid GRCh37 non-PAR X subset; see diagnostic_markers.tsv and the stage log.\n' "$cohort" "$x_subset_status"
+    printf '%s\tdiagnostic_pruning\t%s\t%s markers\t%s\n' "$cohort" "$prune_status" "$pruned_count" "$prune_reason"
+    printf '%s\tdiagnostic_frequencies\t%s\tLD-pruned subset\tFrequencies must come from the materialised diagnostic subset. Inspect diagnostic_pruning and the stage log.\n' "$cohort" "$frequency_status"
+    printf '%s\tx_frequencies\t%s\tnon-PAR X subset\tRequires valid X markers and recorded sex. Inspect diagnostic_x and the stage log.\n' "$cohort" "$x_frequency_status"
     printf '%s\theterozygosity\t%s\t%s participants\t%s\n' "$cohort" "$heterozygosity_status" "$sample_count" "$heterozygosity_reason"
     printf '%s\treported_sex\t%s\t%s recorded; %s X variants\t%s\n' "$cohort" "$sex_status" "$recorded_sex_count" "$x_variants" "$sex_reason"
     printf '%s\trelatedness\t%s\t%s pruned variants\t%s\n' "$cohort" "$relatedness_status" "$pruned_count" "$relatedness_reason"
@@ -566,7 +654,12 @@ identifier_reason=$([[ "$duplicate_identifier_groups" -gt 0 ]] && printf '%s dup
 } > "${cohort}.genotype_eda_checks.tsv"
 
 review_count=$(awk -F '\t' 'NR > 1 && $3 == "REVIEW" {n++} END{print n+0}' "${cohort}.genotype_eda_checks.tsv")
+fail_count=$(awk -F '\t' 'NR > 1 && $3 == "FAIL" {n++} END{print n+0}' "${cohort}.genotype_eda_checks.tsv")
+pass_count=$(awk -F '\t' 'NR > 1 && $3 == "PASS" {n++} END{print n+0}' "${cohort}.genotype_eda_checks.tsv")
+not_run_count=$(awk -F '\t' 'NR > 1 && $3 == "NOT_RUN" {n++} END{print n+0}' "${cohort}.genotype_eda_checks.tsv")
 overall_status=$([[ "$review_count" -gt 0 ]] && printf 'REVIEW' || printf 'PASS')
+if [[ "$fail_count" -gt 0 ]]; then overall_status="FAIL"; fi
+completion=$([[ "$not_run_count" -gt 0 ]] && printf 'PARTIAL' || printf 'COMPLETE')
 
 printf 'cohort\trole\tinput_stage\tformat\tparticipants\tvariants\tchromosomes\tautosomal_variants\tx_variants\ty_variants\tmitochondrial_variants\tunplaced_or_nonstandard_variants\trecorded_sex_participants\tphenotype_participants\tduplicated_participant_identifiers\tduplicated_variant_identifier_groups\tduplicated_variant_identifier_records\treview_items\tstatus\n' \
     > "${cohort}.genotype_eda_summary.tsv"
@@ -576,4 +669,8 @@ printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t
     "$recorded_sex_count" "$phenotype_count" "$duplicated_participants" "$duplicate_identifier_groups" \
     "$duplicate_identifier_variants" "$review_count" "$overall_status" >> "${cohort}.genotype_eda_summary.tsv"
 
-log_message "Genotype EDA completed with status ${overall_status}."
+awk -v pass="$pass_count" -v fail="$fail_count" -v skipped="$not_run_count" -v complete="$completion" \
+    'BEGIN {FS=OFS="\t"} NR==1 {print $0,"pass_items","fail_items","not_run_items","completion"; next} {print $0,pass,fail,skipped,complete}' \
+    "${cohort}.genotype_eda_summary.tsv" > "${work_prefix}/summary.tsv"
+mv "${work_prefix}/summary.tsv" "${cohort}.genotype_eda_summary.tsv"
+log_message "Genotype EDA completed with status ${overall_status}; coverage ${completion}."

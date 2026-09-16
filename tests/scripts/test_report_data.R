@@ -5,6 +5,26 @@ suppressPackageStartupMessages({
   library(ggplot2)
 })
 source("assets/report/report-data.R")
+source("assets/report/report-inputs.R")
+source("assets/report/report-dictionary.R")
+stopifnot(grepl("phenotype", reportCOLUMNDEFINITION("observed", "Observed and fitted phenotype")),
+  grepl("QQ plot", reportCOLUMNDEFINITION("observed", "GWAS QQ plot")),
+  grepl("Description not supplied", reportCOLUMNDEFINITION("custom_field", "Source data")))
+
+originalEDA <- data.table(cohort = "TEST", source_path = "genotype_eda/TEST", status = "REVIEW", review_items = 1L)
+edaCHECKS <- data.table(cohort = "TEST", source_path = "genotype_eda/TEST", status = c("PASS", "REVIEW", "FAIL", "NOT_RUN"))
+edaSUMMARY <- reportEDASUMMARY(originalEDA, edaCHECKS)
+stopifnot(originalEDA$status == "REVIEW", edaSUMMARY$status == "FAIL", edaSUMMARY$recorded_status == "REVIEW",
+  edaSUMMARY$pass_items == 1L, edaSUMMARY$review_items == 1L, edaSUMMARY$fail_items == 1L,
+  edaSUMMARY$not_run_items == 1L, edaSUMMARY$completion == "PARTIAL")
+
+historical <- data.table(check = c("reported_sex", "reported_sex", "internal_pca"),
+  status = "NOT_RUN", reason = c("PLINK could not complete the sex check; inspect the stage log.",
+    "Recorded sex or X-chromosome variants were unavailable.",
+    "PLINK could not calculate at least two internal PCs; inspect marker count and the stage log."))
+displayed <- reportEDACHECKS(historical)
+stopifnot(identical(displayed$status, c("FAIL", "NOT_RUN", "FAIL")),
+  all(displayed$recorded_status == "NOT_RUN"), all(historical$status == "NOT_RUN"))
 
 testREPORTDATA <- function() {
   decisions <- data.table(cohort = "TEST", primary_analysis = c(TRUE, FALSE, FALSE, FALSE, NA, TRUE),
@@ -89,3 +109,35 @@ testREPORTDATA <- function() {
   message("Report data tests passed: ranks, signal retention, bins, workbook limits and integers.")
 }
 testREPORTDATA()
+
+testPREPARATION <- function() {
+  source("assets/report/report-inputs.R", local = TRUE)
+  inputROOT <- tempfile("report-preparation-")
+  dir.create(inputROOT)
+  on.exit(unlink(inputROOT, recursive = TRUE), add = TRUE)
+  markers <- data.table(decision = c(rep("RETAINED_UNIQUE", 10),
+    "EXCLUDED_UNRESOLVED_MARKER", "EXCLUDED_REDUNDANT_DUPLICATE_PROBE"),
+    reason = c(rep("Retained", 10), "Unresolved", "Redundant"), final_id = c(paste0("rs", 1:10), "", ""))
+  fwrite(markers, file.path(inputROOT, "TEST.marker_decisions.tsv"), sep = "\t")
+  pvar <- data.table(`#CHROM` = 1, POS = 1:10, ID = paste0("rs", 1:10), REF = "A", ALT = "G")
+  fwrite(pvar, file.path(inputROOT, "TEST.pvar"), sep = "\t")
+  manifest <- data.table(file_name = c("TEST.marker_decisions.tsv", "TEST.pvar"),
+    publish_path = c("target_prep/TEST", "checkpoints/corrected/TEST"))
+  old <- data.table(cohort = "TEST", input_stage = "raw", step = "Normalised to PGEN",
+    participants = 6, variants = 10, status = "PASS")
+  result <- reportPREPARATION(old)
+  stopifnot(identical(result$summary$variants, c(12, 11, 10, 10, 10)),
+    identical(result$summary$removed_variants, c(0, 1, 1, 0, 0)),
+    sum(result$removals$variants) == 2, nrow(old) == 1L, !"count_source" %in% names(old))
+  recorded <- result$summary
+  recorded[, count_source := "Recorded preparation summary"]
+  stopifnot(isTRUE(all.equal(reportPREPARATION(recorded)$summary, recorded, check.attributes = FALSE)))
+  pvar[1L, ID := "wrong_id"]
+  fwrite(pvar, file.path(inputROOT, "TEST.pvar"), sep = "\t")
+  inconsistent <- reportPREPARATION(old)$summary
+  stopifnot(nrow(inconsistent) == 1L, grepl("could not be reconciled", inconsistent$count_source))
+  manifest <- manifest[1L]
+  stopifnot(nrow(reportPREPARATION(old)$summary) == 1L)
+  message("Preparation report tests passed: reconciled historical counts, exclusion reasons, preserved inputs and incomplete evidence.")
+}
+testPREPARATION()

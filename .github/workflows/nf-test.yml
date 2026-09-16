@@ -56,6 +56,9 @@ jobs:
       - name: Check local module contracts
         run: bash tests/scripts/check_local_modules.sh
 
+      - name: Test offline report downloads
+        run: node tests/scripts/test_report_downloads.cjs
+
       - name: Test verified reference caching
         run: bash tests/scripts/test_reference_asset.sh
 
@@ -159,6 +162,16 @@ jobs:
             --workdir /work/dnaprs \
             ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
             Rscript tests/scripts/test_participant_inputs.R
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-analysis:1.0.1 \
+            Rscript tests/scripts/test_sbayesrc_reference_selection.R
+          docker run --rm \
+            --volume "$PWD:/work/dnaprs:ro" \
+            --workdir /work/dnaprs \
+            ghcr.io/paulyrp/dnaprs-plink2:2.0.0-a.6.12-plink1.90b6.21 \
+            bash tests/scripts/test_genotype_diagnostics.sh
 
       - name: Test SBayesRC genotype preparation and dosage scoring
         if: ${{ matrix.NXF_VER == '25.10.4' }}
@@ -190,6 +203,14 @@ jobs:
             --workdir /work/dnaprs \
             ghcr.io/paulyrp/dnaprs-report:1.0.2 \
             Rscript tests/scripts/test_report_data.R
+
+      - name: Test offline download assets
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:${{ github.workspace }}" \
+            -w "${{ github.workspace }}" \
+            ghcr.io/paulyrp/dnaprs-report:1.0.2 \
+            Rscript tests/scripts/test_report_downloads.R
 
       - name: Run minimal real-tool workflow test
         if: ${{ matrix.NXF_VER == '25.10.4' }}

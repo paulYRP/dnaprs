@@ -9,6 +9,7 @@ process PHENOTYPE_ASSOCIATION {
     path phenotype_file
     path association_script
     val seed
+    path participant_decisions
 
     output:
     path '*.phenotype_associations.tsv', emit: associations
@@ -34,6 +35,7 @@ process PHENOTYPE_ASSOCIATION {
         --cohort '${score_job.cohort}' \
         --trait-id '${score_job.trait_id}' \
         --method '${score_job.method}' \
+        --participant-decisions '${participant_decisions.join(',')}' \
         --seed '${seed}'
 
     mv phenotype_associations.tsv ${job_id}.phenotype_associations.tsv

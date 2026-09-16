@@ -304,18 +304,13 @@
       status.textContent = "Loading figure…";
       image.src = figure.preview || figure.svg || figure.png;
       image.alt = figure.title + ". " + figure.description;
-      svg.href = figure.svg;
-      tiff.href = figure.tiff;
-      png.href = figure.png;
-      jpeg.href = figure.jpeg;
-      svg.download = figure.svg.split("/").pop();
-      tiff.download = figure.tiff.split("/").pop();
-      png.download = figure.png.split("/").pop();
-      jpeg.download = figure.jpeg.split("/").pop();
+      setDownload(svg, figure.svg, "Download SVG");
+      setDownload(tiff, figure.tiff, "Download TIFF");
+      setDownload(png, figure.png, "Download PNG");
+      setDownload(jpeg, figure.jpeg, "Download JPEG");
       if (figure.source_table) {
         source.hidden = false;
-        source.href = figure.source_table;
-        source.download = figure.source_table.split("/").pop();
+        setDownload(source, figure.source_table, "Download TSV");
       } else {
         source.hidden = true;
         source.removeAttribute("href");
@@ -327,6 +322,13 @@
       zoom = sharedZoom;
       canvas.scrollTo(0, 0);
       if (image.complete && image.naturalWidth) scheduleGeometry();
+    }
+
+    function setDownload(link, path, label) {
+      link.download = path.split("/").pop();
+      link.href = path.split("/").map(encodeURIComponent).join("/");
+      link.textContent = label;
+      link.setAttribute("aria-label", "Download " + link.download);
     }
 
     function change(offset) {

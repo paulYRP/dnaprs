@@ -5,6 +5,12 @@ name <- sub("^--", "", argument[seq.int(1L, length(argument), 2L)])
 value <- argument[seq.int(2L, length(argument), 2L)]
 option <- stats::setNames(as.list(value), name)
 if (!requireNamespace("data.table", quietly = TRUE)) stop("The data.table package is required.", call. = FALSE)
+missingnessLIMIT <- if (is.null(option[["sample-missingness"]])) 0.02 else as.numeric(option[["sample-missingness"]])
+heterozygosityLIMIT <- if (is.null(option[["heterozygosity-z-threshold"]])) 3 else as.numeric(option[["heterozygosity-z-threshold"]])
+if (!is.finite(missingnessLIMIT) || missingnessLIMIT < 0 || missingnessLIMIT > 1 ||
+    !is.finite(heterozygosityLIMIT) || heterozygosityLIMIT <= 0) {
+  stop("QC thresholds require sample_missingness in [0,1] and heterozygosity_z_threshold greater than zero.", call. = FALSE)
+}
 
 sample <- data.table::fread(option[["sample-decisions"]], colClasses = list(character = c("FID", "IID")))
 related <- data.table::fread(option[["relatedness"]], colClasses = "character")
@@ -44,7 +50,10 @@ validatePARTICIPANTS <- function(value, label) {
     stop(sprintf("%s results must contain each retained participant exactly once, with no extra participants.", label), call. = FALSE)
   }
 }
-sample[, sample_missingness_pass := decision %in% c("RETAIN", "INHERITED")]
+sample[, sample_missingness_pass := decision == "INHERITED" | (decision == "RETAIN" & missingness <= missingnessLIMIT)]
+if (any(!is.finite(sample$missingness))) stop("Sample missingness must be finite for every participant.", call. = FALSE)
+sample[, `:=`(sample_missingness_flag = missingness > 0.02,
+  sample_missingness_threshold = missingnessLIMIT, heterozygosity_z_threshold = heterozygosityLIMIT)]
 if (!all(c("cohort", "FID", "IID", "heterozygosity_z", "status") %in% names(heterozygosity))) {
   stop("The heterozygosity table is invalid.", call. = FALSE)
 }
@@ -53,10 +62,11 @@ heterozygosity[, heterozygosity_z := suppressWarnings(as.numeric(heterozygosity_
 if (any(!is.finite(heterozygosity$heterozygosity_z)) || any(!heterozygosity$status %in% c("PASS", "REVIEW"))) {
   stop("Required heterozygosity QC contains invalid values or unsuccessful results. Inspect the genotype_eda log.", call. = FALSE)
 }
-heterozygosity[, heterozygosity_pass := status == "PASS"]
+heterozygosity[, `:=`(heterozygosity_flag = abs(heterozygosity_z) > 3,
+  heterozygosity_pass = abs(heterozygosity_z) <= heterozygosityLIMIT)]
 sample <- merge(
   sample,
-  heterozygosity[, .(cohort, FID, IID, heterozygosity_z, heterozygosity_pass)],
+  heterozygosity[, .(cohort, FID, IID, heterozygosity_z, heterozygosity_flag, heterozygosity_pass)],
   by = c("cohort", "FID", "IID"), all.x = TRUE, sort = FALSE
 )
 sample[is.na(heterozygosity_pass), heterozygosity_pass := FALSE]
@@ -119,17 +129,21 @@ sample[retained_after_qc == TRUE, reason := paste0(
   ifelse(
     heterozygosity_pass,
     "; heterozygosity passed",
-    "; heterozygosity failed"
+    "; heterozygosity exceeds the scoring threshold"
   ),
   paste0("; sex check ", tolower(sex_check_status)),
   ifelse(related_flag, "; excluded from the primary unrelated-participant set", "; no relatedness exclusion"),
   ifelse(ancestry_flag == "PASS", "; within the European reference distance", "; outside the European reference distance")
 )]
 sample[retained_after_qc == FALSE, reason := paste0(reason, "; downstream diagnostics not assessed after sample exclusion")]
+sample[, qc_status := ifelse(score_eligible,
+  ifelse(sample_missingness_flag | heterozygosity_flag, "REVIEW", "PASS"), "EXCLUDED")]
+sample[score_eligible & qc_status == "REVIEW", reason := paste0(reason, "; retained with QC flag")]
 result <- sample[, .(
-  cohort, FID, IID, missingness, retained_after_qc, sample_missingness_pass, heterozygosity_z,
-  heterozygosity_pass, sex_check_pass, sex_check_status, technical_pass, score_eligible,
-  related_flag, ancestry_flag, ancestry_distance, primary_analysis, reason
+  cohort, FID, IID, missingness, retained_after_qc, sample_missingness_flag, sample_missingness_pass,
+  sample_missingness_threshold, heterozygosity_z, heterozygosity_flag, heterozygosity_pass,
+  heterozygosity_z_threshold, sex_check_pass, sex_check_status, technical_pass, score_eligible,
+  related_flag, ancestry_flag, ancestry_distance, primary_analysis, qc_status, reason
 )]
 data.table::setorder(result, cohort, FID, IID)
 if (!any(result$score_eligible)) stop("No participant remains eligible for scoring.", call. = FALSE)

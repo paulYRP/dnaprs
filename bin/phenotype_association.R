@@ -59,13 +59,16 @@ if (length(participantCOLUMN) == 1L) {
     ),
     names(score)
   )
-  decision <- unique(score[, ..decisionCOLUMN])
+  decision <- if (is.null(option[["participant-decisions"]]) || !nzchar(option[["participant-decisions"]])) unique(score[, ..decisionCOLUMN]) else {
+    data.table::rbindlist(lapply(strsplit(option[["participant-decisions"]], ",", fixed = TRUE)[[1L]],
+      function(path) data.table::fread(path, colClasses = list(character = c("FID", "IID")))), use.names = TRUE, fill = TRUE)
+  }
   if (anyDuplicated(decision[, .(cohort, IID)])) {
     stop("Participant decisions are inconsistent across score records.", call. = FALSE)
   }
   if ("FID" %in% names(decision)) data.table::setnames(decision, "FID", "genotype_fid")
   scoreWIDE <- merge(scoreWIDEZ, scoreWIDERAW, by = c("cohort", "IID"), all = TRUE, sort = FALSE)
-  scoreWIDE <- merge(scoreWIDE, decision, by = c("cohort", "IID"), all.x = TRUE, sort = FALSE)
+  scoreWIDE <- merge(scoreWIDE, decision, by = c("cohort", "IID"), all = TRUE, sort = FALSE)
   if (data.table::uniqueN(scoreWIDE$cohort) > 1L && !"cohort" %in% names(phenotype)) {
     stop("Phenotype data must contain a cohort column when scores contain multiple cohorts.", call. = FALSE)
   }
@@ -80,6 +83,14 @@ if (length(participantCOLUMN) == 1L) {
     }
   }
   generatedCOLUMN <- unique(c(score$score_name, score$raw_score_name))
+  # Keep source phenotype columns and expose current QC under a stable prefix on collision.
+  collisions <- intersect(setdiff(names(decision), c("cohort", "IID")), names(phenotype))
+  for (column in collisions) {
+    currentCOLUMN <- paste0("prs_qc_", column)
+    if (currentCOLUMN %in% names(phenotype)) stop(sprintf("Phenotype input contains reserved field '%s'.", currentCOLUMN), call. = FALSE)
+    data.table::setnames(scoreWIDE, column, currentCOLUMN)
+  }
+  scoreCOLUMN <- setdiff(names(scoreWIDE), c("cohort", "IID"))
   # Preserve original non-score fields. Current participant decisions remain in the
   # score table used for model eligibility and in the separate QC outputs.
   scoreCOLUMN <- setdiff(scoreCOLUMN, intersect(setdiff(scoreCOLUMN, generatedCOLUMN), names(phenotype)))

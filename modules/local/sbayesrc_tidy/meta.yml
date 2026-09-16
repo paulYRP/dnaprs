@@ -45,7 +45,7 @@ output:
           description: LD-aligned summary statistics and chained QC.
       - ${meta.trait_id}.tidy_qc.tsv:
           type: file
-          description: LD-aligned summary statistics and chained QC.
+          description: GWAS retention, LD-reference variant count and coverage, with review below 70 percent of the LD reference.
       - harmonisation_qc:
           type: file
           description: LD-aligned summary statistics and chained QC.

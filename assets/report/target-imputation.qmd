@@ -1,6 +1,6 @@
 ---
-title: "Target Imputation"
-pagetitle: "Target Imputation | dnaprs"
+title: "Target IMP"
+pagetitle: "Target IMP | dnaprs"
 ---
 
 ```{r setup, include=FALSE}
@@ -12,10 +12,10 @@ suppressWarnings(suppressPackageStartupMessages({library(data.table); library(kn
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Chromosome results
+## Figures and Tables
 
 ```{r, results='asis'}
-figureGALLERY("Target Imputation")
+figureGALLERY("Target IMP")
 ```
 
 ```{r}
@@ -26,13 +26,17 @@ tableVIEW(imputationQC, "Corrected typed, exact reference-matched, unmatched, re
 tableVIEW(imputationDR2, "Imputed variant counts in each Beagle DR2 quality bin by chromosome.")
 ```
 
-## Reusable imputed checkpoint
+## Target
+
+```{r, results='asis'}
+checkpointVIEW("imputed")
+```
 
 ```{r}
 tableVIEW(imputationMANIFEST, "Chromosome-level VCF and index handoff contract for reuse without repeating imputation.")
 ```
 
-## Outputs and logs
+## Results
 
 ```{r}
 fileTABLE("^(target_imputation|logs/target_imputation)/", "Imputed target manifests, quality summaries, VCF/PGEN checkpoint records, and Beagle logs.")

@@ -525,6 +525,16 @@ discoverREFERENCES <- function(stagedROOT, originalROOT, mode, required) {
   zipFILES <- files[grepl("\\.zip$", lower)]
   zipCONTENT <- lapply(zipFILES, archiveNAMES)
   ldZIP <- zipFILES[vapply(zipCONTENT, function(value) any(grepl("ldm\\.info$|block[0-9]+\\.eigen\\.bin$", value, ignore.case = TRUE)), logical(1L))]
+  fullEUR <- ldZIP[grepl("ukbEUR_Imputed", basename(ldZIP), ignore.case = TRUE)]
+  hm3 <- grepl("ukbEUR_HM3", ldZIP, ignore.case = TRUE)
+  if (length(fullEUR)) {
+    ldZIP <- fullEUR
+  } else if (any(hm3)) {
+    if (mode == "local" && "sbayesrc_ld_source" %in% required) {
+      stop("Reference discovery found ukbEUR_HM3 but production uses ukbEUR_Imputed.zip. Supply the full European archive, use reference_mode=auto to download it, or select a different LD archive explicitly with references.assets.sbayesrc_ld_source.", call. = FALSE)
+    }
+    ldZIP <- ldZIP[!hm3]
+  }
   annotationZIP <- zipFILES[vapply(zipCONTENT, function(value) any(grepl("annot.*baseline", value, ignore.case = TRUE)), logical(1L))]
   beagleJAR <- files[grepl("beagle[.].*[.]jar$", lower)]
   unbref3JAR <- files[grepl("unbref3[.].*[.]jar$", lower)]

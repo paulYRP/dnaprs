@@ -7,6 +7,7 @@ record_dir=$(cd "$record_dir" && pwd)
 test_parent=$(mktemp -d /tmp/dnaprs-report-scale.XXXXXX)
 test_dir="$test_parent/report"
 Rscript tests/scripts/test_report_scale.R "$test_dir" "${2:-6500000,7000000,7500000}"
+Rscript tests/scripts/test_report_changes.R "$test_dir"
 cd "$test_dir"
 export DNAPRS_REPORT_INPUTS="$test_dir/inputs"
 export DNAPRS_OUTPUT_MANIFEST="$test_dir/output_files.tsv"

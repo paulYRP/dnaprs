@@ -43,7 +43,8 @@ coordinate-based genotypes. Each PSAM retains the original family and individual
 (FID/IID) in VCF sample order. A temporary import keep file handles VCF sample names
 internally; the original eligible-participant keep file is unchanged.
 Genotype directories remain available with reporting enabled or disabled. They are listed
-in `data/inputs/published_files.json`, but are not duplicated in HTML report downloads.
+in `data/inputs/published_files.json`. The report prepares encoded download assets for
+the individual corrected and imputed PVAR, PGEN and PSAM files shown in its checkpoint sections.
 `qc/sbayesrc/genotypes/<cohort>/` records participant and
 variant counts, preserved and assigned IDs, and duplicate-ID checks for each chromosome.
 Conversion logs are under `data/logs/sbayesrc/genotypes/<cohort>/`.
@@ -72,6 +73,10 @@ use distinct rsIDs. These fields are separate from the assay pair and the final 
 alleles. Retained `final_chr`, `final_pos`, `final_ref` and `final_alt` match the
 reference-checked PVAR. Excluded raw markers have no final REF/ALT assignment.
 
+SBayesRC `*.tidy_qc.tsv` separates `retained_percent` (fraction of input GWAS variants
+retained) from `ld_coverage_percent` (fraction of LD-reference variants covered).
+`review_below_70_percent` applies to LD-reference coverage, not input GWAS retention.
+
 `participant_decisions.tsv` reports sample missingness, heterozygosity, sex-check,
 relatedness, and ancestry results separately. `score_eligible` requires the technical
 checks. `primary_analysis` also requires compatible ancestry and no PLINK 1 pair with
@@ -81,10 +86,18 @@ in the table but cannot be score-eligible; their ancestry and sex-check statuses
 `NOT_ASSESSED`. `sex_check_status` distinguishes a passing check from
 `NOT_APPLICABLE`. Required calculation failures stop participant selection.
 
+`sample_missingness_flag` and `heterozygosity_flag` retain the standard review
+limits of 0.02 and absolute Z-score 3. The corresponding threshold columns record
+the configured exclusion limits. `qc_status` is `REVIEW` for an eligible participant
+with either flag, `PASS` for an eligible participant without either flag, and
+`EXCLUDED` for an ineligible participant. Relatedness and ancestry have separate
+flags and still determine the primary analysis set.
+
 `phenotype_with_prs.tsv` retains every phenotype row in source order and attaches the
 raw and standardised scores. Existing `_NIMP` archives and non-score values remain
-unchanged. New decision fields are attached only where they do not replace input
-phenotype columns; the separate participant-decision table contains current QC.
+unchanged. Current QC also accompanies excluded participants, whose new scores are
+missing. If a QC field already exists in the input, the current value uses the
+`prs_qc_` prefix to preserve the original column.
 `phenotype_participant_level.tsv`
 contains the records selected for each model after timepoint and technical-record checks.
 `phenotype_timepoint_completeness.tsv` reports selected and missing requested visits.
@@ -117,8 +130,8 @@ Use submission-to-start time to assess queue delays and `realtime` to assess com
 
 ## `reports/`
 
-Detailed tables use on-demand paging. Select **Browse complete table** to load rows,
-then choose 25, 50 or 100 rows per page. **Find identifier** returns all exact matches
+Detailed tables show their first page automatically and load additional rows on demand.
+Choose 25, 50 or 100 rows per page. **Find identifier** returns all exact matches
 for the table's identifier column, including repeated IDs. Filters scan the complete
 table in chunks and can be cancelled. A filter can take time on a large table.
 
@@ -127,7 +140,7 @@ whole report folder, including `assets/tables/`, when copying the website. Chunk
 tables change presentation only; scientific result files and `phenoPRS.csv` are unchanged.
 
 Open `reports/index.html`. The site may include Overview, Genotype EDA, Target PREP,
-Target QC, Target Imputation, GWAS QC, PLINK PRS, SBayesRC PRS, Phenotype, and Logs,
+Target QC, Target IMP, GWAS QC, PLINK PRS, SBayesRC PRS, Phenotype, and Logs,
 depending on completed stages. Only Overview has introductory text. Figure viewers use
 Previous, one selector, Next, and a counter; they do not repeat figure names as a second
 button row.
@@ -140,11 +153,55 @@ Important portable subfolders are:
   state, software versions, and available Nextflow execution records;
 - `assets/` and `site_libs/`: local styling and libraries required offline.
 
+Target PREP displays the corrected, pre-imputation PVAR. Target IMP displays the
+final imputed PVAR. Each has paged browsing and one download for each of the
+matching PVAR, PGEN and PSAM. Phenotype displays the complete `phenoPRS.csv` in pages.
+
+Open `reports/index.html` directly in a browser. Downloads use byte-preserving
+assets generated with the report; no local server or additional command is needed.
+Keep the complete `reports/` folder, including `assets/downloads/`. These encoded
+copies increase report storage but are loaded only when a download is clicked.
+They preserve the original file format and contents without adding gzip compression.
+The original genotype files remain in `data/checkpoints/`; keep their relative
+layout for direct file links as well.
+
+Large downloads show preparation progress. One file is prepared at a time, in
+chunks. The browser still needs resources for the complete file; chunking does
+not remove browser size limits. Results tables use **Download** in each file row.
+Figures use format labels such as **Download SVG** and **Download TSV** for their source table.
+Overview uses `runs.tsv` and `scores.tsv` as download names for `input_checks.tsv`
+and `score_qc.tsv`, without renaming the pipeline outputs. Browser settings control
+whether downloads prompt for a location or save automatically.
+
+Nextflow's own execution records are finalised after report rendering. They retain
+direct file links; a local browser may require **Save link as** for records that
+were not available when the report download assets were prepared.
+
+Logs provides the plain workbook under **Summary**. **Contents** is the first
+worksheet and **Dictionary** is second. The dictionary identifies every worksheet
+column, its meaning and its source. Worksheets use default cells without filters,
+frozen panes or custom column widths. Source fields without supplied definitions
+are marked explicitly.
+
+Genotype EDA shows input diagnostics; Target QC shows corrected-target checks.
+`FAIL` means an attempted calculation failed, `NOT_RUN` means it was not attempted,
+and `REVIEW` means it completed with findings requiring attention. The overall EDA
+status gives failures priority and records all four status counts. `PARTIAL`
+indicates that at least one check was not run, even if completed checks passed.
+Diagnostic marker exclusions are recorded in `*.diagnostic_markers.tsv`; they are
+not genotype exclusions. Historical diagnostic results remain visible.
+When an older check records `NOT_RUN` but its reason explicitly records a failed
+attempt, the report displays `FAIL` and preserves `recorded_status`. The autosomal
+QC review cannot assess reported sex; the separate corrected X check provides
+that result. Preparation figures use recorded stage counts or marker decisions
+reconciled with the final PVAR. They do not infer unsupported intermediate counts.
+
 All links are relative. Treat participant-level score and phenotype files as sensitive
 research data.
 
-The report output index describes its staged files and downloads, not separately
-published genotype directories. Report inputs must be readable files; valid symbolic
+The report output index describes staged files and downloads, including links to
+individual native checkpoint files. These native files are not rehashed by reporting.
+Report inputs must be readable files; valid symbolic
 links to files are supported. Invalid inputs stop report preparation with the affected
 path before downloads and checksums are created.
 

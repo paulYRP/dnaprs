@@ -88,8 +88,14 @@ assert.equal(get("image"), second);
 assert.match(get("status").textContent, /Loading/);
 second.emit("error");
 assert.match(get("status").textContent, /could not be loaded/);
-for (const type of ["svg", "png", "tiff", "jpeg"]) assert.equal(get(type).href, figures[1][type]);
+for (const type of ["svg", "png", "tiff", "jpeg"]) {
+    assert.equal(get(type).href, figures[1][type]);
+    assert.equal(get(type).download, figures[1][type]);
+    assert.equal(get(type).textContent, `Download ${type.toUpperCase()}`);
+}
 assert.equal(get("source").href, figures[1].source_table);
+assert.equal(get("source").download, figures[1].source_table);
+assert.equal(get("source").textContent, "Download TSV");
 get("previous").emit("click");
 const retry = get("image");
 retry.emit("load");

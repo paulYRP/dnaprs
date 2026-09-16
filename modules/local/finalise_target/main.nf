@@ -42,7 +42,7 @@ process FINALISE_TARGET {
     cp ${meta.cohort}/${meta.cohort}.pgen ${meta.cohort}/${meta.cohort}_chr1.pgen
     cp ${meta.cohort}/${meta.cohort}.pvar ${meta.cohort}/${meta.cohort}_chr1.pvar
     cp ${meta.cohort}/${meta.cohort}.psam ${meta.cohort}/${meta.cohort}_chr1.psam
-    printf 'cohort\tinput_stage\tstep\tparticipants\tvariants\tstatus\n${meta.cohort}\t${meta.input_stage ?: 'qc_completed'}\tNormalised to PGEN\t2\t1\tPASS\n' > ${meta.cohort}.target_prep_summary.tsv
+    printf 'cohort\tinput_stage\tstep\tparticipants\tvariants\tstatus\tstage_order\tremoved_variants\treason\n${meta.cohort}\t${meta.input_stage ?: 'qc_completed'}\tPrepared checkpoint\t2\t1\tPASS\t1\t0\tPrepared target available\n' > ${meta.cohort}.target_prep_summary.tsv
     printf 'cohort\tinput_stage\tparticipants\tvariants\tchromosomes\tstatus\n${meta.cohort}\t${meta.input_stage ?: 'qc_completed'}\t2\t1\t1\tPASS\n' > ${meta.cohort}.target_qc.tsv
     printf 'cohort\trole\tsource_format\tgenotype\tsample\tkeep\tbuild\tancestry\tdosage\tinput_stage\tassay_manifest\tmarker_map\n' > ${meta.cohort}.corrected_target_manifest.tsv
     printf '${meta.cohort}\t${meta.role}\tpgen\tcheckpoints/${checkpoint_stage}/${meta.cohort}/${meta.cohort}.pgen\t\t\t${meta.build}\t${meta.ancestry}\tDS\t${checkpoint_stage}\t\t\n' >> ${meta.cohort}.corrected_target_manifest.tsv

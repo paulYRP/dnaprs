@@ -12,13 +12,13 @@ suppressWarnings(suppressPackageStartupMessages({library(data.table); library(kn
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Discovery studies
+## Traits
 
 ```{r}
 tableVIEW(gwasMANIFEST, "Declared discovery studies, effect definitions, builds, and source fields.")
 ```
 
-## Diagnostics and filtering
+## Figures
 
 ```{r, results='asis'}
 figureGALLERY("GWAS QC")
@@ -28,12 +28,12 @@ figureGALLERY("GWAS QC")
 tableVIEW(gwasSUMMARY, "GWAS source and post-QC variant counts.")
 ```
 
-## Method-ready outputs
+## Results
 
 ```{r}
 fileTABLE("^(gwas|qc/gwas)/", "Harmonised GWAS fields, clumping inputs, and structural QC summaries.")
 ```
 
 <div class="dnaprs-closing-card">
-<p>A passed GWAS QC result means the declared records have valid scoring fields, unique canonical variant keys, and an auditable effect scale. It does not repeat discovery-consortium participant QC, establish target allele compatibility by itself, or prove phenotype prediction; method-specific reference alignment and target score coverage remain downstream evidence.</p>
+<p>A passed GWAS QC result means the declared records have valid scoring fields, unique canonical variant keys, and an auditable effect scale. Method-specific reference alignment and target score coverage remain downstream evidence.</p>
 </div>

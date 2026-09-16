@@ -30,6 +30,12 @@ input:
   - decision_script:
       type: file
       description: R script that integrates technical, relatedness, and ancestry decisions.
+  - sample_missingness:
+      type: float
+      description: Configured maximum participant missing-call fraction; review flags remain above 0.02.
+  - heterozygosity_z_threshold:
+      type: float
+      description: Maximum absolute heterozygosity Z-score for scoring; review flags remain above 3.
 output:
   decisions:
     - - meta:

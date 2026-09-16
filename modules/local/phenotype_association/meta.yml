@@ -41,6 +41,9 @@ input:
   - seed:
       type: integer
       description: Fixed random seed for reproducible permutation procedures.
+  - participant_decisions:
+      type: file
+      description: Participant decisions for all cohorts, including excluded participants without scores.
 output:
   associations:
     - "*.phenotype_associations.tsv":
@@ -65,7 +68,7 @@ output:
   phenotype_prs:
     - "*.phenoPRS.csv":
         type: file
-        description: Legacy CSV copy of phenotype rows joined to participant PRSs.
+        description: Original phenotype rows with participant PRSs, QC flags, thresholds and eligibility reasons.
   phenotype_with_prs:
     - "*.phenotype_with_prs.tsv":
         type: file

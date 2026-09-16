@@ -5,7 +5,7 @@ process RENDER_REPORT {
     container 'ghcr.io/paulyrp/dnaprs-report:1.0.2'
 
     input:
-    path report_files, stageAs: 'report_inputs/*'
+    path report_files, stageAs: 'report_inputs/input??/*'
     path output_manifest
     path report_source
 
@@ -40,6 +40,9 @@ process RENDER_REPORT {
 
     stub:
     """
+    awk -F '\\t' 'NR>1 { print \$3 }' '${output_manifest}' | while IFS= read -r staged_path; do
+        test -f "report_inputs/\$staged_path" || { echo "Missing staged report input: \$staged_path" >&2; exit 1; }
+    done
     mkdir -p reports/site_libs reports/assets reports/downloads reports/figures/tiff reports/figures/png reports/figures/jpeg reports/provenance
     printf '<html><body><h1>dnaprs stub report</h1></body></html>\n' > reports/index.html
     cp '${output_manifest}' reports/provenance/output_files.tsv

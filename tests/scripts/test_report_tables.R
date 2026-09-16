@@ -27,6 +27,8 @@ before <- tools::md5sum("inputs/test.tsv")
 manifest <- data.table(file_name = "test.tsv", relative_path = "inputs/test.tsv")
 html <- as.character(reportPAGEDTABLE(reportTABLESOURCE("test.tsv"), "Synthetic complete table"))
 stopifnot(identical(before, tools::md5sum("inputs/test.tsv")), !grepl("<td", html, fixed = TRUE))
+stopifnot(!grepl("Browse complete", html, fixed = TRUE), !grepl("<details", html, fixed = TRUE),
+  grepl("Download test.tsv", html, fixed = TRUE), !grepl("Download complete", html, fixed = TRUE))
 chunks <- list.files("assets/tables/-1", pattern = "[.]js$", full.names = TRUE)
 stopifnot(length(chunks) == 6L)
 values <- lapply(chunks, function(path) {
@@ -57,3 +59,26 @@ writeLines(c("---", 'title: "Report table test"', "format: html", "---", "", htm
 writeLines(c("project:", "  type: website", "  post-render: report-post-render.R", "  resources:", "    - assets/", "    - inputs/", "    - viewer.js",
              "website:", "  search: false"), "_quarto.yml")
 message("Small table test passed: six chunks, repeated IDs, quoted/multiline text, wide rows and unchanged download.")
+
+dir.create("inputs/corrected")
+dir.create("inputs/imputed")
+writeLines(c("##fileformat=VCFv4.2", "##contig=<ID=1,length=249250621>",
+  "#CHROM\tPOS\tID\tREF\tALT", "1\t100\trs1\tA\tG"), "inputs/corrected/TEST.pvar")
+writeLines(c("##fileformat=VCFv4.2", "#CHROM\tPOS\tID\tREF\tALT",
+  "1\t200\t1:200:C:T\tC\tT"), "inputs/imputed/TEST.pvar")
+csvVALUE <- data.table(UID = c("0001", "0002"), note = c('comma, and "quote"', "two\nlines"))
+fwrite(csvVALUE, "inputs/phenoPRS.csv", sep = ",")
+manifest <- data.table(file_name = c("TEST.pvar", "TEST.pvar", "phenoPRS.csv"),
+  publish_path = c("checkpoints/corrected/TEST", "checkpoints/imputed/TEST.imputed", "phenotype"),
+  staged_path = c("corrected/TEST.pvar", "imputed/TEST.pvar", "phenoPRS.csv"),
+  relative_path = c("data/checkpoints/corrected/TEST/TEST.pvar", "data/checkpoints/imputed/TEST.imputed/TEST.pvar", "inputs/phenoPRS.csv"))
+for (stage in c("corrected", "imputed")) {
+  html <- as.character(reportPAGEDTABLE(reportTABLESOURCE("[.]pvar$", paste0("/", stage, "/")), stage))
+  stopifnot(grepl(paste0("data/checkpoints/", stage, "/"), html, fixed = TRUE),
+    grepl('"#CHROM"', html, fixed = TRUE), !grepl('"##fileformat', html, fixed = TRUE))
+}
+invisible(reportPAGEDTABLE(reportTABLESOURCE("^phenoPRS[.]csv$"), "Phenotype"))
+text <- paste(readLines(sprintf("assets/tables/-%s/chunk-00001.js", tableN), warn = FALSE), collapse = "\n")
+parsed <- jsonlite::fromJSON(sub("\\);$", "", sub('^window[.]dnaprsTableChunk\\("[^"]+",', "", text)))
+stopifnot(identical(unname(parsed[, 1:2]), unname(as.matrix(csvVALUE))))
+cat("Stage-specific PVAR headers and quoted, multiline CSV downloads passed.\n")

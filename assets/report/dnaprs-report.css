@@ -292,7 +292,7 @@ main.content {
 
 .dnaprs-hero {
   display: grid;
-  grid-template-columns: minmax(250px, 370px) minmax(280px, 1fr);
+  grid-template-columns: 1fr;
   align-items: center;
   gap: 2rem;
   margin: 0.2rem 0 1.5rem;
@@ -873,10 +873,6 @@ body.dnaprs-lock-scroll {
 
   .dnaprs-hero {
     grid-template-columns: 1fr;
-  }
-
-  .dnaprs-hero img {
-    max-width: 28rem;
   }
 
   .dnaprs-summary-grid {

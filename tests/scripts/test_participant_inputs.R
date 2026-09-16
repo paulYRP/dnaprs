@@ -17,13 +17,14 @@ runSCRIPT <- function(script, args, error = NULL) {
 }
 files <- c("sample_decisions", "relatedness", "heterozygosity", "sex_check", "target_ancestry", "genotype_eda_checks")
 original <- setNames(lapply(files, function(name) fread(file.path(fixture, paste0("TEST.", name, ".tsv")))), files)
-runQC <- function(tables = original, error = NULL) {
+runQC <- function(tables = original, error = NULL, missingness = 0.02, heterozygosity = 3) {
   for (name in names(tables)) fwrite(tables[[name]], paste0(name, ".tsv"), sep = "\t", na = "NA")
   runSCRIPT("participant_decisions.R", c(
     "--sample-decisions", "sample_decisions.tsv", "--relatedness", "relatedness.tsv",
     "--heterozygosity", "heterozygosity.tsv", "--sex-check", "sex_check.tsv",
     "--ancestry", "target_ancestry.tsv", "--qc-checks", "genotype_eda_checks.tsv",
     "--output", "decisions.tsv", "--keep", "eligible.keep"
+    , "--sample-missingness", as.character(missingness), "--heterozygosity-z-threshold", as.character(heterozygosity)
   ), error)
   if (is.null(error)) fread("decisions.tsv")
 }
@@ -59,6 +60,22 @@ tables$relatedness[, pi_hat := 0.01]
 stopifnot(!any(runQC(tables)$related_flag))
 cat("Retained participants require complete QC; excluded participants remain documented.\n")
 
+tables <- copy(original)
+tables$heterozygosity[1, `:=`(heterozygosity_z = -3.55, status = "REVIEW")]
+tables$sample_decisions[1, missingness := 0.03]
+strict <- runQC(tables)
+relaxed <- runQC(tables, missingness = 0.05, heterozygosity = 4)
+stopifnot(!strict$score_eligible[1], relaxed$score_eligible[1],
+  relaxed$heterozygosity_flag[1], relaxed$sample_missingness_flag[1], relaxed$qc_status[1] == "REVIEW")
+tables$heterozygosity[1, heterozygosity_z := 4]
+tables$sample_decisions[1, missingness := 0.02]
+stopifnot(runQC(tables, heterozygosity = 4)$score_eligible[1])
+tables$heterozygosity[1, heterozygosity_z := 4.001]
+stopifnot(!runQC(tables, heterozygosity = 4)$score_eligible[1])
+tables$heterozygosity[1, heterozygosity_z := NA_real_]
+runQC(tables, "invalid values", heterozygosity = 4)
+cat("Relaxed thresholds retain review flags, include boundary values and reject invalid calculations.\n")
+
 phenotype <- fread(file.path(root, "tests/data/phenotype_repeated.tsv"))
 scores <- fread(file.path(root, "tests/data/scores/test_timepoint.score.tsv"))
 oldCURRENT <- seq_len(nrow(phenotype)) / 10
@@ -87,3 +104,25 @@ for (current in c(FALSE, TRUE)) for (archive in c(FALSE, TRUE)) {
   stopifnot(nrow(fread("phenotype_participant_level.tsv")) == 6L)
 }
 cat("All four current-score/archive layouts preserve phenotype inputs and timepoints.\n")
+
+decisions <- unique(scores[, .(cohort, FID, IID, primary_analysis)])
+decisions[, `:=`(score_eligible = TRUE, reason = "Eligible", heterozygosity_flag = FALSE)]
+excluded <- phenotype[!IID %in% scores$IID, IID][1L]
+if (is.na(excluded)) excluded <- "UNSCORED"
+extra <- copy(phenotype[1L])
+extra[, IID := excluded]
+phenotype <- rbind(phenotype[IID != excluded], extra)
+decisions <- rbind(decisions, data.table(cohort = "TEST", FID = excluded, IID = excluded,
+  primary_analysis = FALSE, score_eligible = FALSE, reason = "Excluded by QC", heterozygosity_flag = NA))
+fwrite(decisions, "all-decisions.tsv", sep = "\t")
+fwrite(phenotype, "with-excluded.tsv", sep = "\t")
+runSCRIPT("phenotype_association.R", c(
+  "--scores", file.path(root, "tests/data/scores/test_timepoint.score.tsv"),
+  "--phenotype", "with-excluded.tsv", "--models", file.path(root, "tests/data/phenotype_models_timepoint.tsv"),
+  "--model-id", "baseline", "--cohort", "TEST", "--trait-id", "MDD", "--method", "plink_ct", "--seed", "22",
+  "--participant-decisions", "all-decisions.tsv"
+))
+output <- fread("phenoPRS.csv")
+stopifnot(nrow(output) == nrow(phenotype), !output[IID == excluded, score_eligible],
+  output[IID == excluded, reason] == "Excluded by QC", is.na(output[IID == excluded, MDD_PRS]))
+cat("Excluded phenotype participants retain their QC reason and missing PRS.\n")

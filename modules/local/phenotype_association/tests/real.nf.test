@@ -17,6 +17,7 @@ nextflow_process {
                 input[1] = file("${projectDir}/tests/data/phenotype_binomial.tsv")
                 input[2] = file("${projectDir}/bin/phenotype_association.R")
                 input[3] = 20260829
+                input[4] = []
                 """
             }
         }
@@ -47,6 +48,7 @@ nextflow_process {
                 input[1] = file("${projectDir}/tests/data/phenotype_repeated.tsv")
                 input[2] = file("${projectDir}/bin/phenotype_association.R")
                 input[3] = 22
+                input[4] = []
                 """
             }
         }
@@ -93,6 +95,7 @@ nextflow_process {
                 input[1] = file("${projectDir}/tests/data/phenotype_repeated_conflict.tsv")
                 input[2] = file("${projectDir}/bin/phenotype_association.R")
                 input[3] = 22
+                input[4] = []
                 """
             }
         }
@@ -114,6 +117,7 @@ nextflow_process {
                 input[1] = file("${projectDir}/tests/data/phenotype_repeated.tsv")
                 input[2] = file("${projectDir}/bin/phenotype_association.R")
                 input[3] = 22
+                input[4] = []
                 """
             }
         }
@@ -135,6 +139,7 @@ nextflow_process {
                 input[1] = file("${projectDir}/tests/data/phenotype_lme_unbalanced.tsv")
                 input[2] = file("${projectDir}/bin/phenotype_association.R")
                 input[3] = 22
+                input[4] = []
                 """
             }
         }

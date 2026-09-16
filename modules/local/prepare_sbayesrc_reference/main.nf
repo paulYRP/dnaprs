@@ -24,6 +24,6 @@ process PREPARE_SBAYESRC_REFERENCE {
     mkdir -p prepared_sbayesrc/ld prepared_sbayesrc/annotation
     printf 'stub\n' > prepared_sbayesrc/ld/block1.eigen.bin
     printf 'SNP\tA1\tA2\n1:100:A:G\tG\tA\n' > prepared_sbayesrc/annotation/annotation.txt
-    printf 'reference_type\tfiles_or_rows\tstatus\nsbayesrc_ld\t1\tPASS\nannotation\t1\tPASS\n' > prepared_sbayesrc.summary.tsv
+    printf 'reference_type\tfiles_or_rows\tstatus\tsource_archive\nsbayesrc_ld\t1\tPASS\t${ld_source.path}\nannotation\t1\tPASS\t${annotation_source.path}\n' > prepared_sbayesrc.summary.tsv
     """
 }

@@ -20,7 +20,7 @@
       const script = document.createElement("script");
       script.src = meta.base + meta.chunks[number].file;
       const timeout = setTimeout(
-        () => finish(new Error("Table loading timed out. Use the complete download or try again.")),
+        () => finish(new Error("Table loading timed out. Use the file download or try again.")),
         30000,
       );
       function finish(error) {
@@ -28,10 +28,10 @@
         script.remove();
         if (error) reject(error);
         else if (cache.has(key)) resolve(cache.get(key));
-        else reject(new Error("The table chunk is unavailable. Use the complete download."));
+        else reject(new Error("The table chunk is unavailable. Use the file download."));
       }
       script.onload = () => finish();
-      script.onerror = () => finish(new Error("Unable to load table rows. Use the complete download."));
+      script.onerror = () => finish(new Error("Unable to load table rows. Use the file download."));
       document.head.appendChild(script);
     }).finally(() => pending.delete(key));
     pending.set(key, promise);
@@ -95,7 +95,6 @@
       q("cancel").disabled = !busy;
     }
     async function render() {
-      if (!q("open").open) return;
       const token = ++renderToken;
       page = Math.max(1, Math.min(pages(), page));
       controls();
@@ -121,7 +120,7 @@
         status.textContent = total()
           ? "Showing " +
             (start + 1) +
-            "â€“" +
+            "-" +
             end +
             " of " +
             total() +
@@ -187,7 +186,6 @@
         }
         indices = selected;
         page = 1;
-        q("open").open = true;
         await render();
       } catch (error) {
         if (token === filterToken) status.textContent = error.message;
@@ -227,7 +225,6 @@
     })) {
       q(name).onclick = () => {
         page = next();
-        q("open").open = true;
         render();
       };
     }
@@ -239,18 +236,8 @@
       page = 1;
       render();
     };
-    q("open").ontoggle = () => {
-      if (q("open").open) render();
-      else {
-        ++renderToken;
-        ++filterToken;
-        busy = false;
-        controls();
-        body.replaceChildren();
-        for (const key of cache.keys()) if (key.startsWith(meta.key + ":")) cache.delete(key);
-      }
-    };
     controls();
+    render();
   }
   function start() {
     document.querySelectorAll("[data-paged-table]").forEach(initialise);

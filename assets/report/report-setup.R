@@ -1,5 +1,6 @@
 suppressPackageStartupMessages(library(bit64))
 source("report-tables.R")
+source("report-inputs.R")
 
 # Purpose:
 #   Read a completed report input without loading unavailable or empty files.
@@ -10,7 +11,7 @@ source("report-tables.R")
 # Returns:
 #   A data.table containing the completed result, or an empty data.table.
 readRESULT <- function(fileNAME) {
-  path <- file.path(inputROOT, fileNAME)
+  path <- reportRESULTPATH(fileNAME)
   if (!file.exists(path) || file.info(path)$size == 0) {
     return(data.table())
   }
@@ -18,17 +19,7 @@ readRESULT <- function(fileNAME) {
 }
 
 # Read and combine completed cohort- or trait-specific result tables selected by name.
-readRESULTS <- function(pattern) {
-  fileVALUE <- manifest[grepl(pattern, file_name), file_name]
-  if (!length(fileVALUE)) return(data.table())
-  rbindlist(lapply(fileVALUE, function(fileNAME) {
-    value <- readRESULT(fileNAME)
-    if (!nrow(value)) return(NULL)
-    if (!"cohort" %in% names(value)) value[, cohort := sub("\\..*$", "", fileNAME)]
-    value[, source_file := fileNAME]
-    value
-  }), use.names = TRUE, fill = TRUE)
-}
+readRESULTS <- reportREADRESULTS
 
 # Purpose:
 #   Return the local report path for one completed pipeline file.
@@ -40,6 +31,7 @@ readRESULTS <- function(pattern) {
 #   A project-relative download path or an empty string.
 resultPATH <- function(fileNAME) {
   path <- manifest[file_name == fileNAME, relative_path]
+  if (length(path) > 1L) stop(sprintf("Report download '%s' requires its stage path.", fileNAME), call. = FALSE)
   if (!length(path)) "" else path[[1L]]
 }
 
@@ -65,14 +57,19 @@ htmlESCAPE <- function(value) {
 # Args:
 #   path: Project-relative file path.
 #   label: Visible control text.
+#   filename: Saved filename; the source file remains unchanged.
 #
 # Returns:
 #   HTML for one download link or an empty string.
-downloadBUTTON <- function(path, label) {
+downloadBUTTON <- function(path, label, filename = basename(path)) {
   if (!nzchar(path)) return("")
+  url <- paste(vapply(strsplit(gsub("\\\\", "/", path), "/", fixed = TRUE)[[1L]],
+    utils::URLencode, character(1), reserved = TRUE), collapse = "/")
   sprintf(
-    '<a class="dnaprs-download" href="%s" download>%s</a>',
-    htmlESCAPE(path),
+    '<a class="dnaprs-download" href="%s" aria-label="Download %s" download="%s">%s</a>',
+    htmlESCAPE(url),
+    htmlESCAPE(filename),
+    htmlESCAPE(filename),
     htmlESCAPE(label)
   )
 }
@@ -83,11 +80,12 @@ downloadBUTTON <- function(path, label) {
 # Args:
 #   fileNAME: Basename recorded in the output manifest.
 #   label: Visible control text.
+#   filename: Saved filename; defaults to the pipeline filename.
 #
 # Returns:
 #   HTML for the selected result download.
-fileBUTTON <- function(fileNAME, label = paste("Download", fileNAME)) {
-  downloadBUTTON(resultPATH(fileNAME), label)
+fileBUTTON <- function(fileNAME, label = paste("Download", filename), filename = fileNAME) {
+  downloadBUTTON(resultPATH(fileNAME), label, filename)
 }
 
 # Purpose:
@@ -129,10 +127,10 @@ addMETHODLABEL <- function(value) {
 #
 # Returns:
 #   An interactive HTML table with client-side search and pagination.
-tableVIEW <- function(value, caption, escape = TRUE, page = 25L) {
+tableVIEW <- function(value, caption, escape = TRUE, page = 25L, download = TRUE) {
   if (inherits(value, "report_table_source") ||
       (escape && (nrow(value) > 200L || nrow(value) * ncol(value) > 10000L))) {
-    return(reportPAGEDTABLE(value, caption, page))
+    return(reportPAGEDTABLE(value, caption, page, download))
   }
   if (!nrow(value)) {
     return(knitr::asis_output('<p class="dnaprs-note">No records were produced for this section.</p>'))
@@ -173,13 +171,13 @@ tableVIEW <- function(value, caption, escape = TRUE, page = 25L) {
 #
 # Returns:
 #   An interactive file table with contextual downloads.
-fileTABLE <- function(pattern, caption) {
+fileTABLE <- function(pattern, caption, exclude = NULL) {
   value <- copy(manifest[grepl(pattern, publish_path)])
+  if (!is.null(exclude)) value <- value[!grepl(exclude, file_name)]
   if (!nrow(value)) return(tableVIEW(value, caption))
-  value[, download := sprintf(
-    '<a class="dnaprs-download" href="%s" download>Download</a>',
-    relative_path
-  )]
+  value[, download := vapply(seq_len(.N), function(i) {
+    downloadBUTTON(relative_path[i], "Download")
+  }, character(1))]
   tableVIEW(
     value[, .(section = publish_path, file = file_name, description, download)],
     caption,
@@ -225,7 +223,7 @@ figureGALLERY <- function(page) {
       '<a class="dnaprs-download" data-figure-tiff download>Download TIFF</a>',
       '<a class="dnaprs-download" data-figure-png download>Download PNG</a>',
       '<a class="dnaprs-download" data-figure-jpeg download>Download JPEG</a>',
-      '<a class="dnaprs-download" data-figure-source download>Download source table</a>',
+      '<a class="dnaprs-download" data-figure-source download>Download TSV</a>',
       '</div>',
       '<article class="dnaprs-figure-card">',
       '<div class="dnaprs-figure-heading"><h2 data-figure-title></h2>',
@@ -275,12 +273,14 @@ association <- readRESULT("phenotype_associations.tsv")
 fittedMODEL <- readRESULT("phenotype_models_fitted.tsv")
 phenotypePERMUTATION <- readRESULT("phenotype_permutations.tsv")
 phenotypeINFLUENCE <- readRESULT("phenotype_influence.tsv")
-genotypeEDA <- readRESULTS("\\.genotype_eda_summary\\.tsv$")
-genotypeEDACHECK <- readRESULTS("\\.genotype_eda_checks\\.tsv$")
-targetPREP <- readRESULTS("\\.target_prep_summary\\.tsv$")
+genotypeEDA <- readRESULTS("\\.genotype_eda_summary\\.tsv$", "^genotype_eda/")
+genotypeEDACHECK <- reportEDACHECKS(readRESULTS("\\.genotype_eda_checks\\.tsv$", "^genotype_eda/"))
+genotypeEDA <- reportEDASUMMARY(genotypeEDA, genotypeEDACHECK)
+correctedEDACHECK <- reportEDACHECKS(readRESULTS("\\.genotype_eda_checks\\.tsv$", "^target_qc/"))
+targetPREP <- if (file.exists("data/target_preparation_steps.tsv")) fread("data/target_preparation_steps.tsv") else readRESULTS("\\.target_prep_summary\\.tsv$")
 targetQC <- readRESULTS("\\.target_qc\\.tsv$")
 targetSAMPLEDECISION <- readRESULTS("\\.sample_decisions\\.tsv$")
-sexCHECK <- readRESULTS("\\.sex_check\\.tsv$")
+sexCHECK <- readRESULTS("\\.sex_check\\.tsv$", "^target_qc/[^/]+$")
 targetVARIANTDECISION <- reportTABLESOURCE("\\.variant_decisions\\.tsv$")
 participantDECISION <- readRESULTS("\\.participant_decisions\\.tsv$")
 targetANCESTRY <- readRESULTS("\\.target_ancestry\\.tsv$")
@@ -299,3 +299,17 @@ scoreQC <- addMETHODLABEL(scoreQC)
 variantFLOW <- addMETHODLABEL(variantFLOW)
 tableN <- 0L
 galleryN <- 0L
+
+checkpointVIEW <- function(stage) {
+  section <- paste0("^checkpoints/", stage, "/")
+  files <- manifest[grepl(section, publish_path)]
+  if (!nrow(files)) return(knitr::asis_output("<p>No native checkpoint was supplied for this stage.</p>"))
+  files <- files[order(publish_path, match(tools::file_ext(file_name), c("pvar", "pgen", "psam")))]
+  links <- vapply(seq_len(nrow(files)), function(i) {
+    downloadBUTTON(files$relative_path[i], paste("Download", files$file_name[i]))
+  }, character(1))
+  knitr::asis_output(paste(
+    as.character(tableVIEW(reportTABLESOURCE("[.]pvar$", section), "", download = FALSE)),
+    as.character(buttonROW(links)), sep = "\n\n"
+  ))
+}

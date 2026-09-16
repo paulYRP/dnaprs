@@ -8,3 +8,8 @@ for (path in files) {
     stop(sprintf("Cannot publish report table asset: %s", path))
   }
 }
+if (file.exists("provenance/figure_manifest.tsv")) {
+  source("report-inputs.R")
+  source("report-downloads.R")
+  reportDOWNLOADS(output)
+}

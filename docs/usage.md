@@ -165,6 +165,15 @@ related-sample metadata, pinned Beagle/unbref3 JARs, and selected SBayesRC resou
 Each asset is checked independently, so a later failure does not restart successful
 chromosome downloads.
 
+Production SBayesRC uses the European UK Biobank imputed LD panel
+(`ukbEUR_Imputed.zip`, about 58 GB compressed) and Baseline 2.2 annotations.
+LD describes correlations between variants; this reference is separate from the
+1000 Genomes panel used by Beagle to impute participant genotypes. SBayesRC tidies
+and imputes GWAS summary statistics against its LD reference before model fitting.
+Scoring then uses the participant dosages. Automatic reference selection does not
+substitute the smaller HapMap3 LD panel. Explicit reference manifests remain
+available for controlled analyses and small tests; the selected source is recorded.
+
 For a cache-only run, create `references.yml`:
 
 ```yaml
@@ -186,6 +195,7 @@ Run `nextflow run . -profile singularity -params-file references.yml -resume`.
 genome: GRCh37
 methods: plink_ct,sbayesrc
 sample_missingness: 0.02
+heterozygosity_z_threshold: 3
 imputation_variant_missingness: 0.10
 direct_variant_missingness: 0.01
 maf_filter: 0
@@ -205,6 +215,23 @@ unrelated 1000 Genomes reference axes, projects the target, and applies the empi
 European distance percentile. Participant decisions
 separate technical eligibility, relatedness, ancestry, score eligibility, and primary
 analysis.
+
+`sample_missingness` controls sample removal before imputation. The missingness
+calculation and PLINK sample filter use the same autosomal SNP set.
+`heterozygosity_z_threshold` controls scoring eligibility using the absolute
+heterozygosity Z-score. Values equal to either limit pass.
+For a justified relaxed analysis, set `sample_missingness: 0.05` and
+`heterozygosity_z_threshold: 4`. These settings do not guarantee that every sample
+passes other technical checks. Review flags remain at missingness above 0.02 and
+absolute heterozygosity Z-score above 3, including when a sample remains eligible.
+The thresholds, flags and exclusion reasons accompany the scores and phenotype CSV.
+Imputation does not restore participants already excluded by sample QC.
+
+Input EDA describes the supplied data without applying analysis exclusions.
+Frequency-dependent diagnostics use temporary valid autosomal or non-PAR X SNP
+subsets, with an audit of excluded diagnostic markers. The source genotype files
+and raw composition summaries remain unchanged. Required corrected-target QC is
+evaluated separately; a later successful check does not replace an earlier failure.
 
 Raw marker matching requires the complete assay pair, or its strand complement, to
 occur within one complete dbSNP SNP record. Two ALT alleles can therefore identify a

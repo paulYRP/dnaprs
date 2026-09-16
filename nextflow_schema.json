@@ -335,7 +335,13 @@
                     "minimum": 0,
                     "maximum": 1,
                     "default": 0.02,
-                    "description": "Maximum missing-call fraction allowed per participant."
+                    "description": "Maximum missing-call fraction allowed per participant. Fractions above 0.02 remain flagged for review even when retained."
+                },
+                "heterozygosity_z_threshold": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "default": 3,
+                    "description": "Maximum absolute heterozygosity Z-score allowed for scoring. Values above 3 remain flagged for review even when retained."
                 },
                 "imputation_variant_missingness": {
                     "type": "number",

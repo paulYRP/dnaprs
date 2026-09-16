@@ -201,6 +201,7 @@ workflow DNAPRS {
     imputation_variant_missingness
     direct_variant_missingness
     sample_missingness
+    heterozygosity_z_threshold
     target_maf
     target_hwe
     ancestry_pcs
@@ -364,7 +365,7 @@ workflow DNAPRS {
         .map { _cohort, meta, decisions, review_tables, sex_check, ancestry ->
             tuple(meta, decisions, review_tables + [sex_check], ancestry)
         }
-    PARTICIPANT_DECISIONS(participant_decision_inputs, script_files.participant_decisions)
+    PARTICIPANT_DECISIONS(participant_decision_inputs, script_files.participant_decisions, sample_missingness, heterozygosity_z_threshold)
 
     checkpoint_files = PREPARE_TARGET.out.checkpoint
         .filter { meta, _target_dir, _manifest -> ['raw', 'corrected'].contains(meta.input_stage) }
@@ -719,6 +720,7 @@ workflow DNAPRS {
                 phenotype_file,
                 script_files.association,
                 seed,
+                PARTICIPANT_DECISIONS.out.decisions.map { _meta, decisions, _keep -> decisions }.collect(),
             )
             COMBINE_PHENOTYPE(
                 PHENOTYPE_ASSOCIATION.out.associations.collect(),
@@ -776,17 +778,26 @@ workflow DNAPRS {
     result_files = result_files.mix(COLLECT_VERSIONS.out.versions.map { result_file -> tuple('pipeline_info', result_file) })
 
     if (report_enabled && stop_after == 'report') {
-        output_manifest = result_files
-            .map { publish_path, result_file -> "${publish_path}\t${result_file.name}" }
+        native_report_files = checkpoint_files
+            .filter { publish_path, _directory -> publish_path in ['checkpoints/corrected', 'checkpoints/imputed'] }
+            .flatMap { publish_path, directory ->
+                def cohort = directory.name.replaceFirst(/\.imputed$/, '')
+                ['pvar', 'psam', 'pgen'].collect { extension ->
+                    tuple("${publish_path}/${directory.name}", directory.resolve("${cohort}.${extension}"))
+                }
+            }
+        ordered_report_files = result_files.mix(native_report_files).collect(flat: false)
+            .map { rows -> rows.sort { a, b -> "${a[0]}/${a[1].name}" <=> "${b[0]}/${b[1].name}" } }
+        output_manifest = ordered_report_files
+            .map { rows -> rows.withIndex().collect { row, index ->
+                "${row[0]}\t${row[1].name}\tinput${String.format('%02d', index + 1)}/${row[1].name}"
+            }.join('\n') }
             .collectFile(
                 name: 'output_files.tsv',
-                seed: 'publish_path\tfile_name',
-                sort: true,
+                seed: 'publish_path\tfile_name\tstaged_path',
                 newLine: true,
             )
-        report_file_list = result_files
-            .map { _publish_path, result_file -> result_file }
-            .collect()
+        report_file_list = ordered_report_files.map { rows -> rows.collect { row -> row[1] } }
         RENDER_REPORT(
             report_file_list,
             output_manifest,

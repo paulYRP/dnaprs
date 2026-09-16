@@ -17,17 +17,17 @@ suppressWarnings(suppressPackageStartupMessages({
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Run workbook
+## Summary
 
 The workbook contains the report tables, exact figure-source tables, a contents index,
-and a column dictionary. Participant-level and phenotype-derived worksheets are marked
+and a Dictionary worksheet immediately after Contents. Participant-level and phenotype-derived worksheets are marked
 as restricted research results in the contents sheet.
 
 ```{r, results='asis'}
-buttonROW(downloadBUTTON("downloads/dnaprs_report_tables.xlsx", "Download dnaprs_report_tables.xlsx"))
+buttonROW(downloadBUTTON("downloads/dnaprs_report_tables.xlsx", "Download workbook"))
 ```
 
-## Method and software records
+## Results
 
 ```{r}
 # Display direct downloads for method logs and software versions.
@@ -37,7 +37,7 @@ fileTABLE(
 )
 ```
 
-## Nextflow execution
+## Nextflow
 
 Nextflow completes these files when the run finishes. The execution report summarises
 status and resource use; the timeline shows task timing; the trace provides task-level
@@ -77,6 +77,7 @@ cat(sprintf(
   htmlESCAPE(softwareTEXT)
 ))
 ```
+
 </div>
 
 <div class="dnaprs-closing-card">

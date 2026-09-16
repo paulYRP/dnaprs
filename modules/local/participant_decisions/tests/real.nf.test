@@ -20,6 +20,8 @@ nextflow_process {
                     file("${projectDir}/tests/data/participant_decisions/TEST.relatedness.tsv")
                 ], file("${projectDir}/tests/data/participant_decisions/TEST.target_ancestry.tsv")]
                 input[1] = file("${projectDir}/bin/participant_decisions.R")
+                input[2] = 0.02
+                input[3] = 3
                 """
             }
         }

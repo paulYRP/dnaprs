@@ -12,7 +12,7 @@ suppressWarnings(suppressPackageStartupMessages({library(data.table); library(kn
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Preparation outcome
+## Figures
 
 ```{r, results='asis'}
 figureGALLERY("Target PREP")
@@ -22,7 +22,13 @@ figureGALLERY("Target PREP")
 tableVIEW(targetPREP, "Target preparation steps and retained dimensions.")
 ```
 
-## Outputs and downloads
+## Target
+
+```{r, results='asis'}
+checkpointVIEW("corrected")
+```
+
+## Results
 
 ```{r}
 fileTABLE("^target_prep/", "Prepared target dimensions and conversion summaries.")

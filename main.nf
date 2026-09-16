@@ -32,6 +32,7 @@ workflow NFCORE_DNAPRS {
     imputation_variant_missingness
     direct_variant_missingness
     sample_missingness
+    heterozygosity_z_threshold
     target_maf
     target_hwe
     ancestry_pcs
@@ -101,6 +102,7 @@ workflow NFCORE_DNAPRS {
         imputation_variant_missingness,
         direct_variant_missingness,
         sample_missingness,
+        heterozygosity_z_threshold,
         target_maf,
         target_hwe,
         ancestry_pcs,
@@ -299,6 +301,7 @@ workflow {
             params.imputation_variant_missingness,
             params.direct_variant_missingness,
             params.sample_missingness,
+            params.heterozygosity_z_threshold,
             params.maf_filter,
             params.hwe_filter,
             params.ancestry_pcs,

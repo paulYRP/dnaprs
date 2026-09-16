@@ -26,7 +26,7 @@ process SBAYESRC_TIDY {
     stub:
     """
     cp ${cojo} ${meta.trait_id}.tidy.ma
-    printf 'trait_id\tinput_variants\tld_aligned_variants\tretained_percent\treview_below_70_percent\n${meta.trait_id}\t1\t1\t100\tFALSE\n' > ${meta.trait_id}.tidy_qc.tsv
+    printf 'trait_id\tinput_variants\tld_aligned_variants\tretained_percent\tld_reference_variants\tld_coverage_percent\treview_below_70_percent\n${meta.trait_id}\t1\t1\t100\t1\t100\tFALSE\n' > ${meta.trait_id}.tidy_qc.tsv
     printf 'SBayesRC tidy stub\n' > ${meta.trait_id}.sbayesrc.tidy.log
     """
 }

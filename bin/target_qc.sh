@@ -31,6 +31,9 @@ is_positive() {
 
 case "$input_stage" in
     raw|corrected)
+        # PLINK applies --mind after marker selection and before --geno/--maf/--hwe.
+        plink2 --pfile "$source_prefix" --autosome --snps-only just-acgt --missing sample-only \
+            --threads "$threads" --out "${cohort}.sample_qc"
         qc_args=(--autosome --snps-only just-acgt --mind "$mind" --geno "$imputation_geno")
         if is_positive "$maf"; then qc_args+=(--maf "$maf"); fi
         if is_positive "$hwe"; then qc_args+=(--hwe "$hwe" midp keep-fewhet); fi
@@ -41,6 +44,7 @@ case "$input_stage" in
         qc_action="FILTERED"
         ;;
     qc_completed|imputed)
+        cp "${baseline}.smiss" "${cohort}.sample_qc.smiss"
         plink2 --pfile "$source_prefix" --autosome --set-all-var-ids '@:#:$r:$a' \
             --make-pgen --threads "$threads" --out "$imputation_prefix"
         plink2 --pfile "$imputation_prefix" --make-pgen \
@@ -132,7 +136,7 @@ FILENAME == ARGV[1] { fid=(ix["FID"] ? $(ix["FID"]) : "0"); retained[fid SUBSEP 
     } else {decision="INHERITED"; reason="Participant eligibility inherited from declared checkpoint"}
     if(!kept) reason=reason "; excluded from the retained genotype dataset"
     print cohort,fid,iid,missing,(kept ? "TRUE" : "FALSE"),decision,reason
-}' "${imputation_prefix}.psam" "${baseline}.smiss" > "${cohort}.sample_decisions.tsv"
+}' "${imputation_prefix}.psam" "${cohort}.sample_qc.smiss" > "${cohort}.sample_decisions.tsv"
 
 awk -v cohort="$cohort" -v stage="$input_stage" -v impute_geno="$imputation_geno" -v direct_geno="$direct_geno" -v mafmin="$maf" -v hwemin="$hwe" '
 BEGIN{FS=OFS="\t"; print "cohort","ID","chromosome","position","ref","alt","missingness","maf","hwe_midp","imputation_decision","direct_decision","decision","reason"}

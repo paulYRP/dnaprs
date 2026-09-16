@@ -17,18 +17,20 @@ suppressWarnings(suppressPackageStartupMessages({
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Quantitative review
+## Figures
 
 ```{r, results='asis'}
 # Display phenotype estimates and model checks in one figure gallery.
 figureGALLERY("Phenotype")
 ```
 
-Effect estimates, confidence intervals, added model fit, adjusted patterns, and
-diagnostics should be interpreted together. In a small sample, uncertainty and
-individual observations can be more informative than a P value alone.
+## Scores
 
-## Association estimates
+```{r, results='asis'}
+tableVIEW(reportTABLESOURCE("^phenoPRS[.]csv$"), "Original phenotype rows with raw and standardised PRSs, QC flags and scoring eligibility. Excluded participants have no score.")
+```
+
+## Estimates
 
 ```{r}
 # Display the prespecified matching phenotype and PRS associations.
@@ -56,7 +58,7 @@ tableVIEW(
 )
 ```
 
-## Fitted models
+## Models
 
 ```{r}
 # Display the exact model formulas and estimators used by the pipeline.
@@ -74,24 +76,11 @@ tableVIEW(
 )
 ```
 
-## Phenotype result files
+## Results
 
-The complete tables contain participant-level research data and should remain in the
-restricted result directory.
-
-```{r}
+```{r, results='asis'}
 # Provide the association, fitted-model, and plot-data files.
-buttonROW(
-  fileBUTTON("phenotype_with_prs.tsv", "Download row-level phenotype and PRSs"),
-  fileBUTTON("phenotype_participant_level.tsv", "Download selected model records"),
-  fileBUTTON("phenotype_timepoint_completeness.tsv", "Download timepoint completeness"),
-  fileBUTTON("phenoPRS.csv", "Download legacy CSV"),
-  fileBUTTON("phenotype_associations.tsv", "Download associations"),
-  fileBUTTON("phenotype_models_fitted.tsv", "Download fitted formulas"),
-  fileBUTTON("phenotype_plot_data.tsv", "Download plot data"),
-  fileBUTTON("phenotype_permutations.tsv", "Download permutations"),
-  fileBUTTON("phenotype_influence.tsv", "Download influence diagnostics")
-)
+fileTABLE("^phenotype(/|$)", "Phenotype analysis tables.", exclude = "^phenoPRS[.]csv$")
 ```
 
 <div class="dnaprs-closing-card">

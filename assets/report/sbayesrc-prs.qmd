@@ -12,7 +12,7 @@ suppressWarnings(suppressPackageStartupMessages({library(data.table); library(kn
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Alignment, imputation, and model counts
+## Alignment and Imputation
 
 ```{r}
 tableVIEW(
@@ -23,13 +23,13 @@ tableVIEW(
 )
 ```
 
-## Target coverage and participant PRS review
+## Figures
 
 ```{r, results='asis'}
 figureGALLERY("SBayesRC PRS")
 ```
 
-## Outputs and downloads
+## Results
 
 ```{r}
 fileTABLE(

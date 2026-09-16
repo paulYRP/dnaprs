@@ -43,7 +43,9 @@ nextflow_workflow {
                 { assert decisionRows.find { it.source_id == '1:53072432' }.final_alt == pvar[4] },
                 { assert decisionRows.find { it.source_id == 'rs116820347' }.decision.startsWith('EXCLUDED_') },
                 { assert decisionRows.find { it.source_id == 'rs116820347' }.call_count == '0' },
-                { assert decisionRows.count { it.decision.startsWith('RETAINED_') } == 1 }
+                { assert decisionRows.count { it.decision.startsWith('RETAINED_') } == 1 },
+                { assert file(prepared[2]).text.contains('stage_order\tremoved_variants\treason') },
+                { assert file(prepared[2]).text.readLines().size() == 6 }
             )
         }
     }

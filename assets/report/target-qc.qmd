@@ -12,7 +12,7 @@ suppressWarnings(suppressPackageStartupMessages({library(data.table); library(kn
 source("report-setup.R", local = knitr::knit_global())
 ```
 
-## Scoring readiness
+## Figures
 
 ```{r, results='asis'}
 figureGALLERY("Target QC")
@@ -27,7 +27,15 @@ if (file.exists(reasonPATH)) tableVIEW(fread(reasonPATH), "Participant counts by
 tableVIEW(targetQC, "Final target dimensions and scoring-readiness status.")
 ```
 
-## Participant decisions
+## Participants
+
+Corrected checks control scoring eligibility. A QC flag can remain visible when a
+participant passes the configured exclusion thresholds. A failed required calculation
+blocks scoring; it is not a participant outlier flag.
+
+```{r}
+tableVIEW(correctedEDACHECK, "Autosomal review. A reported_sex result of NOT_RUN with zero X markers is expected here; the separate corrected X check follows.")
+```
 
 ```{r}
 tableVIEW(targetSAMPLEDECISION, "Participant-level missingness decisions before integrated technical QC.")
@@ -41,7 +49,7 @@ tableVIEW(sexCHECK, "Reported-sex comparison using corrected X-chromosome marker
 tableVIEW(participantDECISION, "Integrated technical-QC, relatedness, reference-ancestry, score-eligibility, and primary-analysis decisions.")
 ```
 
-## Reference ancestry
+## Ancestry
 
 ```{r}
 tableVIEW(ancestrySUMMARY, "Reference matching, PCA, empirical European distance threshold, and target classification summary.")
@@ -51,13 +59,13 @@ tableVIEW(ancestrySUMMARY, "Reference matching, PCA, empirical European distance
 tableVIEW(targetANCESTRY, "Target participant projections and explicit ancestry classifications.")
 ```
 
-## Variant decisions
+## Variants
 
 ```{r}
 tableVIEW(targetVARIANTDECISION, "Variant-level missingness, allele, chromosome, MAF, and HWE decisions.")
 ```
 
-## Outputs and downloads
+## Results
 
 ```{r}
 fileTABLE("^target_qc/", "Target QC summaries and participant/variant decision tables.")

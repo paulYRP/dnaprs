@@ -25,6 +25,7 @@ decisionREQUIRED <- c(
 )
 if (!all(decisionREQUIRED %in% names(decision))) stop("A participant-decision table is invalid.", call. = FALSE)
 if (anyDuplicated(decision[, .(cohort, FID, IID)])) stop("Participant decisions contain duplicate IDs.", call. = FALSE)
+decisionREQUIRED <- names(decision)
 score <- merge(
   score,
   decision[, ..decisionREQUIRED],
@@ -56,11 +57,7 @@ wideRAW <- data.table::dcast(score, cohort + role + FID + IID ~ raw_name, value.
 wide <- merge(wideZ, wideRAW, by = c("cohort", "role", "FID", "IID"), all = TRUE, sort = FALSE)
 wide <- merge(
   wide,
-  unique(score[, .(
-    cohort, FID, IID, sample_missingness_pass, heterozygosity_z, heterozygosity_pass,
-    sex_check_pass, technical_pass, score_eligible, related_flag,
-    ancestry_flag, ancestry_distance, primary_analysis
-  )]),
+  unique(score[, ..decisionREQUIRED]),
   by = c("cohort", "FID", "IID"), all.x = TRUE, sort = FALSE
 )
 data.table::fwrite(wide, "prs_scores_wide.tsv", sep = "\t", na = "NA")

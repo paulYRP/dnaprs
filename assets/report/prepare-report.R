@@ -10,6 +10,8 @@ suppressWarnings(suppressPackageStartupMessages({
 
 options(stringsAsFactors = FALSE, scipen = 999)
 source("report-data.R")
+source("report-inputs.R")
+source("report-dictionary.R")
 figureDIMENSIONS <- new.env(parent = emptyenv())
 
 DNAPRS_COLOURS <- c(
@@ -44,7 +46,7 @@ theme_minimal <- themeDNAPRS
 # Returns:
 #   A data.table containing the completed result, or an empty data.table.
 readRESULT <- function(fileNAME) {
-  path <- file.path(inputROOT, fileNAME)
+  path <- reportRESULTPATH(fileNAME)
   if (!file.exists(path) || file.info(path)$size == 0) {
     return(data.table())
   }
@@ -53,17 +55,7 @@ readRESULT <- function(fileNAME) {
 }
 
 # Read and combine report tables selected by their stable output filename.
-readRESULTS <- function(pattern) {
-  fileVALUE <- manifest[grepl(pattern, file_name), file_name]
-  if (!length(fileVALUE)) return(data.table())
-  rbindlist(lapply(fileVALUE, function(fileNAME) {
-    value <- readRESULT(fileNAME)
-    if (!nrow(value)) return(NULL)
-    if (!"cohort" %in% names(value)) value[, cohort := sub("\\..*$", "", fileNAME)]
-    value[, source_file := fileNAME]
-    value
-  }), use.names = TRUE, fill = TRUE)
-}
+readRESULTS <- reportREADRESULTS
 
 # Save the exact records used to draw one report figure.
 saveFIGUREDATA <- function(id, value) {
@@ -232,8 +224,11 @@ writeCONFIG <- function(pageVALUE) {
       "    - assets/",
       "    - downloads/",
       "    - data/",
+      "    - '!data/checkpoints/**'",
       "    - figures/",
       "    - provenance/",
+      "    - '!assets/serve-report.py'",
+      "    - '!assets/open-report.cmd'",
       "website:",
       "  title: \"dnaprs\"",
       "  favicon: assets/nf-core-dnaprs_logo_light.svg",
@@ -267,7 +262,6 @@ inputROOT <- Sys.getenv("DNAPRS_REPORT_INPUTS")
 manifest <- fread(Sys.getenv("DNAPRS_OUTPUT_MANIFEST"))
 stopifnot(
   all(c("publish_path", "file_name") %in% names(manifest)),
-  !anyDuplicated(manifest$file_name),
   !anyDuplicated(file.path(manifest$publish_path, manifest$file_name))
 )
 source("report-inputs.R")
@@ -287,7 +281,8 @@ reportASSET <- c(
   "nf-core-dnaprs_logo_dark.svg",
   "dnaprs-report.css",
   "dnaprs-report.js",
-  "dnaprs-tables.js"
+  "dnaprs-tables.js",
+  "dnaprs-downloads.js"
 )
 stopifnot(all(file.exists(reportASSET)))
 stopifnot(all(file.copy(
@@ -300,7 +295,10 @@ manifest[, relative_path := gsub(
   "\\\\", "/",
   file.path("downloads", publish_path, file_name)
 )]
+nativeROW <- grepl("^checkpoints/(corrected|imputed)/", manifest$publish_path)
+manifest[nativeROW, relative_path := paste0("../data/", publish_path, "/", file_name)]
 for (row in seq_len(nrow(manifest))) {
+  if (nativeROW[row]) next
   sourceP <- reportINPUTPATH[row]
   destinationP <- manifest$relative_path[row]
   dir.create(dirname(destinationP), recursive = TRUE, showWarnings = FALSE)
@@ -325,31 +323,36 @@ phenotypePLOT <- readRESULT("phenotype_plot_data.tsv")
 phenotypePERMUTATION <- readRESULT("phenotype_permutations.tsv")
 phenotypeINFLUENCE <- readRESULT("phenotype_influence.tsv")
 phenotypeDATA <- readRESULT("phenoPRS.csv")
-genotypeEDA <- readRESULTS("\\.genotype_eda_summary\\.tsv$")
-chromosomeCOUNT <- readRESULTS("\\.chromosome_counts\\.tsv$")
-markerDENSITY <- readRESULTS("\\.marker_density\\.tsv$")
-identifierCLASS <- readRESULTS("\\.identifier_classes\\.tsv$")
-alleleSTATE <- readRESULTS("\\.allele_states\\.tsv$")
-sampleMISSING <- readRESULTS("\\.sample_missingness\\.tsv$")
+genotypeEDA <- readRESULTS("\\.genotype_eda_summary\\.tsv$", "^genotype_eda/")
+chromosomeCOUNT <- readRESULTS("\\.chromosome_counts\\.tsv$", "^genotype_eda/")
+markerDENSITY <- readRESULTS("\\.marker_density\\.tsv$", "^genotype_eda/")
+identifierCLASS <- readRESULTS("\\.identifier_classes\\.tsv$", "^genotype_eda/")
+alleleSTATE <- readRESULTS("\\.allele_states\\.tsv$", "^genotype_eda/")
+sampleMISSING <- readRESULTS("\\.sample_missingness\\.tsv$", "^genotype_eda/")
 variantMISSING <- prepareREPORTBINS(
-  file.path(inputROOT, manifest[grepl("\\.variant_missingness\\.tsv$", file_name), file_name]),
+  reportINPUTPATHS(manifest[grepl("\\.variant_missingness\\.tsv$", file_name) & grepl("^genotype_eda/", publish_path)]),
   "F_MISS", function(x) x$F_MISS, "cohort", binwidth = .01, boundary = 0, include = c(.01, .10)
 )
-variantMISSINGBIN <- readRESULTS("\\.variant_missingness_bins\\.tsv$")
+variantMISSINGBIN <- readRESULTS("\\.variant_missingness_bins\\.tsv$", "^genotype_eda/")
 alleleFREQUENCY <- prepareREPORTBINS(
-  file.path(inputROOT, manifest[grepl("\\.allele_frequency\\.tsv$", file_name), file_name]),
+  reportINPUTPATHS(manifest[grepl("\\.allele_frequency\\.tsv$", file_name) & grepl("^genotype_eda/", publish_path)]),
   "ALT_FREQS", function(x) pmin(as.numeric(x$ALT_FREQS), 1 - as.numeric(x$ALT_FREQS)),
   "cohort", binwidth = .01, boundary = 0
 )
-alleleFREQUENCYBIN <- readRESULTS("\\.allele_frequency_bins\\.tsv$")
-heterozygosity <- readRESULTS("\\.heterozygosity\\.tsv$")
-sexCHECK <- readRESULTS("\\.sex_check\\.tsv$")
-relatedness <- readRESULTS("\\.relatedness\\.tsv$")
-relatednessBIN <- readRESULTS("\\.relatedness_bins\\.tsv$")
-internalPCA <- readRESULTS("\\.internal_pca\\.tsv$")
-pcaEIGENVALUE <- readRESULTS("\\.pca_eigenvalues\\.tsv$")
-genotypeEDACHECK <- readRESULTS("\\.genotype_eda_checks\\.tsv$")
+alleleFREQUENCYBIN <- readRESULTS("\\.allele_frequency_bins\\.tsv$", "^genotype_eda/")
+heterozygosity <- readRESULTS("\\.heterozygosity\\.tsv$", "^genotype_eda/")
+sexCHECK <- readRESULTS("\\.sex_check\\.tsv$", "^genotype_eda/")
+relatedness <- readRESULTS("\\.relatedness\\.tsv$", "^genotype_eda/")
+relatednessBIN <- readRESULTS("\\.relatedness_bins\\.tsv$", "^genotype_eda/")
+internalPCA <- readRESULTS("\\.internal_pca\\.tsv$", "^genotype_eda/")
+pcaEIGENVALUE <- readRESULTS("\\.pca_eigenvalues\\.tsv$", "^genotype_eda/")
+genotypeEDACHECK <- reportEDACHECKS(readRESULTS("\\.genotype_eda_checks\\.tsv$", "^genotype_eda/"))
+genotypeEDA <- reportEDASUMMARY(genotypeEDA, genotypeEDACHECK)
 targetPREP <- readRESULTS("\\.target_prep_summary\\.tsv$")
+preparation <- reportPREPARATION(targetPREP)
+targetPREP <- preparation$summary
+targetREMOVALS <- preparation$removals
+fwrite(targetPREP, "data/target_preparation_steps.tsv", sep = "\t")
 targetQC <- readRESULTS("\\.target_qc\\.tsv$")
 targetSAMPLEDECISION <- readRESULTS("\\.sample_decisions\\.tsv$")
 targetVARIANTDECISION <- readRESULTS("\\.variant_decisions\\.tsv$")
@@ -363,8 +366,8 @@ imputationDR2 <- readRESULTS("\\.imputation_dr2\\.tsv$")
 plinkSENSITIVITY <- readRESULTS("\\.plink_ct\\.sensitivity\\.tsv$")
 plinkSENSITIVITYQC <- readRESULTS("\\.plink_ct\\.sensitivity_qc\\.tsv$")
 gwasSUMMARY <- readRESULTS("\\.harmonisation_qc\\.tsv$")
-gwasFILES <- file.path(inputROOT, manifest[grepl("\\.cojo\\.ma$", file_name), file_name])
-sbayesrcFILES <- file.path(inputROOT, manifest[grepl("\\.sbayesrc\\.txt$", file_name), file_name])
+gwasFILES <- reportINPUTPATHS(manifest[grepl("\\.cojo\\.ma$", file_name)])
+sbayesrcFILES <- reportINPUTPATHS(manifest[grepl("\\.sbayesrc\\.txt$", file_name)])
 
 methodLABEL <- c(plink_ct = "PLINK C+T", sbayesrc = "SBayesRC")
 methodCOLOUR <- c("PLINK C+T" = DNAPRS_COLOURS[["blue"]], "SBayesRC" = DNAPRS_COLOURS[["teal"]])
@@ -381,7 +384,7 @@ pageVALUE <- c(
 if (nrow(genotypeEDA)) pageVALUE <- c(pageVALUE, genotype_eda = "Genotype EDA")
 if (nrow(targetPREP)) pageVALUE <- c(pageVALUE, target_prep = "Target PREP")
 if (nrow(targetQC)) pageVALUE <- c(pageVALUE, target_qc = "Target QC")
-if (nrow(imputationQC)) pageVALUE <- c(pageVALUE, target_imputation = "Target Imputation")
+if (nrow(imputationQC)) pageVALUE <- c(pageVALUE, target_imputation = "Target IMP")
 if (nrow(gwasSUMMARY)) pageVALUE <- c(pageVALUE, gwas_qc = "GWAS QC")
 if (hasPLINK) pageVALUE <- c(pageVALUE, plink = "PLINK PRS")
 if (hasSBAYESRC) pageVALUE <- c(pageVALUE, sbayesrc = "SBayesRC PRS")
@@ -673,6 +676,9 @@ if (nrow(internalPCA) && all(c("PC1", "PC2") %in% names(internalPCA))) {
 }
 
 if (nrow(targetPREP)) {
+  if ("stage_order" %in% names(targetPREP)) {
+    targetPREP[, step := factor(step, levels = unique(step[order(stage_order)]))]
+  }
   targetPrepPLOT <- ggplot(targetPREP, aes(x = step, y = variants, fill = cohort)) +
     geom_col(position = position_dodge(width = .72), width = .65) +
     geom_text(aes(label = comma(variants)), position = position_dodge(width = .72), vjust = -.45, size = 3) +
@@ -682,11 +688,25 @@ if (nrow(targetPREP)) {
     theme(panel.grid.major.x = element_blank())
   savePLOT(
     "target_preparation_summary", targetPrepPLOT, 9, 5.5,
-    "Target PREP", "Preparation outcome", "Target preparation summary",
-    "Participants and variants in the normalised target PGEN files.",
+    "Target PREP", "Figures", "Variant counts through preparation",
+    "Recorded variant counts through import, marker resolution, duplicate handling and reference orientation. Skipped preparation steps are not inferred for checkpoint inputs.",
     "Confirm that the prepared target contains the expected participants and non-zero autosomal variants.",
     saveFIGUREDATA("target_preparation_summary", targetPREP)
   )
+}
+
+if (nrow(targetREMOVALS)) {
+  removalPLOT <- ggplot(targetREMOVALS, aes(x = variants, y = reorder(reason, variants), fill = cohort)) +
+    geom_col(position = position_dodge(width = .72), width = .65) +
+    geom_text(aes(label = comma(variants)), position = position_dodge(width = .72), hjust = -.1, size = 3) +
+    scale_x_continuous(labels = comma, expand = expansion(mult = c(0, .18))) +
+    scale_y_discrete(labels = function(x) vapply(x, function(label) paste(strwrap(label, 48), collapse = "\n"), character(1))) +
+    labs(x = "Excluded markers", y = NULL, fill = "Cohort") + theme_minimal(base_size = 11)
+  savePLOT("target_preparation_exclusions", removalPLOT, 12, max(5.5, .65 * uniqueN(targetREMOVALS$reason)),
+    "Target PREP", "Figures", "Marker exclusion reasons",
+    "Each excluded source marker is counted once using its recorded preparation decision.",
+    "Distinguish unresolved markers from duplicate probes. Allele orientation can change without removing a marker.",
+    saveFIGUREDATA("target_preparation_exclusions", targetREMOVALS))
 }
 
 if (nrow(targetQC)) {
@@ -866,7 +886,7 @@ if (nrow(imputationQC) && "chromosome" %in% names(imputationQC)) {
     theme(legend.position = "top", panel.grid.major.x = element_blank())
   savePLOT(
     "target_imputation_counts", imputationPLOT, 12, 6,
-    "Target Imputation", "Chromosome results", "Target imputation variant counts",
+    "Target IMP", "Chromosome results", "Target imputation variant counts",
     "Corrected typed, exact reference-matched, retained post-imputation, and newly imputed variant counts by chromosome.",
     "Inspect chromosome-specific failures and unexpected differences before scoring.",
     saveFIGUREDATA("target_imputation_counts", imputationLONG)
@@ -889,7 +909,7 @@ if (nrow(imputationDR2) && all(c("chromosome", "dr2_bin", "variants") %in% names
     theme(panel.grid.major.x = element_blank())
   savePLOT(
     "target_imputation_dr2", imputationDR2PLOT, 12, 6,
-    "Target Imputation", "Imputation quality", "Imputation DR2 distribution",
+    "Target IMP", "Imputation quality", "Imputation DR2 distribution",
     "Imputed variant counts grouped by Beagle dosage R-squared bin for each chromosome.",
     "Confirm that retained variants are concentrated in the declared acceptable DR2 range and investigate chromosome-specific shifts.",
     saveFIGUREDATA("target_imputation_dr2", imputationDR2)
@@ -1613,8 +1633,10 @@ manifest[, `:=`(
 )]
 manifest[, bytes := file.info(reportINPUTPATH)$size]
 manifest[, sha256 := vapply(
-  reportINPUTPATH,
-  function(path) {
+  seq_along(reportINPUTPATH),
+  function(i) {
+    if (nativeROW[i]) return(NA_character_)
+    path <- reportINPUTPATH[i]
     connection <- file(path, "rb")
     on.exit(close(connection), add = TRUE)
     as.character(openssl::sha256(connection))
@@ -1714,6 +1736,7 @@ fwrite(figureMANIFEST, file.path("provenance", "figure_manifest.tsv"), sep = "\t
 # Build one workbook containing every moderate report table and exact figure-source table.
 workbook <- createWorkbook()
 addWorksheet(workbook, "Contents")
+addWorksheet(workbook, "Dictionary")
 workbookCONTENT <- data.table(
   worksheet = character(),
   report_page = character(),
@@ -1735,7 +1758,7 @@ workbookDICTIONARY <- data.table(
   source_stage = character(),
   sensitivity = character()
 )
-usedSHEETS <- "Contents"
+usedSHEETS <- c("Contents", "Dictionary")
 
 safeSHEET <- function(value) {
   value <- gsub("[\\\\/:?*\\[\\]]", "_", value)
@@ -1766,14 +1789,7 @@ addWORKBOOKTABLE <- function(sheet, value, page, title, description, source, sen
   }
   sheet <- safeSHEET(sheet)
   addWorksheet(workbook, sheet)
-  writeDataTable(workbook, sheet, reportEXCELDATA(value), withFilter = TRUE, tableStyle = "TableStyleLight9")
-  freezePane(workbook, sheet, firstRow = TRUE)
-  setColWidths(workbook, sheet, cols = seq_len(ncol(value)), widths = 18)
-  narrativeCOLUMN <- which(names(value) %in% c(
-    "description", "reason", "definition", "meaning", "missing_value",
-    "expected_values", "source_genotype", "source_sample", "source_keep"
-  ))
-  if (length(narrativeCOLUMN)) setColWidths(workbook, sheet, cols = narrativeCOLUMN, widths = 42)
+  writeData(workbook, sheet, reportEXCELDATA(value), withFilter = FALSE)
   workbookCONTENT <<- rbind(
     workbookCONTENT,
     data.table(
@@ -1784,20 +1800,7 @@ addWORKBOOKTABLE <- function(sheet, value, page, title, description, source, sen
   )
   workbookDICTIONARY <<- rbind(
     workbookDICTIONARY,
-    data.table(
-      worksheet = sheet,
-      column = names(value),
-      definition = vapply(names(value), function(column) {
-        meaning <- unname(columnMEANING[column])
-        if (is.na(meaning)) paste("Field supplied by", title) else meaning
-      }, character(1)),
-      data_type = vapply(value, function(column) class(column)[1L], character(1)),
-      units_or_scale = "See definition and source result",
-      expected_values = "Defined by the source stage",
-      missing_value = "NA means unavailable or not applicable unless the source definition states otherwise",
-      source_stage = source,
-      sensitivity = sensitivity
-    ),
+    reportWORKBOOKDICTIONARY(sheet, value, title, source, sensitivity),
     fill = TRUE
   )
   invisible(sheet)
@@ -1819,9 +1822,9 @@ addWORKBOOKTABLE("Eligibility_reasons", participantREASONS, "Target QC", "Eligib
 addWORKBOOKTABLE("Target_ancestry", targetANCESTRY, "Target QC", "Target ancestry classification", "Reference-projected target PCs, distance, threshold, and classification.", "Target QC", "Restricted participant result")
 addWORKBOOKTABLE("Reference_projection", referencePROJECTION, "Target QC", "Reference ancestry projection", "Population-reference projection used to classify target participants.", "Target QC", "Restricted reference result")
 addWORKBOOKTABLE("Ancestry_summary", ancestrySUMMARY, "Target QC", "Ancestry summary", "Variant, participant, and classification counts for reference-anchored ancestry QC.", "Target QC", "Restricted cohort summary")
-addWORKBOOKTABLE("Imputation_QC", imputationQC, "Target Imputation", "Imputation QC", "Per-chromosome imputation counts and DR2 threshold.", "Target imputation", "Restricted cohort summary")
-addWORKBOOKTABLE("Imputation_manifest", imputationMANIFEST, "Target Imputation", "Imputation handoff", "Reusable chromosome-level imputed target manifest.", "Target imputation", "Restricted input identity")
-addWORKBOOKTABLE("Imputation_DR2", imputationDR2, "Target Imputation", "Imputation DR2 bins", "Per-chromosome imputed-variant counts by Beagle dosage R-squared bin.", "Target imputation", "Restricted cohort summary")
+addWORKBOOKTABLE("Imputation_QC", imputationQC, "Target IMP", "Imputation QC", "Per-chromosome imputation counts and DR2 threshold.", "Target imputation", "Restricted cohort summary")
+addWORKBOOKTABLE("Imputation_manifest", imputationMANIFEST, "Target IMP", "Imputation handoff", "Reusable chromosome-level imputed target manifest.", "Target imputation", "Restricted input identity")
+addWORKBOOKTABLE("Imputation_DR2", imputationDR2, "Target IMP", "Imputation DR2 bins", "Per-chromosome imputed-variant counts by Beagle dosage R-squared bin.", "Target imputation", "Restricted cohort summary")
 addWORKBOOKTABLE("PLINK_sensitivity", plinkSENSITIVITY, "PLINK PRS", "Imputation sensitivity", "Participant-level comparison of imputed-target and direct-genotype PLINK scores.", "PLINK scoring", "Restricted participant result")
 addWORKBOOKTABLE("PLINK_sensitivity_QC", plinkSENSITIVITYQC, "PLINK PRS", "Sensitivity and coverage summary", "Typed/imputed variant coverage and score agreement.", "PLINK scoring", "Restricted cohort summary")
 addWORKBOOKTABLE("GWAS_QC", gwasSUMMARY, "GWAS QC", "GWAS QC summary", "GWAS source and retained counts.", "GWAS QC", "Research workflow output")
@@ -1856,12 +1859,10 @@ if (nrow(figureSOURCE)) {
   }
 }
 
-addWorksheet(workbook, "Dictionary")
-usedSHEETS <- c(usedSHEETS, "Dictionary")
-writeDataTable(workbook, "Dictionary", as.data.frame(workbookDICTIONARY), withFilter = TRUE, tableStyle = "TableStyleLight9")
-freezePane(workbook, "Dictionary", firstRow = TRUE)
-setColWidths(workbook, "Dictionary", cols = seq_len(ncol(workbookDICTIONARY)), widths = 22)
-setColWidths(workbook, "Dictionary", cols = c(3L, 5L, 6L, 7L), widths = 42)
+workbookDICTIONARY <- rbind(workbookDICTIONARY,
+  reportWORKBOOKDICTIONARY("Contents", workbookCONTENT, "Workbook contents", "Report assembly", "Research workflow output"),
+  reportWORKBOOKDICTIONARY("Dictionary", workbookDICTIONARY, "Column dictionary", "Report assembly", "Research workflow output"))
+writeData(workbook, "Dictionary", as.data.frame(workbookDICTIONARY), withFilter = FALSE)
 workbookCONTENT <- rbind(
   data.table(
     worksheet = "Contents", report_page = "Logs", table_title = "Workbook contents",
@@ -1877,10 +1878,7 @@ workbookCONTENT <- rbind(
     columns = ncol(workbookDICTIONARY), sensitivity = "Research workflow output"
   )
 )
-writeDataTable(workbook, "Contents", as.data.frame(workbookCONTENT), withFilter = TRUE, tableStyle = "TableStyleLight9")
-freezePane(workbook, "Contents", firstRow = TRUE)
-setColWidths(workbook, "Contents", cols = seq_len(ncol(workbookCONTENT)), widths = 20)
-setColWidths(workbook, "Contents", cols = c(3L, 4L), widths = 42)
+writeData(workbook, "Contents", as.data.frame(workbookCONTENT), withFilter = FALSE)
 saveWorkbook(workbook, file.path("downloads", "dnaprs_report_tables.xlsx"), overwrite = TRUE)
 
 reportSTATE <- data.table(

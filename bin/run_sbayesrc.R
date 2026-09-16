@@ -31,13 +31,16 @@ if (action == "tidy") {
   SBayesRC::tidy(mafile = option[["input"]], LDdir = option[["ld-dir"]], output = output, log2file = TRUE)
   copyLOG(paste0(output, ".log"), paste0(traitID, ".sbayesrc.tidy.log"))
   retained <- data.table::fread(output, select = "SNP")
+  ldVARIANTS <- nrow(data.table::fread(file.path(option[["ld-dir"]], "snp.info"), select = 1L))
   data.table::fwrite(
     data.table::data.table(
       trait_id = traitID,
       input_variants = nrow(source),
       ld_aligned_variants = nrow(retained),
       retained_percent = 100 * nrow(retained) / nrow(source),
-      review_below_70_percent = nrow(retained) / nrow(source) < 0.70
+      ld_reference_variants = ldVARIANTS,
+      ld_coverage_percent = 100 * nrow(retained) / ldVARIANTS,
+      review_below_70_percent = nrow(retained) / ldVARIANTS < 0.70
     ),
     paste0(traitID, ".tidy_qc.tsv"),
     sep = "\t"

@@ -1,7 +1,20 @@
 # Detailed tables are external assets, never complete HTML tables.
-reportTABLESOURCE <- function(pattern) {
+reportTABLESOURCE <- function(pattern, section = NULL) {
   files <- manifest[grepl(pattern, file_name)]
+  if (!is.null(section)) files <- files[grepl(section, publish_path)]
   structure(list(files = files), class = "report_table_source")
+}
+
+reportTABLEPATHS <- function(files) {
+  file.path(inputROOT, if ("staged_path" %in% names(files)) files$staged_path else files$file_name)
+}
+
+reportTABLEHEADER <- function(path) {
+  pvar <- grepl("[.]pvar$", path, ignore.case = TRUE)
+  separator <- if (grepl("[.]csv$", path, ignore.case = TRUE)) "," else "\t"
+  header <- names(data.table::fread(path, nrows = 0L, sep = separator,
+    skip = if (pvar) "#CHROM" else 0L))
+  list(columns = header, separator = separator, pvar = pvar)
 }
 
 reportJSON <- function(value) {
@@ -9,7 +22,7 @@ reportJSON <- function(value) {
   gsub("<", "\\u003c", as.character(text), fixed = TRUE)
 }
 
-reportPAGEDTABLE <- function(value, caption, page = 25L) {
+reportPAGEDTABLE <- function(value, caption, page = 25L, download = TRUE) {
   page <- if (page %in% c(25L, 50L, 100L)) page else 25L
   tableN <<- tableN + 1L
   document <- gsub("[^A-Za-z0-9_-]", "_", knitr::current_input())
@@ -18,8 +31,8 @@ reportPAGEDTABLE <- function(value, caption, page = 25L) {
   dir.create(directory, recursive = TRUE, showWarnings = FALSE)
   source <- inherits(value, "report_table_source")
   files <- if (source) value$files else NULL
-  columns <- if (source) unique(unlist(lapply(files$file_name, function(name) {
-    c(names(data.table::fread(file.path(inputROOT, name), nrows = 0L)), "cohort", "source_file")
+  columns <- if (source) unique(unlist(lapply(reportTABLEPATHS(files), function(path) {
+    c(reportTABLEHEADER(path)$columns, "cohort", "source_file")
   }))) else names(value)
   if (!length(columns)) return(knitr::asis_output("<p>No records were produced for this section.</p>"))
   chunkSize <- max(1L, min(as.integer(getOption("dnaprs.report.chunk_rows", 5000L)),
@@ -50,17 +63,20 @@ reportPAGEDTABLE <- function(value, caption, page = 25L) {
   }
   if (source) {
     for (i in seq_len(nrow(files))) {
-      path <- file.path(inputROOT, files$file_name[i])
+      path <- reportTABLEPATHS(files[i])
       connection <- file(path, open = "rt", encoding = "UTF-8")
       tryCatch({
-        header <- names(data.table::fread(path, nrows = 0L))
-        readLines(connection, n = 1L, warn = FALSE)
+        header <- reportTABLEHEADER(path)
+        line <- readLines(connection, n = 1L, warn = FALSE)
+        if (header$pvar) while (length(line) && !startsWith(line, "#CHROM")) {
+          line <- readLines(connection, n = 1L, warn = FALSE)
+        }
         repeat {
           first <- readLines(connection, n = 1L, warn = FALSE)
           if (!length(first)) break
           pushBack(first, connection)
-          rows <- utils::read.table(connection, header = FALSE, sep = "\t", quote = '"',
-            nrows = chunkSize, col.names = header, colClasses = "character", row.names = NULL,
+          rows <- utils::read.table(connection, header = FALSE, sep = header$separator, quote = '"',
+            nrows = chunkSize, col.names = header$columns, colClasses = "character", row.names = NULL,
             comment.char = "", check.names = FALSE, na.strings = NULL, fill = FALSE,
             blank.lines.skip = TRUE)
           if (!nrow(rows)) break
@@ -76,18 +92,20 @@ reportPAGEDTABLE <- function(value, caption, page = 25L) {
       writeChunk(value[start:min(nrow(value), start + chunkSize - 1L), , drop = FALSE])
     }
   }
-  downloads <- if (source) paste(vapply(seq_len(nrow(files)), function(i) {
-    downloadBUTTON(files$relative_path[i], paste("Download complete", files$file_name[i]))
+  downloads <- if (!download) "" else if (source) paste(vapply(seq_len(nrow(files)), function(i) {
+    downloadBUTTON(files$relative_path[i], paste("Download", files$file_name[i]))
   }, character(1)), collapse = " ") else {
     path <- file.path(directory, "complete.tsv")
     data.table::fwrite(value, path, sep = "\t", na = "NA")
-    downloadBUTTON(gsub("\\\\", "/", path), "Download complete table (TSV)")
+    downloadBUTTON(gsub("\\\\", "/", path), paste("Download", basename(path)))
   }
   metadata <- list(key = key, columns = unname(as.list(columns)), total = count, identifier = identifier,
                    chunks = descriptors, base = paste0(gsub("\\\\", "/", directory), "/"))
   knitr::asis_output(paste0(
+    "\n\n<!--| quarto-html-table-processing: none -->\n",
     '<section class="dnaprs-paged-table" data-paged-table data-page-size="', page, '">',
-    '<p>', htmlESCAPE(caption), '</p><p>', downloads, '</p>',
+    if (nzchar(caption)) paste0('<p>', htmlESCAPE(caption), '</p>') else "",
+    if (nzchar(downloads)) paste0('<p>', downloads, '</p>') else "",
     '<script type="application/json" data-table-metadata>', reportJSON(metadata), '</script>',
     '<div class="dnaprs-table-controls">',
     '<label>Rows <select data-rows><option>25</option><option>50</option><option>100</option></select></label>',
@@ -103,10 +121,10 @@ reportPAGEDTABLE <- function(value, caption, page = 25L) {
     '<button type="button" data-apply>Apply</button><button type="button" data-find>Find identifier</button>',
     '<button type="button" data-clear>Clear</button>',
     '<button type="button" data-cancel disabled>Cancel</button></div>',
-    '<p data-status role="status" aria-live="polite">', count, ' records. Open the table to browse.</p>',
-    '<details data-open><summary>Browse complete table</summary>',
-    '<div style="overflow:auto;max-height:65vh"><table class="table table-striped table-sm">',
-    '<thead></thead><tbody></tbody></table></div></details>',
-    '<noscript>JavaScript is required for browsing. Use the complete-file downloads above.</noscript></section>'
+    '<p data-status role="status" aria-live="polite">Loading rows...</p>',
+    '<div style="overflow:auto;max-height:65vh"><table data-quarto-disable-processing="true" class="table table-striped table-sm">',
+    '<thead></thead><tbody></tbody></table></div>',
+    '<noscript>JavaScript is required for browsing. Use the file downloads.</noscript></section>',
+    "\n\n"
   ))
 }
