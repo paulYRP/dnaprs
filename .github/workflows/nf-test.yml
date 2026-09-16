@@ -56,6 +56,9 @@ jobs:
       - name: Check local module contracts
         run: bash tests/scripts/check_local_modules.sh
 
+      - name: Test output-directory protection
+        run: bash tests/scripts/test_output_directory.sh
+
       - name: Test offline report downloads
         run: node tests/scripts/test_report_downloads.cjs
 

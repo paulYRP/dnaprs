@@ -130,15 +130,14 @@ workflow {
         error "Run output path exists but is not a directory: ${run_outdir}"
     }
     // Nextflow creates these configured provenance files before workflow code starts.
-    // They belong to the current launch and must not make a new output directory look
-    // stale. Every other existing file remains protected by the collision guard.
+    // Allow these files after a failed launch too, without relying on filesystem
+    // timestamp precision. Every other existing file remains protected.
     bootstrap_provenance = [
         'reports/provenance/execution_report.html',
         'reports/provenance/execution_timeline.html',
         'reports/provenance/execution_trace.txt',
         'reports/provenance/pipeline_dag.html',
     ] as Set
-    launch_started_ms = workflow.start.toInstant().toEpochMilli()
     existing_run_files = []
     if (run_outdir_file.isDirectory()) {
         run_outdir_file.eachFileRecurse(groovy.io.FileType.FILES) { existing_file ->
@@ -146,9 +145,7 @@ workflow {
                 .relativize(existing_file.toPath())
                 .toString()
                 .replace('\\', '/')
-            def current_bootstrap = bootstrap_provenance.contains(relative_path) &&
-                existing_file.lastModified() >= launch_started_ms
-            if (!current_bootstrap) existing_run_files << relative_path
+            if (!bootstrap_provenance.contains(relative_path)) existing_run_files << relative_path
         }
     }
     if (existing_run_files && !workflow.resume && !params.overwrite) {
