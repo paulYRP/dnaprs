@@ -1,40 +1,68 @@
 # Workflow metro map
 
-`assets/metro_map.mmd` is the semantic source for the routes and dependencies shown in
-the README. The nf-core/rnaseq reference is generated from the same type of Mermaid
-source with `nf-metro`; it is not a separate nf-core pipeline-template image. The dnaprs
-production SVG therefore reuses the reference's visual tokens: a white canvas,
-`#ededed` section panels, `#333333` labels, narrow rounded station markers, four-pixel
-rounded coloured routes, parallel route bundles, a translucent white logo-and-legend
-panel, and animated white route markers. The complete six-colour rnaseq palette is used
-for the dnaprs route families, including a separate orange direct-score sensitivity
-branch and red phenotype-model branch.
+The diagram is generated with [nf-metro](https://seqeralabs.github.io/nf-metro/)
+from `assets/metro_map.mmd`. Edit this source and regenerate the images; do not
+adjust the SVG geometry by hand. nf-metro is a documentation tool, not a pipeline
+runtime dependency.
 
-`docs/images/dnaprs-workflow.svg` retains a hand-tuned 1795 by 930 layout because the
-automatic renderer compressed the larger dnaprs workflow into an unreadable single row.
-This preserves the nf-core/rnaseq appearance while making the PRS-specific branches and
-their dependencies legible in the README.
+## Layout
 
-The diagram includes the generated `nf-core-dnaprs` pipeline logo. Keep both repository
-logo variants under `docs/images/`; the SVG embeds the light-canvas variant so that the
-logo also remains visible when GitHub displays the SVG as an image.
+The map uses the nf-core/rnaseq light style: grey section panels, numbered headings,
+coloured routes, white stations and a logo beside the legend. Five sections fold
+across two rows. Layout settings and labels are stored in the Mermaid source.
 
-Update the Mermaid source and SVG together whenever a stage or dependency changes. Keep
-station labels short; put explanations in the smaller secondary labels. The production
-SVG must retain its accessible title and description, the reference's neutral palette,
-and the six route colours defined in the Mermaid source.
+Keep labels short and check connections against `workflows/dnaprs.nf`:
 
-Validate source edits from the repository root with:
+- Raw genotype EDA is a diagnostic branch, not an input to target preparation.
+- REF icons identify independent consumers of the verified reference cache.
+- Beagle imputes target genotypes; SBayesRC imputes GWAS summary statistics.
+- Eligibility applies to primary scoring and direct-score sensitivity.
+- Direct scores use unimputed genotypes and do not enter the primary score table.
+- Primary scores reach the outputs without requiring phenotype models.
+
+The map summarises scientific stages, not every process or auxiliary input.
+Reference frequency and annotation inputs support their downstream scoring and
+model stages. The three hidden stations in the phenotype section are routing
+anchors, not analysis steps. They keep the shared output route straight while
+the optional phenotype branch passes through its models.
+
+## Regenerate
+
+Use the tested renderer version in a development Python environment. From the
+repository root:
 
 ```bash
+python -m pip install nf-metro==2.1.0
+
 nf-metro validate assets/metro_map.mmd
+
+nf-metro render assets/metro_map.mmd \
+  --strict --validate \
+  -o docs/images/dnaprs-workflow-static.svg
+
+nf-metro render assets/metro_map.mmd \
+  --strict --validate --animate \
+  -o docs/images/dnaprs-workflow.svg
+
+nf-metro render assets/metro_map.mmd \
+  --strict --validate --mode light --raster-width 2265 \
+  -o docs/images/dnaprs-workflow.png
+
+prek run --files assets/metro_map.mmd docs/dev/metro_map.md README.md \
+  docs/images/dnaprs-workflow.svg docs/images/dnaprs-workflow-static.svg \
+  docs/images/dnaprs-workflow.png
 ```
 
-The source must remain semantically valid and keep the same five section names as the
-production SVG. Do not replace the production SVG with an automatic render without
-reviewing it at README size: dnaprs has cross-method target, GWAS and reference
-dependencies that require the hand-tuned routing to remain legible.
+The README displays the animated SVG and links to the static PNG. The static SVG
+keeps selectable labels and supports enlargement without losing image quality.
+All images use the same source; no intermediate renders belong in the repository.
 
-Inspect the SVG at its native size and inside the rendered README. No label may overlap a
-station, route, section heading, or another label. Optional paths must remain identifiable
-without animation, and the map must still make sense when SVG animation is disabled.
+## Review
+
+The strict layout and render checks must pass without warnings. Inspect the map
+at full size and at README width on light and dark backgrounds. Check for crossed
+headings, overlapping labels, clipped text, misleading junctions and crowded
+reference inputs. Confirm that the static map remains clear without animation.
+
+The light theme has a transparent background around its grey panels. This area
+follows the page background; it does not represent another analysis stage.

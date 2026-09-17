@@ -21,10 +21,13 @@ The pipeline discovers PGEN, BED, PED/MAP, BGEN, VCF/BCF, or GenomeStudio FinalR
 inputs; records raw genotype EDA; resolves markers against pinned GRCh37 references;
 applies two target-QC checkpoints; and projects participants onto unrelated 1000 Genomes
 reference PCA axes. It can impute with Beagle, generate PLINK C+T and/or SBayesRC
-scores, apply participant eligibility consistently, and fit one or many declared
-phenotype models.
+scores, apply participant eligibility consistently, and fit phenotype models.
 
-![dnaprs workflow metro map showing raw inputs, target QC, reference handling, PLINK C+T, SBayesRC, phenotype models, and reporting](docs/images/dnaprs-workflow.svg)
+[![dnaprs workflow metro map showing raw inputs, target QC, reference handling, PLINK C+T, SBayesRC, phenotype models, and reporting](docs/images/dnaprs-workflow.svg)](docs/images/dnaprs-workflow.png)
+
+Beagle imputation and phenotype modelling are optional. REF icons identify resources
+from the verified reference cache. Direct-score sensitivity uses unimputed genotypes
+and remains separate from the primary scores.
 
 The workflow publishes one run under `dnaprs/model1/` by default:
 
@@ -35,9 +38,7 @@ The workflow publishes one run under `dnaprs/model1/` by default:
 
 ## Minimal run
 
-Install Java 17 or newer, Nextflow 25.10.4 or newer, and Docker, Apptainer, or
-Singularity. With one raw target dataset in `data/plink/raw/` and raw GWAS files in
-`data/gwas/raw/`:
+Install Java 17 or newer, Nextflow 25.10.4 or newer, and Docker, Apptainer, or Singularity. With one raw target dataset in `data/plink/raw/` and raw GWAS files in `data/gwas/raw/`:
 
 ```bash
 nextflow run . -profile singularity -resume
@@ -69,10 +70,7 @@ nextflow run . \
   -resume
 ```
 
-`depression_score`, `age`, and `sex` are examples, not built-in names. If the
-participant-ID column cannot be matched uniquely to target IDs, also supply
-`--participant_id <column>`. Without phenotype parameters, PRS generation and the
-genetic report still complete.
+If the participant-ID column cannot be matched uniquely to target IDs, also supply `--participant_id <column>`.
 
 Repeated phenotype rows are supported through an explicit timepoint selection in
 `params.yml`, such as `timepoint_column: Timepoint` and `timepoint_values: [1]`. The input
