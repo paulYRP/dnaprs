@@ -50,9 +50,11 @@ else
     curl --fail --location --retry 10 --retry-all-errors --connect-timeout 60 \
         --continue-at - --etag-save "$etag_file" --output "$download" "$url"
     if [[ -n "$expected_etag" ]]; then
-        observed_etag=$(tr -d '"\r\n' < "$etag_file")
+        # Retries can save the same ETag more than once. Compare distinct entries
+        # without joining their values; missing or conflicting entries must fail.
+        observed_etag=$(sed -e 's/\r$//' -e 's/^"\(.*\)"$/\1/' -e '/^[[:space:]]*$/d' "$etag_file" | LC_ALL=C sort -u)
         [[ "$observed_etag" == "$expected_etag" ]] || {
-            echo "ETag mismatch for ${asset_id}: expected ${expected_etag}, observed ${observed_etag}" >&2
+            echo "ETag mismatch for ${asset_id}: expected ${expected_etag}, observed ${observed_etag:-<missing>}" >&2
             exit 11
         }
     fi
