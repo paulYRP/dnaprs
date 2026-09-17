@@ -57,6 +57,8 @@ jobs:
         run: bash tests/scripts/check_local_modules.sh
 
       - name: Test output-directory protection
+        env:
+          DNAPRS_TEST_RECORDS: ${{ github.workspace }}/nf-test-results/output-directory
         run: bash tests/scripts/test_output_directory.sh
 
       - name: Test offline report downloads

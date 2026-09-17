@@ -4,7 +4,13 @@ set -euo pipefail
 pipeline_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 test_dir=$(mktemp -d)
 trap 'rm -rf -- "$test_dir"' EXIT
+records_dir=${DNAPRS_TEST_RECORDS:-$test_dir}
+mkdir -p "$records_dir"
+records_dir=$(cd "$records_dir" && pwd)
 cd "$test_dir"
+
+# Use a local empty profile catalogue instead of fetching institutional configs.
+touch "$test_dir/nfcore_custom.config"
 
 # Stop at the next validation check, without submitting analysis jobs.
 accepted_message='--methods must contain one or more of: plink_ct,sbayesrc'
@@ -17,17 +23,21 @@ check_startup() {
     shift 2
     case_number=$((case_number + 1))
     local exit_code=0
-    nextflow -log "$test_dir/case-${case_number}.nextflow.log" run "$pipeline_dir/main.nf" \
+    nextflow -log "$records_dir/case-${case_number}.nextflow.log" run "$pipeline_dir/main.nf" \
         -profile test \
         -c "$pipeline_dir/tests/output_directory.config" \
         -work-dir "$test_dir/work" \
         --outdir "$test_dir/results" \
         --run_name "$case_name" \
         --methods output_guard_test \
-        "$@" > "$test_dir/case-${case_number}.txt" 2>&1 || exit_code=$?
+        --custom_config_base "$test_dir" \
+        "$@" > "$records_dir/case-${case_number}.txt" 2>&1 || exit_code=$?
 
-    if [[ $exit_code -ne 1 ]] || ! grep -Fq -- "$expected_message" "$test_dir/case-${case_number}.txt"; then
-        cat "$test_dir/case-${case_number}.txt"
+    if [[ $exit_code -ne 1 ]] || ! grep -Fq -- "$expected_message" "$records_dir/case-${case_number}.txt"; then
+        cat "$records_dir/case-${case_number}.txt"
+        if [[ -f "$records_dir/case-${case_number}.nextflow.log" ]]; then
+            cat "$records_dir/case-${case_number}.nextflow.log"
+        fi
         printf 'FAIL: %s (exit %s)\n' "$case_name" "$exit_code" >&2
         exit 1
     fi
@@ -52,7 +62,7 @@ done
 check_startup bootstrap "$accepted_message"
 
 # Resume uses the same recorded session, not whichever run happened last.
-resume_id=$(awk '/Session UUID:/ { print $NF; exit }' "case-${case_number}.nextflow.log")
+resume_id=$(awk '/Session UUID:/ { print $NF; exit }' "$records_dir/case-${case_number}.nextflow.log")
 [[ -n $resume_id ]]
 mkdir -p results/bootstrap/data/scores
 printf 'Existing scores\n' > results/bootstrap/data/scores/prs_scores_long.tsv
